@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>历史赛事</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .action-btn {
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            margin-right: 4px;
+        }
+        .predict-btn {
+            background: #3b7cff;
+            color: white;
+        }
+        .predict-btn:hover {
+            background: #2563eb;
+        }
+        .delete-btn {
+            background: #dc2626;
+            color: white;
+        }
+        .delete-btn:hover {
+            background: #b91c1c;
+        }
+        .add-btn {
+            background: #0f973d;
+            color: white;
+        }
+        .add-btn:hover {
+            background: #0b7a30;
+        }
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-row input,
+        .filter-row button {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #cdd8e6;
+            font-size: 14px;
+        }
+        .filter-row button {
+            background: #1a3a6b;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .filter-row button:hover {
+            background: #0f2a4a;
+        }
+        .modal-edit {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-edit-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 95%;
+            padding: 20px 25px;
+        }
+        .modal-edit-content .form-group {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .modal-edit-content .form-group label {
+            width: 80px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        .modal-edit-content .form-group input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #cdd8e6;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .modal-edit-content .btn-group {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 导航栏 -->
+    {% include '_navbar.html' %}
+
+    <h1>📋 历史赛事（赛事列表）</h1>
+
+    <!-- 筛选与操作 -->
+    <div class="filter-row">
+        <label>日期筛选：</label>
+        <input type="date" id="filter-date">
+        <button id="filterBtn">筛选</button>
+        <button id="clearFilterBtn">清除筛选</button>
+        <button class="add-btn" id="addBtn">➕ 添加赛事</button>
+    </div>
+
+    <div id="loading" style="padding:20px; text-align:center;">加载中...</div>
+    <div id="tableWrap" style="display:none; overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>时间</th>
+                    <th>联赛</th>
+                    <th>主队</th>
+                    <th>客队</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="fixturesBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 添加赛事模态框 -->
+<div id="addModal" class="modal-edit">
+    <div class="modal-edit-content">
+        <h3>➕ 添加新赛事</h3>
+        <div id="addFormContainer">
+            <div class="form-group"><label>日期</label><input type="date" id="add-date"></div>
+            <div class="form-group"><label>时间</label><input type="text" id="add-time" placeholder="如 19:30"></div>
+            <div class="form-group"><label>联赛</label><input type="text" id="add-league"></div>
+            <div class="form-group"><label>主队</label><input type="text" id="add-home"></div>
+            <div class="form-group"><label>客队</label><input type="text" id="add-away"></div>
+        </div>
+        <div class="btn-group">
+            <button class="btn" id="saveAddBtn">保存</button>
+            <button class="btn btn-secondary" id="cancelAddBtn">取消</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const tbody = document.getElementById('fixturesBody');
+    const loading = document.getElementById('loading');
+    const tableWrap = document.getElementById('tableWrap');
+    const filterDate = document.getElementById('filter-date');
+    const filterBtn = document.getElementById('filterBtn');
+    const clearFilterBtn = document.getElementById('clearFilterBtn');
+    const addBtn = document.getElementById('addBtn');
+    const addModal = document.getElementById('addModal');
+    const addDate = document.getElementById('add-date');
+    const addTime = document.getElementById('add-time');
+    const addLeague = document.getElementById('add-league');
+    const addHome = document.getElementById('add-home');
+    const addAway = document.getElementById('add-away');
+    const saveAddBtn = document.getElementById('saveAddBtn');
+    const cancelAddBtn = document.getElementById('cancelAddBtn');
+
+    // 加载赛事列表
+    function loadFixtures(date) {
+        loading.style.display = 'block';
+        tableWrap.style.display = 'none';
+        let url = '/api/fixtures';
+        if (date) url += '?date=' + date;
+        fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            loading.style.display = 'none';
+            tableWrap.style.display = 'block';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;">暂无赛事记录</td></tr>';
+                return;
+            }
+            let html = '';
+            data.forEach(item => {
+                html += `<tr>
+                    <td>${item.date}</td>
+                    <td>${item.time || ''}</td>
+                    <td>${item.league}</td>
+                    <td>${item.home_team}</td>
+                    <td>${item.away_team}</td>
+                    <td>
+                        <button class="action-btn predict-btn" data-home="${item.home_team}" data-away="${item.away_team}">📊 预测</button>
+                        <button class="action-btn delete-btn" data-id="${item.id}">🗑️ 删除</button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+
+            // 绑定预测按钮
+            document.querySelectorAll('.predict-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const home = this.dataset.home;
+                    const away = this.dataset.away;
+                    if (home && away) {
+                        window.location.href = '/?home=' + encodeURIComponent(home) + '&away=' + encodeURIComponent(away);
+                    }
+                });
+            });
+
+            // 绑定删除按钮
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const id = this.dataset.id;
+                    if (confirm('确定删除该赛事吗？')) {
+                        fetch('/api/fixtures/' + id, { method: 'DELETE' })
+                        .then(res => res.json())
+                        .then(res => {
+                            if (res.success) loadFixtures(filterDate.value);
+                            else alert('删除失败: ' + (res.error || '未知错误'));
+                        });
+                    }
+                });
+            });
+        })
+        .catch(err => {
+            loading.textContent = '❌ 加载失败: ' + err;
+        });
+    }
+
+    // 添加赛事
+    function addFixture() {
+        const data = {
+            date: addDate.value,
+            time: addTime.value,
+            league: addLeague.value,
+            home_team: addHome.value,
+            away_team: addAway.value,
+            score: '' // 留空
+        };
+        if (!data.date || !data.league || !data.home_team || !data.away_team) {
+            alert('请填写日期、联赛、主队和客队');
+            return;
+        }
+        fetch('/api/fixtures', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                addModal.style.display = 'none';
+                loadFixtures(filterDate.value);
+                alert('✅ 添加成功！');
+            } else {
+                alert('❌ 添加失败: ' + (res.error || '未知错误'));
+            }
+        });
+    }
+
+    // 模态框控制
+    function closeAddModal() {
+        addModal.style.display = 'none';
+    }
+
+    // 事件绑定
+    filterBtn.addEventListener('click', function() {
+        loadFixtures(filterDate.value);
+    });
+    clearFilterBtn.addEventListener('click', function() {
+        filterDate.value = '';
+        loadFixtures('');
+    });
+    addBtn.addEventListener('click', function() {
+        addModal.style.display = 'flex';
+        // 清空输入
+        addDate.value = '';
+        addTime.value = '';
+        addLeague.value = '';
+        addHome.value = '';
+        addAway.value = '';
+    });
+    cancelAddBtn.addEventListener('click', closeAddModal);
+    window.addEventListener('click', function(e) {
+        if (e.target === addModal) closeAddModal();
+    });
+    saveAddBtn.addEventListener('click', addFixture);
+
+    // 初始加载
+    loadFixtures('');
+})();
+</script>
+</body>
+</html>
