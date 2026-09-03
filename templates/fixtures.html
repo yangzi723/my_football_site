@@ -15,6 +15,10 @@
         .add-btn:hover { background: #0b7a30; }
         .save-score-btn { background: #d97706; color: white; }
         .save-score-btn:hover { background: #b45309; }
+        .analysis-btn { background: #8b5cf6; color: white; }
+        .analysis-btn:hover { background: #7c3aed; }
+        .odds-analysis-btn { background: #3b82f6; color: white; }
+        .odds-analysis-btn:hover { background: #2563eb; }
         .modal-edit { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-edit-content { background: white; border-radius: 16px; max-width: 600px; width: 95%; padding: 20px 25px; }
         .modal-edit-content .form-group { margin-bottom: 10px; display: flex; align-items: center; }
@@ -34,17 +38,45 @@
         .fetch-area .btn-success { background: #0f973d; color: white; border: none; padding: 6px 18px; border-radius: 30px; cursor: pointer; }
         .fetch-area .btn-success:hover { background: #0b7a30; }
         .fetch-area .checkbox-label { display: flex; align-items: center; gap: 4px; font-weight: normal; }
-        .pagination { display: flex; gap: 10px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
-        .pagination button { padding: 6px 14px; border-radius: 6px; border: 1px solid #cdd8e6; background: white; cursor: pointer; }
-        .pagination button:hover:not(:disabled) { background: #e2e8f0; }
+        .pagination { display: flex; gap: 6px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+        .pagination button, .pagination .page-num { padding: 6px 12px; border-radius: 6px; border: 1px solid #cdd8e6; background: white; cursor: pointer; font-size: 14px; min-width: 36px; text-align: center; }
+        .pagination button:hover:not(:disabled), .pagination .page-num:hover { background: #e2e8f0; }
         .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .pagination .page-info { font-size: 14px; color: #4b657a; }
-        .pagination select { padding: 6px 10px; border-radius: 6px; border: 1px solid #cdd8e6; }
+        .pagination .page-num.active { background: #1a3a6b; color: white; border-color: #1a3a6b; }
+        .pagination .page-num.active:hover { background: #0f2a4a; }
+        .pagination .ellipsis { padding: 6px 8px; color: #6b7280; }
         .toast { position: fixed; top: 20px; right: 20px; background: #1f3a5f; color: white; padding: 12px 24px; border-radius: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); z-index: 9999; display: none; font-size: 14px; }
         .toast.show { display: block; }
-        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; display: inline-block; }
-        .status-started { background: #d1fae5; color: #065f46; }
+        /* 状态标签样式（与按钮字体大小一致） */
+        .status-badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-block;
+            text-align: center;
+            min-width: 36px;
+        }
+        .status-finished { background: #d1fae5; color: #065f46; }
         .status-pending { background: #fef3c7; color: #92400e; }
+        .vs-large { font-weight: 800; font-size: 1.2em; color: #3b7cff; margin: 0 8px; text-shadow: 0 0 6px rgba(59,124,255,0.25); }
+        /* 圆形勾选标记样式 */
+        .analyzed-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #3b7cff;
+            transform: scale(1.1);
+            border-radius: 50%;
+            transition: 0.15s;
+        }
+        .analyzed-checkbox:hover {
+            transform: scale(1.2);
+        }
+        .analyzed-cell {
+            text-align: center;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -53,7 +85,6 @@
 
     <h1>📅 赛事列表</h1>
 
-    <!-- 获取赛事功能区 -->
     <div class="fetch-area">
         <label>📡 获取赛事</label>
         <input type="date" id="fetch-date">
@@ -63,7 +94,6 @@
         <button class="btn-success" id="fetchFixturesBtn">抓取</button>
     </div>
 
-    <!-- 筛选与操作 -->
     <div class="filter-row">
         <label>日期筛选：</label>
         <input type="date" id="filter-date">
@@ -81,10 +111,10 @@
                     <th>日期</th>
                     <th>时间</th>
                     <th>联赛</th>
-                    <th>主队</th>
-                    <th>客队</th>
+                    <th>主队 VS 客队</th>
                     <th>比分</th>
                     <th>状态</th>
+                    <th>已分析</th>
                     <th>操作</th>
                 </tr>
             </thead>
@@ -92,18 +122,17 @@
         </table>
     </div>
 
-    <!-- 分页控件 -->
     <div class="pagination" id="pagination" style="display:none;">
         <button id="prevPageBtn" disabled>上一页</button>
-        <span class="page-info" id="pageInfo">第 1 / 1 页</span>
+        <span id="pageNumbers"></span>
         <button id="nextPageBtn" disabled>下一页</button>
-        <select id="perPageSelect">
+        <select id="perPageSelect" style="margin-left:10px;padding:4px 8px;border-radius:6px;border:1px solid #cdd8e6;">
             <option value="10">10条/页</option>
             <option value="20" selected>20条/页</option>
             <option value="50">50条/页</option>
             <option value="100">100条/页</option>
         </select>
-        <span style="font-size:13px; color:#4b657a;">共 <span id="totalCount">0</span> 条</span>
+        <span style="font-size:13px; color:#4b657a; margin-left:8px;">共 <span id="totalCount">0</span> 条</span>
     </div>
 </div>
 
@@ -160,7 +189,7 @@
     const pagination = document.getElementById('pagination');
     const prevPageBtn = document.getElementById('prevPageBtn');
     const nextPageBtn = document.getElementById('nextPageBtn');
-    const pageInfo = document.getElementById('pageInfo');
+    const pageNumbers = document.getElementById('pageNumbers');
     const perPageSelect = document.getElementById('perPageSelect');
     const totalCountSpan = document.getElementById('totalCount');
 
@@ -189,23 +218,14 @@
         return ['', ''];
     }
 
-    // 根据比赛时间和当前时间判断是否已开赛（开赛时间超过3小时）
-    function isMatchStarted(dateStr, timeStr) {
+    function isMatchFinished(dateStr, timeStr) {
         if (!dateStr) return false;
-        // 如果没有时间，则视为待定
-        if (!timeStr || timeStr.trim() === '') {
-            return false;
-        }
+        if (!timeStr || timeStr.trim() === '') return false;
         try {
-            const matchDateTimeStr = dateStr + 'T' + timeStr.trim() + ':00';
-            const matchTime = new Date(matchDateTimeStr);
+            const matchTime = new Date(dateStr + 'T' + timeStr.trim() + ':00');
             const now = new Date();
-            const diffMs = now - matchTime;
-            // 如果比赛时间已过去超过3小时（10800000毫秒），视为已开赛
-            return diffMs > 10800000;
-        } catch (e) {
-            return false;
-        }
+            return (now - matchTime) > 10800000;
+        } catch (e) { return false; }
     }
 
     function loadFixtures(date, limit, offset) {
@@ -244,18 +264,18 @@
             let html = '';
             fixtures.forEach(item => {
                 const [homeScore, awayScore] = splitScore(item.score);
-                // 根据比赛时间判断状态
-                const started = isMatchStarted(item.date, item.time);
-                const statusClass = started ? 'status-started' : 'status-pending';
-                const statusText = started ? '完赛' : '赛前';
+                const finished = isMatchFinished(item.date, item.time);
+                const statusClass = finished ? 'status-finished' : 'status-pending';
+                const statusText = finished ? '完赛' : '待定';
+                const vsSymbol = '<span class="vs-large">VS</span>';
+                const analyzed = item.analyzed || 0;
 
                 html += `<tr>
                     <td>${item.id}</td>
                     <td>${item.date}</td>
                     <td>${item.time || ''}</td>
                     <td>${item.league}</td>
-                    <td>${item.home_team}</td>
-                    <td>${item.away_team}</td>
+                    <td>${item.home_team} ${vsSymbol} ${item.away_team}</td>
                     <td>
                         <div class="score-group">
                             <input type="text" class="score-input home-score" value="${homeScore}" data-id="${item.id}" placeholder="0">
@@ -264,8 +284,13 @@
                         </div>
                     </td>
                     <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td class="analyzed-cell">
+                        <input type="checkbox" class="analyzed-checkbox" data-id="${item.id}" ${analyzed ? 'checked' : ''}>
+                    </td>
                     <td>
                         <button class="action-btn save-score-btn" data-id="${item.id}">修改比分</button>
+                        <button class="action-btn analysis-btn" data-id="${item.id}">基本面分析</button>
+                        <button class="action-btn odds-analysis-btn" data-id="${item.id}">赔率分析</button>
                         <button class="action-btn edit-btn" data-id="${item.id}">编辑</button>
                         <button class="action-btn delete-btn" data-id="${item.id}">删除</button>
                     </td>
@@ -288,6 +313,22 @@
                 e.stopPropagation();
                 const id = this.dataset.id;
                 saveScoreForRow(id);
+            });
+        });
+
+        document.querySelectorAll('.analysis-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const id = this.dataset.id;
+                alert('基本面分析功能开发中，赛事ID: ' + id);
+            });
+        });
+
+        document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const id = this.dataset.id;
+                alert('赔率分析功能开发中，赛事ID: ' + id);
             });
         });
 
@@ -323,6 +364,33 @@
                         saveScoreForRow(id);
                     }
                 }
+            });
+        });
+
+        // 已分析复选框点击保存
+        document.querySelectorAll('.analyzed-checkbox').forEach(cb => {
+            cb.addEventListener('change', function(e) {
+                e.stopPropagation();
+                const id = this.dataset.id;
+                const analyzed = this.checked ? 1 : 0;
+                fetch('/api/fixtures/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ analyzed: analyzed })
+                })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success) {
+                        showToast('✅ 已分析状态已更新');
+                    } else {
+                        showToast('❌ 更新失败: ' + (res.error || '未知错误'));
+                        this.checked = !this.checked;
+                    }
+                })
+                .catch(err => {
+                    showToast('❌ 请求出错: ' + err.message);
+                    this.checked = !this.checked;
+                });
             });
         });
     }
@@ -424,8 +492,51 @@
     function updatePagination() {
         const totalPages = Math.ceil(totalItems / currentLimit) || 1;
         const currentPage = Math.floor(currentOffset / currentLimit) + 1;
-        pageInfo.textContent = `第 ${currentPage} / ${totalPages} 页`;
         totalCountSpan.textContent = totalItems;
+
+        let html = '';
+        const maxVisible = 7;
+        let startPage = 1;
+        let endPage = totalPages;
+
+        if (totalPages > maxVisible) {
+            const half = Math.floor(maxVisible / 2);
+            if (currentPage <= half + 1) {
+                endPage = maxVisible;
+            } else if (currentPage >= totalPages - half) {
+                startPage = totalPages - maxVisible + 1;
+            } else {
+                startPage = currentPage - half;
+                endPage = currentPage + half;
+            }
+        }
+
+        if (startPage > 1) {
+            html += `<span class="page-num" data-page="1">1</span>`;
+            if (startPage > 2) html += `<span class="ellipsis">…</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const activeClass = i === currentPage ? 'active' : '';
+            html += `<span class="page-num ${activeClass}" data-page="${i}">${i}</span>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) html += `<span class="ellipsis">…</span>`;
+            html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
+        }
+
+        pageNumbers.innerHTML = html;
+        document.querySelectorAll('.page-num').forEach(el => {
+            el.addEventListener('click', function() {
+                const page = parseInt(this.dataset.page);
+                if (page >= 1 && page <= totalPages) {
+                    const newOffset = (page - 1) * currentLimit;
+                    goToPage(newOffset);
+                }
+            });
+        });
+
         prevPageBtn.disabled = currentOffset === 0;
         nextPageBtn.disabled = currentOffset + currentLimit >= totalItems;
         pagination.style.display = 'flex';
@@ -472,7 +583,7 @@
         fetchDate.value = today;
     }
 
-    // 事件绑定
+    // ---- 事件绑定 ----
     filterBtn.addEventListener('click', function() {
         currentDateFilter = filterDate.value;
         currentOffset = 0;

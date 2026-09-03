@@ -50,7 +50,6 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        # 使用 PRAGMA 检查并添加缺失列
         cur = conn.execute("PRAGMA table_info(matches)")
         existing_cols = [row[1] for row in cur.fetchall()]
         for col in ['date', 'time', 'league']:
@@ -101,13 +100,23 @@ def get_all_matches(limit=100, offset=0, date_filter=None):
         sql = 'SELECT * FROM matches'
         params = []
         if date_filter:
-            sql += ' WHERE DATE(created_at) = ?'
+            sql += ' WHERE date = ?'  # 改为按赛事日期筛选
             params.append(date_filter)
-        # 按日期降序，同日期内时间升序排列
         sql += ' ORDER BY date DESC, time ASC LIMIT ? OFFSET ?'
         params.extend([limit, offset])
         cur.execute(sql, params)
         return cur.fetchall()
+
+def get_all_matches_count(date_filter=None):
+    with closing(get_db()) as conn:
+        cur = conn.cursor()
+        sql = 'SELECT COUNT(*) as total FROM matches'
+        params = []
+        if date_filter:
+            sql += ' WHERE date = ?'  # 同步修改
+            params.append(date_filter)
+        cur.execute(sql, params)
+        return cur.fetchone()['total']
 
 def get_match_by_id(match_id):
     with closing(get_db()) as conn:
@@ -208,10 +217,15 @@ def init_fixtures_table():
                 home_team TEXT,
                 away_team TEXT,
                 score TEXT,
+                analyzed INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(date, home_team, away_team)
             )
         ''')
+        cur = conn.execute("PRAGMA table_info(fixtures)")
+        existing_cols = [row[1] for row in cur.fetchall()]
+        if 'analyzed' not in existing_cols:
+            conn.execute('ALTER TABLE fixtures ADD COLUMN analyzed INTEGER DEFAULT 0')
         conn.commit()
 
 def save_fixtures(fixtures_list):
@@ -219,8 +233,8 @@ def save_fixtures(fixtures_list):
         cur = conn.cursor()
         for f in fixtures_list:
             cur.execute('''
-                INSERT OR IGNORE INTO fixtures (date, time, league, home_team, away_team, score)
-                VALUES (:date, :time, :league, :home_team, :away_team, :score)
+                INSERT OR IGNORE INTO fixtures (date, time, league, home_team, away_team, score, analyzed)
+                VALUES (:date, :time, :league, :home_team, :away_team, :score, 0)
             ''', f)
         conn.commit()
 
@@ -238,7 +252,7 @@ def get_all_fixtures(date_filter=None, limit=20, offset=0):
         if date_filter:
             sql += ' WHERE date = ?'
             params.append(date_filter)
-        sql += ' ORDER BY date DESC, time LIMIT ? OFFSET ?'
+        sql += ' ORDER BY date ASC, time LIMIT ? OFFSET ?'
         params.extend([limit, offset])
         cur.execute(sql, params)
         return cur.fetchall()
@@ -253,6 +267,7 @@ def count_fixtures(date_filter=None):
             params.append(date_filter)
         cur.execute(sql, params)
         return cur.fetchone()['total']
+
 def get_fixture_by_id(fid):
     with closing(get_db()) as conn:
         cur = conn.cursor()
@@ -264,7 +279,8 @@ def update_fixture(fid, data):
         conn.execute('''
             UPDATE fixtures SET
                 date=:date, time=:time, league=:league,
-                home_team=:home_team, away_team=:away_team, score=:score
+                home_team=:home_team, away_team=:away_team,
+                score=:score, analyzed=:analyzed
             WHERE id=:id
         ''', {**data, 'id': fid})
         conn.commit()
@@ -278,8 +294,8 @@ def add_fixture(data):
     with closing(get_db()) as conn:
         cur = conn.cursor()
         cur.execute('''
-            INSERT INTO fixtures (date, time, league, home_team, away_team, score)
-            VALUES (:date, :time, :league, :home_team, :away_team, :score)
+            INSERT INTO fixtures (date, time, league, home_team, away_team, score, analyzed)
+            VALUES (:date, :time, :league, :home_team, :away_team, :score, 0)
         ''', data)
         conn.commit()
         return cur.lastrowid

@@ -4,7 +4,7 @@ from database import (
     update_match_result, get_statistics, delete_match, update_match_full,
     save_fixtures, get_fixtures_by_date, get_all_fixtures,
     get_fixture_by_id, update_fixture, delete_fixture, add_fixture,
-    save_odds, count_fixtures, get_db
+    save_odds, count_fixtures, get_all_matches_count, get_db
 )
 from datetime import datetime
 import traceback
@@ -35,7 +35,7 @@ def fixtures():
 def odds():
     return render_template('odds.html')
 
-# ---------- API：保存预测记录（先删后插，避免重复） ----------
+# ---------- API：保存预测记录 ----------
 @app.route('/api/save', methods=['POST'])
 def api_save():
     try:
@@ -84,7 +84,7 @@ def api_save():
             'judgment': data.get('judgment', 'equal')
         }
 
-        # 删除可能存在的重复记录（基于日期+主客队）
+        # 删除可能存在的重复记录
         with get_db() as conn:
             conn.execute(
                 'DELETE FROM matches WHERE date = ? AND home_team = ? AND away_team = ?',
@@ -92,7 +92,6 @@ def api_save():
             )
             conn.commit()
 
-        # 插入新记录
         match_id = save_match(match_data)
         return jsonify({'success': True, 'id': match_id, 'updated': True})
 
@@ -104,10 +103,20 @@ def api_save():
 @app.route('/api/history')
 def api_history():
     date_filter = request.args.get('date')
-    limit = request.args.get('limit', 100, type=int)
+    limit = request.args.get('limit', 20, type=int)
     offset = request.args.get('offset', 0, type=int)
-    matches = get_all_matches(limit, offset, date_filter)
-    return jsonify([dict(row) for row in matches])
+    try:
+        matches = get_all_matches(limit, offset, date_filter)
+        total = get_all_matches_count(date_filter)
+        return jsonify({
+            'data': [dict(row) for row in matches],
+            'total': total,
+            'limit': limit,
+            'offset': offset
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/match/<int:match_id>', methods=['GET'])
 def api_get_match(match_id):
