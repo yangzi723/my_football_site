@@ -100,7 +100,7 @@ def get_all_matches(limit=100, offset=0, date_filter=None):
         sql = 'SELECT * FROM matches'
         params = []
         if date_filter:
-            sql += ' WHERE date = ?'  # 改为按赛事日期筛选
+            sql += ' WHERE date = ?'
             params.append(date_filter)
         sql += ' ORDER BY date DESC, time ASC LIMIT ? OFFSET ?'
         params.extend([limit, offset])
@@ -113,7 +113,7 @@ def get_all_matches_count(date_filter=None):
         sql = 'SELECT COUNT(*) as total FROM matches'
         params = []
         if date_filter:
-            sql += ' WHERE date = ?'  # 同步修改
+            sql += ' WHERE date = ?'
             params.append(date_filter)
         cur.execute(sql, params)
         return cur.fetchone()['total']
@@ -252,7 +252,8 @@ def get_all_fixtures(date_filter=None, limit=20, offset=0):
         if date_filter:
             sql += ' WHERE date = ?'
             params.append(date_filter)
-        sql += ' ORDER BY date ASC, time LIMIT ? OFFSET ?'
+        # 排序：日期倒序，同一日期内时间升序
+        sql += ' ORDER BY date DESC, time LIMIT ? OFFSET ?'
         params.extend([limit, offset])
         cur.execute(sql, params)
         return cur.fetchall()
