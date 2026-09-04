@@ -3,531 +3,1199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>赔率预测</title>
+    <title>历史记录</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        /* 额外样式：赔率输入框组 */
-        .odds-group {
+        /* 通用样式 */
+        .action-btn { padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; margin-right: 4px; }
+        .edit-btn { background: #3b7cff; color: white; }
+        .edit-btn:hover { background: #2563eb; }
+        .delete-btn { background: #dc2626; color: white; }
+        .delete-btn:hover { background: #b91c1c; }
+        .add-btn { background: #d97706; color: white; }
+        .add-btn:hover { background: #b45309; }
+        .batch-delete-btn { background: #dc2626; color: white; }
+        .batch-delete-btn:hover { background: #b91c1c; }
+        .odds-analysis-btn { background: #3b7cff; color: white; }
+        .odds-analysis-btn:hover { background: #2563eb; }
+        .filter-row { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-row input,
+        .filter-row button { padding: 8px 14px; border-radius: 8px; border: 1px solid #cdd8e6; font-size: 14px; }
+        .filter-row button { background: #1a3a6b; color: white; border: none; cursor: pointer; }
+        .filter-row button:hover { background: #0f2a4a; }
+        .team-link { color: #1a3a6b; text-decoration: none; font-weight: 500; cursor: pointer; }
+        .team-link:hover { text-decoration: underline; color: #3b7cff; }
+        .section-divider { margin: 30px 0 20px; border-top: 2px solid #e2e8f0; padding-top: 20px; }
+        .section-title { font-size: 20px; font-weight: 600; color: #1f3a5f; margin: 0; }
+
+        /* 模态框样式（共用） */
+        .modal-edit { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-edit-content { background: white; border-radius: 16px; max-width: 820px; width: 95%; max-height: 90vh; padding: 20px 25px; overflow-y: auto; }
+        .modal-edit-content .form-group { margin-bottom: 8px; display: flex; align-items: center; }
+        .modal-edit-content .form-group label { width: 110px; font-weight: 500; font-size: 13px; color: #2d3f55; }
+        .modal-edit-content .form-group input,
+        .modal-edit-content .form-group select { flex: 1; padding: 6px 10px; border: 1px solid #cdd8e6; border-radius: 6px; font-size: 13px; }
+        .modal-edit-content .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 600px) { .modal-edit-content .two-col { grid-template-columns: 1fr; } }
+        .modal-edit-content .section-title { font-weight: 600; color: #1f3a5f; margin: 10px 0 5px 0; font-size: 14px; border-left: 4px solid #3b7cff; padding-left: 10px; }
+        .modal-edit-content .btn-group { margin-top: 15px; display: flex; gap: 10px; }
+        .modal-edit-content .info-row { display: flex; padding: 6px 0; border-bottom: 1px solid #f0f2f5; }
+        .modal-edit-content .info-label { width: 120px; font-weight: 500; color: #4b657a; }
+        .modal-edit-content .info-value { flex: 1; color: #1f2937; }
+
+        /* ===== 自定义下拉多选组件（仅模态框使用） ===== */
+        .custom-multiselect {
+            position: relative;
+            flex: 1;
+            min-width: 120px;
+        }
+        .custom-multiselect .selected-display {
             display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin: 15px 0;
-            padding: 12px 0;
-            border-top: 1px solid #d1d9e6;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 8px;
+            border: 1px solid #d1d9e6;
+            border-radius: 4px;
+            background: #f9fafc;
+            cursor: pointer;
+            user-select: none;
+            font-size: 13px;
+            min-height: 32px;
+            transition: border-color 0.2s, background 0.2s;
         }
-        .odds-group .form-group {
-            flex: 0 1 150px;
-            margin: 0;
+        .custom-multiselect .selected-display:hover {
+            border-color: #a0b8d0;
+            background: #ffffff;
         }
-        .odds-group .form-group label {
-            width: 80px;
+        .custom-multiselect .selected-display .text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #1f2937;
         }
-        .odds-group .form-group input {
-            width: 100px;
+        .custom-multiselect .selected-display .arrow {
+            margin-left: 6px;
+            font-size: 12px;
+            transition: transform 0.2s;
+            color: #6b7280;
+        }
+        .custom-multiselect .selected-display .arrow.open {
+            transform: rotate(180deg);
+        }
+        .custom-multiselect .dropdown-list {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 160px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #d1d9e6;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            z-index: 100;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+            margin-top: 2px;
+            min-width: 120px;
+        }
+        .custom-multiselect .dropdown-list.open {
+            display: block;
+        }
+        .custom-multiselect .dropdown-list .option-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.1s;
+        }
+        .custom-multiselect .dropdown-list .option-item:hover {
+            background: #eef2f6;
+        }
+        .custom-multiselect .dropdown-list .option-item.selected {
+            background: #3b7cff;
+            color: white;
+        }
+        .custom-multiselect .dropdown-list .option-item.selected:hover {
+            background: #2563eb;
+        }
+
+        /* 分页 */
+        .pagination { display: flex; gap: 6px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+        .pagination button,
+        .pagination .page-num { padding: 6px 12px; border-radius: 6px; border: 1px solid #cdd8e6; background: white; cursor: pointer; font-size: 14px; min-width: 36px; text-align: center; }
+        .pagination button:hover:not(:disabled),
+        .pagination .page-num:hover { background: #e2e8f0; }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination .page-num.active { background: #1a3a6b; color: white; border-color: #1a3a6b; }
+        .pagination .ellipsis { padding: 6px 8px; color: #6b7280; }
+
+        /* Toast */
+        .toast { position: fixed; top: 20px; right: 20px; background: #1f3a5f; color: white; padding: 12px 24px; border-radius: 30px; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2); z-index: 9999; display: none; font-size: 14px; }
+        .toast.show { display: block; }
+
+        /* 表格 */
+        .table-wrap table { min-width: 1100px; font-size: 13px; }
+        .table-wrap th,
+        .table-wrap td { padding: 6px 8px; white-space: nowrap; vertical-align: middle; }
+        .table-wrap th { background: #f8fafd; border-bottom: 2px solid #dce3ec; }
+        .vs-large { font-weight: 700; color: #3b7cff; margin: 0 4px; }
+        .score-vs { font-weight: 600; min-width: 30px; display: inline-block; text-align: center; }
+        .checkbox-cell { text-align: center; }
+        .checkbox-cell input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+        .select-all-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: normal; font-size: 12px; }
+        .select-all-label input { margin: 0; }
+        .result-select { padding: 2px 6px; border-radius: 4px; border: 1px solid #cdd8e6; }
+
+        /* 可写入字段样式（表格内联） */
+        .inline-edit {
+            width: 62px;
+            padding: 2px 4px;
+            border: 1px solid #d1d9e6;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 13px;
+            background: #fafbfc;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+        .inline-edit:hover {
+            border-color: #9bb7d4;
+            background: #ffffff;
+        }
+        .inline-edit:focus {
+            outline: none;
+            border-color: #3b7cff;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(59, 124, 255, 0.15);
+        }
+        .inline-edit.saving {
+            opacity: 0.6;
+            background: #f0f4ff;
+        }
+
+        /* 赔率分析对话框中的编辑框（优化宽度） */
+        .analysis-input {
+            max-width: 180px;
+            flex: 0 1 auto;
+            padding: 6px 10px;
+            border: 1px solid #cdd8e6;
+            border-radius: 6px;
+            font-size: 13px;
+            background: #fafbfc;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+        .analysis-input:hover {
+            border-color: #9bb7d4;
+            background: #ffffff;
+        }
+        .analysis-input:focus {
+            outline: none;
+            border-color: #3b7cff;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(59, 124, 255, 0.15);
+        }
+        .analysis-input.saving {
+            opacity: 0.6;
+            background: #f0f4ff;
+        }
+
+        .prediction-clickable {
+            cursor: pointer;
+            color: #1a3a6b;
+            text-decoration: underline dotted #3b7cff;
+            padding: 2px 8px;
+            display: inline-block;
+            border-radius: 4px;
+            background: #f0f6ff;
+            transition: background 0.15s, color 0.15s;
+            font-weight: 500;
+            min-width: 40px;
+            text-align: center;
+        }
+        .prediction-clickable:hover {
+            background: #dce7ff;
+            color: #0f2a4a;
+            text-decoration: underline solid #3b7cff;
+        }
+        .prediction-clickable.empty {
+            color: #9aa8b9;
+            background: #f5f7fa;
+            text-decoration: none;
+            font-weight: 400;
+        }
+        .prediction-clickable.empty:hover {
+            background: #e8ecf2;
+            color: #6b7a8a;
+        }
+
+        /* 保存提示小标签 */
+        .save-tag {
+            font-size: 11px;
+            color: #4b7a3b;
+            margin-left: 4px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .save-tag.show {
+            opacity: 1;
+        }
+
+        /* 只读显示文本（保留其他只读列） */
+        .readonly-text {
+            display: inline-block;
+            padding: 4px 6px;
+            background: #f9fafc;
+            border-radius: 4px;
+            min-width: 30px;
+            text-align: center;
+            color: #1f2937;
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <!-- 导航栏 -->
-    {% include '_navbar.html' %}
+    <div class="container">
+        {% include '_navbar.html' %}
 
-    <h1>🎯 赔率预测</h1>
-    <div class="subtitle">
-        输入两队基本面和赔率数据，预测赛果（主胜/平局/客胜）
-    </div>
+        <h1>📋 历史预测与赛事</h1>
 
-    <!-- 日期和联赛（与预测页一致） -->
-    <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:center; margin-bottom:15px;">
-        <div class="form-group" style="margin:0;">
-            <label style="width:80px;">比赛日期</label>
-            <input type="date" id="match-date" style="flex:0 1 180px;">
-            <span style="margin-left:8px;font-size:12px;color:#6b7280;">（默认今日）</span>
-        </div>
-        <div class="form-group" style="margin:0;">
-            <label style="width:80px;">联赛名称</label>
-            <input type="text" id="league-name" placeholder="如 Premier League" style="flex:0 1 220px;">
-            <span style="margin-left:8px;font-size:12px;color:#6b7280;">（仅用于记录）</span>
-        </div>
-    </div>
-
-    <!-- 权重调节（与预测页相同） -->
-    <div style="background:#f1f5f9; border-radius:12px; padding:12px 18px; margin-bottom:20px;">
-        <div style="font-weight:600; font-size:14px; margin-bottom:8px;">⚙️ 权重调节 (总和自动归一化)</div>
-        <div class="flex-row" id="weight-sliders">
-            <div class="weight-group"><label>实力</label><input type="range" min="0" max="100" value="30" class="w-slider" data-key="strength"><span class="weight-val">30</span></div>
-            <div class="weight-group"><label>状态</label><input type="range" min="0" max="100" value="25" class="w-slider" data-key="form"><span class="weight-val">25</span></div>
-            <div class="weight-group"><label>主客场</label><input type="range" min="0" max="100" value="15" class="w-slider" data-key="home_away"><span class="weight-val">15</span></div>
-            <div class="weight-group"><label>人员</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="personnel"><span class="weight-val">10</span></div>
-            <div class="weight-group"><label>战意</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="motivation"><span class="weight-val">10</span></div>
-            <div class="weight-group"><label>身价</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="value"><span class="weight-val">10</span></div>
-        </div>
-        <div style="font-size:13px; color:#475569; margin-top:4px;">拖动滑块调整权重，系统自动归一化</div>
-    </div>
-
-    <!-- 两队输入（与预测页相同） -->
-    <div class="two-col">
-        <div class="team-box">
-            <h2>🏠 主队 <span class="badge">近3场数据</span></h2>
-            <div class="form-group"><label>球队名称</label><input type="text" id="home-name" value="利物浦" placeholder="输入主队名"></div>
-            <div class="section-title">实力因子</div>
-            <div class="form-group"><label>联赛排名</label><input type="number" id="home-rank" value="2" min="1"></div>
-            <div class="form-group"><label>赛季总进球</label><input type="number" id="home-scored" value="75" min="0"></div>
-            <div class="form-group"><label>赛季总失球</label><input type="number" id="home-conceded" value="28" min="0"></div>
-            <div class="section-title">状态因子 (近3场)</div>
-            <div class="form-group"><label>近3场积分</label><input type="number" id="home-recent" value="7" min="0" max="9"> <span class="hint">胜3平1负0</span></div>
-            <div class="section-title">主客场因子 (近3场主场)</div>
-            <div class="form-group"><label>主场胜</label><input type="number" id="home-hw" value="2" min="0"></div>
-            <div class="form-group"><label>主场平</label><input type="number" id="home-hd" value="1" min="0"></div>
-            <div class="form-group"><label>主场负</label><input type="number" id="home-hl" value="0" min="0"></div>
-            <div class="section-title">人员 & 战意</div>
-            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="home-injuries" value="1" min="0"></div>
-            <div class="form-group"><label>战意等级</label>
-                <select id="home-motivation">
-                    <option value="1">1 - 低</option>
-                    <option value="2">2 - 中低</option>
-                    <option value="3" selected>3 - 中</option>
-                    <option value="4">4 - 高</option>
-                    <option value="5">5 - 极高</option>
+        <div class="section-divider">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
+                <h2 class="section-title">📊 预测记录</h2>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="action-btn add-btn" id="addMatchBtn" style="padding:6px 14px; font-size:13px;">➕ 手动添加</button>
+                    <button class="action-btn batch-delete-btn" id="batchDeleteBtn" style="padding:6px 14px; font-size:13px;">🗑️ 批量删除</button>
+                </div>
+            </div>
+            <div class="filter-row">
+                <label>日期筛选：</label>
+                <input type="date" id="filter-date">
+                <button id="filterBtn">筛选</button>
+                <button id="clearFilterBtn">清除筛选</button>
+            </div>
+            <div id="loading" style="padding:20px; text-align:center;">加载中...</div>
+            <div id="tableWrap" style="display:none; overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">
+                                <label class="select-all-label">
+                                    <input type="checkbox" id="selectAllCheckbox">
+                                    <span>全选</span>
+                                </label>
+                            </th>
+                            <th>ID</th>
+                            <th>日期</th>
+                            <th>时间</th>
+                            <th>联赛</th>
+                            <th>主队 VS 客队</th>
+                            <th>基本面评分</th>
+                            <th>基本面判断</th>
+                            <th style="min-width:70px;">初01</th>
+                            <th style="min-width:70px;">初02</th>
+                            <th style="min-width:120px;">初盘预测</th>
+                            <th>结果</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination" style="display:none;">
+                <button id="prevPageBtn" disabled>上一页</button>
+                <span id="pageNumbers"></span>
+                <button id="nextPageBtn" disabled>下一页</button>
+                <select id="perPageSelect" style="margin-left:10px;padding:4px 8px;border-radius:6px;border:1px solid #cdd8e6;">
+                    <option value="10">10条/页</option>
+                    <option value="20" selected>20条/页</option>
+                    <option value="50">50条/页</option>
+                    <option value="100">100条/页</option>
                 </select>
-            </div>
-            <div class="section-title">身价因子</div>
-            <div class="form-group"><label>球队总身价 (M€)</label><input type="number" id="home-value" value="950" min="0" step="10"></div>
-            <div class="section-title">意外因素 (仅供参考)</div>
-            <div class="form-group"><label>备注</label><input type="text" id="home-unexpected" value="萨拉赫回归，士气高涨" placeholder="如天气、裁判等"></div>
-        </div>
-
-        <div class="team-box">
-            <h2>✈️ 客队 <span class="badge">近3场数据</span></h2>
-            <div class="form-group"><label>球队名称</label><input type="text" id="away-name" value="阿森纳" placeholder="输入客队名"></div>
-            <div class="section-title">实力因子</div>
-            <div class="form-group"><label>联赛排名</label><input type="number" id="away-rank" value="3" min="1"></div>
-            <div class="form-group"><label>赛季总进球</label><input type="number" id="away-scored" value="70" min="0"></div>
-            <div class="form-group"><label>赛季总失球</label><input type="number" id="away-conceded" value="30" min="0"></div>
-            <div class="section-title">状态因子 (近3场)</div>
-            <div class="form-group"><label>近3场积分</label><input type="number" id="away-recent" value="6" min="0" max="9"> <span class="hint">胜3平1负0</span></div>
-            <div class="section-title">主客场因子 (近3场客场)</div>
-            <div class="form-group"><label>客场胜</label><input type="number" id="away-aw" value="1" min="0"></div>
-            <div class="form-group"><label>客场平</label><input type="number" id="away-ad" value="1" min="0"></div>
-            <div class="form-group"><label>客场负</label><input type="number" id="away-al" value="1" min="0"></div>
-            <div class="section-title">人员 & 战意</div>
-            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="away-injuries" value="0" min="0"></div>
-            <div class="form-group"><label>战意等级</label>
-                <select id="away-motivation">
-                    <option value="1">1 - 低</option>
-                    <option value="2">2 - 中低</option>
-                    <option value="3">3 - 中</option>
-                    <option value="4" selected>4 - 高</option>
-                    <option value="5">5 - 极高</option>
-                </select>
-            </div>
-            <div class="section-title">身价因子</div>
-            <div class="form-group"><label>球队总身价 (M€)</label><input type="number" id="away-value" value="780" min="0" step="10"></div>
-            <div class="section-title">意外因素 (仅供参考)</div>
-            <div class="form-group"><label>备注</label><input type="text" id="away-unexpected" value="多名主力轮换，体能占优" placeholder="如天气、裁判等"></div>
-        </div>
-    </div>
-
-    <!-- 按钮组 -->
-    <div class="btn-group">
-        <button class="btn" id="calcBtn">📊 计算评分与预测</button>
-        <button class="btn btn-secondary" id="loadExampleBtn">📋 加载示例 (利物浦 vs 阿森纳)</button>
-        <button class="btn btn-secondary" id="resetBtn">🔄 重置</button>
-    </div>
-
-    <!-- 结果展示区 -->
-    <div id="resultArea" style="display:none;">
-        <div class="result-box">
-            <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                <div><strong id="result-home-name">主队</strong> 综合得分: <span id="result-home-score" style="font-size:24px;font-weight:700;">0.00</span></div>
-                <div><strong id="result-away-name">客队</strong> 综合得分: <span id="result-away-score" style="font-size:24px;font-weight:700;">0.00</span></div>
-            </div>
-            <div class="result-grid">
-                <div class="result-item"><div class="label">主胜概率</div><div class="value blue" id="prob-home">0.0%</div></div>
-                <div class="result-item"><div class="label">平局概率</div><div class="value orange" id="prob-draw">0.0%</div></div>
-                <div class="result-item"><div class="label">客胜概率</div><div class="value green" id="prob-away">0.0%</div></div>
-            </div>
-            <div class="prob-bar">
-                <div class="seg home" id="bar-home" style="width:33%;">主胜</div>
-                <div class="seg draw" id="bar-draw" style="width:33%;">平局</div>
-                <div class="seg away" id="bar-away" style="width:34%;">客胜</div>
-            </div>
-
-            <!-- 基本面判断 -->
-            <div class="judgment-row">
-                <label for="basic-judge">📋 基本面判断：</label>
-                <select id="basic-judge">
-                    <option value="home_advantage">主队占优</option>
-                    <option value="away_advantage">客队占优</option>
-                    <option value="equal" selected>两队实力相当</option>
-                    <option value="home_strong">主队占据较强优势</option>
-                    <option value="away_strong">客队占据较强优势</option>
-                    <option value="home_dominant">主队占据绝对优势</option>
-                    <option value="away_dominant">客队占据绝对优势</option>
-                    <option value="both_weak">两队菜鸡</option>
-                </select>
-                <span style="font-size:13px; color:#4b657a; margin-left:6px;">（根据得分自动推荐，可手动更改）</span>
-            </div>
-
-            <!-- 赔率输入区域 -->
-            <div class="odds-group">
-                <div class="form-group"><label>主胜赔率</label><input type="number" id="home-odds" step="0.01" value="1.80" placeholder="如 1.80"></div>
-                <div class="form-group"><label>平局赔率</label><input type="number" id="draw-odds" step="0.01" value="3.50" placeholder="如 3.50"></div>
-                <div class="form-group"><label>客胜赔率</label><input type="number" id="away-odds" step="0.01" value="4.20" placeholder="如 4.20"></div>
-            </div>
-
-            <!-- 预测结果选择（用于保存） -->
-            <div class="judgment-row" style="border-top: none; padding-top: 0;">
-                <label for="odds-prediction">📌 预测结果：</label>
-                <select id="odds-prediction">
-                    <option value="主胜">主胜</option>
-                    <option value="平局">平局</option>
-                    <option value="客胜">客胜</option>
-                </select>
-            </div>
-
-            <div id="unexpected-display" class="unexpected" style="display:none;"></div>
-
-            <!-- 保存按钮 -->
-            <div class="save-row">
-                <button class="btn" id="saveBtn">💾 保存赔率预测</button>
-                <span style="font-size:13px; color:#4b657a;">保存后可在历史记录中查看</span>
+                <span style="font-size:13px; color:#4b657a; margin-left:8px;">共 <span id="totalCount">0</span> 条</span>
             </div>
         </div>
+
+        <!-- ====== 赔率分析展示模态框（基本信息只读，初01/02可编辑，带保存按钮） ====== -->
+        <div id="analysisModal" class="modal-edit">
+            <div class="modal-edit-content">
+                <h3 id="analysisModalTitle">📊 赔率分析 - 赛事信息</h3>
+                <div id="analysisInfoContainer">
+                    <!-- 动态渲染 -->
+                </div>
+                <div class="btn-group">
+                    <button class="btn" id="saveAnalysisBtn">💾 保存修改</button>
+                    <button class="btn btn-secondary" id="closeAnalysisBtn">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 赔率编辑模态框（完整编辑，含初盘预测多选） ====== -->
+        <div id="oddsModal" class="modal-edit">
+            <div class="modal-edit-content">
+                <h3 id="oddsModalTitle">📊 赔率分析</h3>
+                <div id="oddsFormContainer">
+                    <!-- 动态渲染 -->
+                </div>
+                <div class="btn-group">
+                    <button class="btn" id="saveOddsBtn">💾 保存赔率</button>
+                    <button class="btn btn-secondary" id="cancelOddsBtn">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 旧编辑模态框（保留备用） ====== -->
+        <div id="editModal" class="modal-edit">
+            <div class="modal-edit-content">
+                <h3 id="editTitle">📝 预测/复盘</h3>
+                <div id="editFormContainer"></div>
+                <div class="btn-group">
+                    <button class="btn" id="saveEditBtn">💾 保存修改</button>
+                    <button class="btn btn-secondary" id="cancelEditBtn">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="toast" class="toast"></div>
+
+        <script>
+            (function() {
+                // ---------- DOM 引用 ----------
+                const tbody = document.getElementById('historyBody');
+                const loading = document.getElementById('loading');
+                const tableWrap = document.getElementById('tableWrap');
+                const filterDate = document.getElementById('filter-date');
+                const filterBtn = document.getElementById('filterBtn');
+                const clearFilterBtn = document.getElementById('clearFilterBtn');
+
+                const analysisModal = document.getElementById('analysisModal');
+                const analysisModalTitle = document.getElementById('analysisModalTitle');
+                const analysisInfoContainer = document.getElementById('analysisInfoContainer');
+                const closeAnalysisBtn = document.getElementById('closeAnalysisBtn');
+                const saveAnalysisBtn = document.getElementById('saveAnalysisBtn');
+
+                const oddsModal = document.getElementById('oddsModal');
+                const oddsModalTitle = document.getElementById('oddsModalTitle');
+                const oddsFormContainer = document.getElementById('oddsFormContainer');
+                const saveOddsBtn = document.getElementById('saveOddsBtn');
+                const cancelOddsBtn = document.getElementById('cancelOddsBtn');
+
+                const editModal = document.getElementById('editModal');
+                const editTitle = document.getElementById('editTitle');
+                const editFormContainer = document.getElementById('editFormContainer');
+                const saveEditBtn = document.getElementById('saveEditBtn');
+                const cancelEditBtn = document.getElementById('cancelEditBtn');
+
+                const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+                const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+                const addMatchBtn = document.getElementById('addMatchBtn');
+
+                const pagination = document.getElementById('pagination');
+                const prevPageBtn = document.getElementById('prevPageBtn');
+                const nextPageBtn = document.getElementById('nextPageBtn');
+                const pageNumbers = document.getElementById('pageNumbers');
+                const perPageSelect = document.getElementById('perPageSelect');
+                const totalCountSpan = document.getElementById('totalCount');
+                const toast = document.getElementById('toast');
+
+                let currentOffset = 0,
+                    currentLimit = 20,
+                    currentDateFilter = '',
+                    totalItems = 0;
+                let currentOddsData = null;
+
+                const judgmentMap = {
+                    'home_advantage': '主队占优',
+                    'away_advantage': '客队占优',
+                    'equal': '两队实力相当',
+                    'home_strong': '主队较强优势',
+                    'away_strong': '客队较强优势',
+                    'home_dominant': '主队绝对优势',
+                    'away_dominant': '客队绝对优势',
+                    'both_weak': '两队菜鸡'
+                };
+
+                const predictionOptions = ['主胜', '平局', '客胜', '大球', '小球', '让球胜', '让球平', '让球负'];
+
+                let toastTimer;
+
+                function showToast(msg) {
+                    toast.textContent = msg;
+                    toast.classList.add('show');
+                    clearTimeout(toastTimer);
+                    toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+                }
+
+                function getPredictionDisplay(initialPrediction) {
+                    if (!initialPrediction) return '';
+                    try {
+                        const parsed = JSON.parse(initialPrediction);
+                        if (Array.isArray(parsed)) {
+                            return parsed.join('、');
+                        }
+                        return initialPrediction;
+                    } catch (e) {
+                        return initialPrediction;
+                    }
+                }
+
+                // ---------- 保存单个字段 ----------
+                function saveField(id, field, value) {
+                    return fetch('/api/match/' + id)
+                        .then(res => {
+                            if (!res.ok) throw new Error('获取数据失败');
+                            return res.json();
+                        })
+                        .then(data => {
+                            const payload = { ...data };
+                            payload[field] = value;
+                            if (field === 'initial_prediction') {
+                                if (typeof value === 'string') {
+                                    try { JSON.parse(value); } catch (e) { value = JSON.stringify([value]); }
+                                } else if (Array.isArray(value)) {
+                                    value = JSON.stringify(value);
+                                } else {
+                                    value = JSON.stringify([]);
+                                }
+                                payload[field] = value;
+                            }
+                            return fetch('/api/match/' + id, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(payload)
+                            });
+                        })
+                        .then(res => {
+                            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '保存失败'); });
+                            return res.json();
+                        });
+                }
+
+                // ---------- 加载历史 ----------
+                function loadHistory(date, limit, offset) {
+                    if (date === undefined) date = currentDateFilter;
+                    if (limit === undefined) limit = currentLimit;
+                    if (offset === undefined) offset = currentOffset;
+
+                    loading.style.display = 'block';
+                    tableWrap.style.display = 'none';
+                    let url = `/api/history?limit=${limit}&offset=${offset}`;
+                    if (date) url += '&date=' + date;
+
+                    fetch(url)
+                        .then(res => {
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
+                            return res.json();
+                        })
+                        .then(data => {
+                            loading.style.display = 'none';
+                            tableWrap.style.display = 'block';
+                            const matches = data.data || [];
+                            totalItems = data.total || 0;
+                            currentLimit = data.limit || limit;
+                            currentOffset = data.offset || offset;
+
+                            if (matches.length === 0) {
+                                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
+                                pagination.style.display = 'none';
+                                return;
+                            }
+
+                            let html = '';
+                            matches.forEach(m => {
+                                const result = m.result || '未定';
+                                let resultHtml = result;
+                                if (result === '红') resultHtml = `<span style="color:#dc2626;font-weight:600;">红</span>`;
+                                else if (result === '黑') resultHtml = `<span style="color:#1f2937;font-weight:600;">黑</span>`;
+                                else if (result === '走盘') resultHtml =
+                                    `<span style="color:#d97706;font-weight:600;">走盘</span>`;
+                                const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
+                                const homeScore = Math.round(parseFloat(m.home_score) || 0);
+                                const awayScore = Math.round(parseFloat(m.away_score) || 0);
+                                const scoreDisplay =
+                                    `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
+
+                                const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
+                                const isEmptyPred = !m.initial_prediction || m.initial_prediction === '[]' || m
+                                    .initial_prediction === '""' || m.initial_prediction === 'null';
+
+                                const pos1Val = m.pos1 || '';
+                                const pos2Val = m.pos2 || '';
+
+                                html += `<tr>
+                                        <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
+                                        <td>${m.id}</td>
+                                        <td>${m.date || ''}</td>
+                                        <td>${m.time || ''}</td>
+                                        <td>${m.league || ''}</td>
+                                        <td><a href="/?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/?id=${m.id}" class="team-link">${m.away_team}</a></td>
+                                        <td>${scoreDisplay}</td>
+                                        <td>${judgmentDisplay}</td>
+                                        <!-- 初01 -->
+                                        <td>
+                                            <input type="text" class="inline-edit inline-pos1" data-id="${m.id}" data-field="pos1" value="${pos1Val}" placeholder="—" title="点击编辑初01">
+                                            <span class="save-tag" id="saveTag-pos1-${m.id}">✓</span>
+                                        </td>
+                                        <!-- 初02 -->
+                                        <td>
+                                            <input type="text" class="inline-edit inline-pos2" data-id="${m.id}" data-field="pos2" value="${pos2Val}" placeholder="—" title="点击编辑初02">
+                                            <span class="save-tag" id="saveTag-pos2-${m.id}">✓</span>
+                                        </td>
+                                        <!-- 初盘预测 -->
+                                        <td>
+                                            <span class="prediction-clickable ${isEmptyPred ? 'empty' : ''}" data-id="${m.id}" title="点击编辑初盘预测（多选）">
+                                                ${predDisplay || '点击选择'}
+                                            </span>
+                                            <span class="save-tag" id="saveTag-pred-${m.id}">✓</span>
+                                        </td>
+                                        <td>
+                                            <select class="result-select" data-id="${m.id}">
+                                                <option value="">未定</option>
+                                                <option value="红" ${result==='红'?'selected':''}>红</option>
+                                                <option value="黑" ${result==='黑'?'selected':''}>黑</option>
+                                                <option value="走盘" ${result==='走盘'?'selected':''}>走盘</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <button class="action-btn odds-analysis-btn" data-id="${m.id}">📊 赔率分析</button>
+                                            <button class="action-btn delete-btn" data-id="${m.id}">🗑️ 删除</button>
+                                        </td>
+                                    </tr>`;
+                            });
+                            tbody.innerHTML = html;
+                            bindEvents();
+                            updatePagination();
+                        })
+                        .catch(err => {
+                            loading.textContent = '❌ 加载失败: ' + err.message;
+                            console.error('加载失败:', err);
+                        });
+                }
+
+                // ---------- 事件绑定 ----------
+                function bindEvents() {
+                    // 结果下拉
+                    document.querySelectorAll('.result-select').forEach(sel => {
+                        sel.addEventListener('change', function() {
+                            const id = this.dataset.id;
+                            const val = this.value;
+                            fetch('/api/match/' + id + '/result', {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ result: val || null })
+                                })
+                                .then(res => res.json())
+                                .then(res => {
+                                    if (res.success) loadHistory(currentDateFilter, currentLimit,
+                                    currentOffset);
+                                    else alert('更新失败: ' + (res.error || '未知错误'));
+                                });
+                        });
+                    });
+
+                    // 删除单行
+                    document.querySelectorAll('.delete-btn').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = this.dataset.id;
+                            if (confirm('确定删除该预测记录吗？')) {
+                                fetch('/api/match/' + id, { method: 'DELETE' })
+                                    .then(res => res.json())
+                                    .then(res => {
+                                        if (res.success) loadHistory(currentDateFilter, currentLimit,
+                                            currentOffset);
+                                        else alert('删除失败: ' + (res.error || '未知错误'));
+                                    });
+                            }
+                        });
+                    });
+
+                    // 全选
+                    selectAllCheckbox.addEventListener('change', function() {
+                        const checked = this.checked;
+                        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
+                    });
+
+                    // 批量删除
+                    batchDeleteBtn.addEventListener('click', function() {
+                        const selected = document.querySelectorAll('.row-checkbox:checked');
+                        if (selected.length === 0) { showToast('请至少选择一条记录'); return; }
+                        if (!confirm(`确定要删除 ${selected.length} 条记录吗？此操作不可恢复！`)) return;
+
+                        const ids = Array.from(selected).map(cb => parseInt(cb.dataset.id));
+                        let successCount = 0,
+                            failCount = 0;
+                        ids.forEach(id => {
+                            fetch('/api/match/' + id, { method: 'DELETE' })
+                                .then(res => res.json())
+                                .then(res => {
+                                    res.success ? successCount++ : failCount++;
+                                    if (successCount + failCount === ids.length) {
+                                        showToast(
+                                            `批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`
+                                            );
+                                        loadHistory(currentDateFilter, currentLimit, currentOffset);
+                                    }
+                                })
+                                .catch(() => {
+                                    failCount++;
+                                    if (successCount + failCount === ids.length) {
+                                        showToast(
+                                            `批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`
+                                            );
+                                        loadHistory(currentDateFilter, currentLimit, currentOffset);
+                                    }
+                                });
+                        });
+                    });
+
+                    // 初01、初02 输入框（表格内联 - 保留自动保存，但用户未要求删除表格内联的自动保存，仅删除模态框中的）
+                    // 但为了保持一致性，我们也保留表格中的自动保存（如果用户有要求可再处理）
+                    document.querySelectorAll('.inline-pos1, .inline-pos2').forEach(inp => {
+                        inp.addEventListener('blur', function() {
+                            handleInlineSave(this);
+                        });
+                        inp.addEventListener('keydown', function(e) {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                this.blur();
+                            }
+                            if (e.key === 'Escape') {
+                                this.blur();
+                            }
+                        });
+                        inp.addEventListener('input', function() {
+                            const id = this.dataset.id;
+                            const field = this.dataset.field;
+                            const tag = document.getElementById(`saveTag-${field}-${id}`);
+                            if (tag) tag.classList.remove('show');
+                        });
+                    });
+
+                    // 初盘预测点击：打开编辑模态框
+                    document.querySelectorAll('.prediction-clickable').forEach(el => {
+                        el.addEventListener('click', function() {
+                            const id = this.dataset.id;
+                            if (id) {
+                                openOddsModal(id, 'focus_prediction');
+                            }
+                        });
+                    });
+
+                    // 赔率分析按钮：打开展示模态框（初01/02可编辑）
+                    document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
+                        btn.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const id = this.dataset.id;
+                            if (id) {
+                                openAnalysisModal(id);
+                            }
+                        });
+                    });
+                }
+
+                // ---------- 内联保存处理（表格内） ----------
+                function handleInlineSave(input) {
+                    const id = input.dataset.id;
+                    const field = input.dataset.field;
+                    const value = input.value.trim();
+                    const tag = document.getElementById(`saveTag-${field}-${id}`);
+
+                    const oldVal = input.defaultValue || '';
+                    if (value === oldVal) {
+                        if (tag) tag.classList.remove('show');
+                        return;
+                    }
+
+                    input.classList.add('saving');
+                    if (tag) tag.classList.remove('show');
+
+                    saveField(id, field, value)
+                        .then(res => {
+                            if (res.success) {
+                                input.defaultValue = value;
+                                if (tag) tag.classList.add('show');
+                                showToast(`✅ ${field} 已保存`);
+                            } else {
+                                showToast('❌ 保存失败: ' + (res.error || '未知错误'));
+                                input.value = oldVal;
+                            }
+                        })
+                        .catch(err => {
+                            showToast('❌ 请求出错: ' + err.message);
+                            input.value = oldVal;
+                        })
+                        .finally(() => {
+                            input.classList.remove('saving');
+                        });
+                }
+
+                // ---------- 自定义多选组件 ----------
+                function buildMultiselect(containerId, options, selectedValues) {
+                    const container = document.getElementById(containerId);
+                    if (!container) return;
+                    container.innerHTML = '';
+
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'custom-multiselect';
+
+                    const display = document.createElement('div');
+                    display.className = 'selected-display';
+                    const textSpan = document.createElement('span');
+                    textSpan.className = 'text';
+                    textSpan.textContent = selectedValues.length ? selectedValues.join('、') : '请选择';
+                    const arrow = document.createElement('span');
+                    arrow.className = 'arrow';
+                    arrow.textContent = '▼';
+                    display.appendChild(textSpan);
+                    display.appendChild(arrow);
+                    wrapper.appendChild(display);
+
+                    const dropdown = document.createElement('div');
+                    dropdown.className = 'dropdown-list';
+                    options.forEach(opt => {
+                        const item = document.createElement('div');
+                        item.className = 'option-item' + (selectedValues.includes(opt) ? ' selected' : '');
+                        item.textContent = opt;
+                        item.dataset.value = opt;
+                        dropdown.appendChild(item);
+                    });
+                    wrapper.appendChild(dropdown);
+
+                    container.appendChild(wrapper);
+
+                    const arrowIcon = display.querySelector('.arrow');
+                    const dropdownList = dropdown;
+                    const textEl = textSpan;
+
+                    display.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        dropdownList.classList.toggle('open');
+                        arrowIcon.classList.toggle('open');
+                    });
+
+                    dropdownList.querySelectorAll('.option-item').forEach(item => {
+                        item.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const val = this.dataset.value;
+                            this.classList.toggle('selected');
+                            const selected = dropdownList.querySelectorAll('.option-item.selected');
+                            const values = Array.from(selected).map(el => el.dataset.value);
+                            textEl.textContent = values.length ? values.join('、') : '请选择';
+                        });
+                    });
+
+                    document.addEventListener('click', function(e) {
+                        if (!wrapper.contains(e.target)) {
+                            dropdownList.classList.remove('open');
+                            arrowIcon.classList.remove('open');
+                        }
+                    });
+
+                    wrapper.getSelected = function() {
+                        const selected = this.querySelectorAll('.option-item.selected');
+                        return Array.from(selected).map(el => el.dataset.value);
+                    };
+                    wrapper.dataset.id = containerId;
+                    return wrapper;
+                }
+
+                // ---------- 打开赔率分析（展示+编辑初01/02）模态框（无自动保存） ----------
+                function openAnalysisModal(id) {
+                    fetch('/api/match/' + id)
+                        .then(res => {
+                            if (!res.ok) throw new Error('获取数据失败');
+                            return res.json();
+                        })
+                        .then(data => {
+                            if (data.error) { alert(data.error); return; }
+
+                            analysisModal.dataset.id = id;
+
+                            analysisModalTitle.textContent = `📊 赔率分析 - ${data.home_team} vs ${data.away_team}`;
+                            const judgmentDisplay = judgmentMap[data.judgment] || data.judgment || '—';
+                            const pos1Val = data.pos1 || '';
+                            const pos2Val = data.pos2 || '';
+                            const predDisplay = getPredictionDisplay(data.initial_prediction) || '—';
+
+                            let infoHtml = `
+                                <div class="info-row"><span class="info-label">ID</span><span class="info-value">${data.id}</span></div>
+                                <div class="info-row"><span class="info-label">日期</span><span class="info-value">${data.date || '—'}</span></div>
+                                <div class="info-row"><span class="info-label">时间</span><span class="info-value">${data.time || '—'}</span></div>
+                                <div class="info-row"><span class="info-label">主队 VS 客队</span><span class="info-value">${data.home_team} vs ${data.away_team}</span></div>
+                                <div class="info-row"><span class="info-label">基本面判断</span><span class="info-value">${judgmentDisplay}</span></div>
+                                <div class="info-row"><span class="info-label">联赛</span><span class="info-value">${data.league || '—'}</span></div>
+                                <!-- 初01 可编辑 -->
+                                <div class="form-group" style="margin-top:10px;">
+                                    <label style="width:110px;font-weight:500;font-size:13px;color:#2d3f55;">初01</label>
+                                    <input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1">
+                                    <span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span>
+                                </div>
+                                <!-- 初02 可编辑 -->
+                                <div class="form-group">
+                                    <label style="width:110px;font-weight:500;font-size:13px;color:#2d3f55;">初02</label>
+                                    <input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2">
+                                    <span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span>
+                                </div>
+                                <div class="info-row"><span class="info-label">初盘预测</span><span class="info-value">${predDisplay}</span></div>
+                            `;
+                            analysisInfoContainer.innerHTML = infoHtml;
+                            analysisModal.style.display = 'flex';
+
+                            // 绑定输入框事件：清除保存标记，但不触发自动保存
+                            document.querySelectorAll('#analysis-pos1, #analysis-pos2').forEach(inp => {
+                                inp.addEventListener('input', function() {
+                                    const id = this.dataset.id;
+                                    const field = this.dataset.field;
+                                    const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
+                                    if (tag) tag.classList.remove('show');
+                                });
+                                // 按回车键时不做保存，只清除标记
+                                inp.addEventListener('keydown', function(e) {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        // 不保存，只是失去焦点
+                                        this.blur();
+                                    }
+                                    if (e.key === 'Escape') {
+                                        this.blur();
+                                    }
+                                });
+                            });
+                        })
+                        .catch(err => {
+                            showToast('❌ 加载数据失败: ' + err.message);
+                        });
+                }
+
+                function closeAnalysisModal() {
+                    analysisModal.style.display = 'none';
+                }
+
+                // ---------- 保存初01/02（仅显式保存） ----------
+                function saveAnalysisData() {
+                    const id = analysisModal.dataset.id;
+                    if (!id) {
+                        showToast('❌ 未找到赛事ID');
+                        return;
+                    }
+                    const pos1Input = document.getElementById('analysis-pos1');
+                    const pos2Input = document.getElementById('analysis-pos2');
+                    const pos1Val = pos1Input ? pos1Input.value.trim() : '';
+                    const pos2Val = pos2Input ? pos2Input.value.trim() : '';
+
+                    const oldPos1 = pos1Input ? pos1Input.defaultValue : '';
+                    const oldPos2 = pos2Input ? pos2Input.defaultValue : '';
+
+                    // 如果值没有变化，直接刷新表格并提示
+                    if (pos1Val === oldPos1 && pos2Val === oldPos2) {
+                        showToast('ℹ️ 数据已是最新，刷新表格');
+                        loadHistory(currentDateFilter, currentLimit, currentOffset);
+                        return;
+                    }
+
+                    saveAnalysisBtn.textContent = '⏳ 保存中...';
+                    saveAnalysisBtn.disabled = true;
+
+                    const promises = [];
+                    if (pos1Val !== oldPos1) {
+                        promises.push(saveField(id, 'pos1', pos1Val));
+                    }
+                    if (pos2Val !== oldPos2) {
+                        promises.push(saveField(id, 'pos2', pos2Val));
+                    }
+
+                    Promise.all(promises)
+                        .then(results => {
+                            const allSuccess = results.every(r => r && r.success);
+                            if (allSuccess) {
+                                // 更新输入框显示
+                                if (pos1Input && pos1Val !== oldPos1) {
+                                    pos1Input.value = pos1Val;
+                                    pos1Input.defaultValue = pos1Val;
+                                    const tag1 = document.getElementById(`analysis-saveTag-pos1-${id}`);
+                                    if (tag1) tag1.classList.add('show');
+                                }
+                                if (pos2Input && pos2Val !== oldPos2) {
+                                    pos2Input.value = pos2Val;
+                                    pos2Input.defaultValue = pos2Val;
+                                    const tag2 = document.getElementById(`analysis-saveTag-pos2-${id}`);
+                                    if (tag2) tag2.classList.add('show');
+                                }
+                                showToast('✅ 初01、初02 保存成功！');
+                                // 刷新表格
+                                loadHistory(currentDateFilter, currentLimit, currentOffset);
+                            } else {
+                                // 恢复旧值
+                                if (pos1Input) pos1Input.value = oldPos1;
+                                if (pos2Input) pos2Input.value = oldPos2;
+                                const errors = results.map(r => r.error || '未知错误').filter(Boolean);
+                                showToast('❌ 保存失败: ' + errors.join('; '));
+                            }
+                        })
+                        .catch(err => {
+                            showToast('❌ 请求出错: ' + err.message);
+                            if (pos1Input) pos1Input.value = oldPos1;
+                            if (pos2Input) pos2Input.value = oldPos2;
+                            console.error(err);
+                        })
+                        .finally(() => {
+                            saveAnalysisBtn.textContent = '💾 保存修改';
+                            saveAnalysisBtn.disabled = false;
+                        });
+                }
+
+                // ---------- 打开赔率编辑模态框（完整编辑，含初盘预测） ----------
+                function openOddsModal(id, focusTarget) {
+                    fetch('/api/match/' + id)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.error) { alert(data.error); return; }
+                            currentOddsData = data;
+                            oddsModalTitle.textContent = `📊 赔率分析 - ${data.home_team} vs ${data.away_team}`;
+
+                            let selectedPreds = [];
+                            if (data.initial_prediction) {
+                                try {
+                                    const parsed = JSON.parse(data.initial_prediction);
+                                    if (Array.isArray(parsed)) selectedPreds = parsed;
+                                } catch (e) {}
+                            }
+
+                            let html = `
+                                    <div class="form-group"><label>日期</label><input type="date" id="odds-date" value="${data.date || ''}" readonly style="background:#f3f4f6;"></div>
+                                    <div class="form-group"><label>时间</label><input type="text" id="odds-time" value="${data.time || ''}" readonly style="background:#f3f4f6;"></div>
+                                    <div class="form-group"><label>联赛</label><input type="text" id="odds-league" value="${data.league || ''}" readonly style="background:#f3f4f6;"></div>
+                                    <div class="form-group"><label>主队</label><input type="text" id="odds-home" value="${data.home_team}" readonly style="background:#f3f4f6;"></div>
+                                    <div class="form-group"><label>客队</label><input type="text" id="odds-away" value="${data.away_team}" readonly style="background:#f3f4f6;"></div>
+                                    <div class="section-title">📈 赔率数据</div>
+                                    <div class="form-group"><label>亚初终</label><input type="text" id="odds-asian" value="${data.asian_odds || ''}" placeholder="如 0.85 半球 0.95"></div>
+                                    <div class="form-group"><label>区间</label><input type="text" id="odds-range" value="${data.range || ''}" placeholder="如 2.5-3"></div>
+                                    <div class="form-group"><label>初01</label><input type="text" id="odds-pos1" value="${data.pos1 || ''}" placeholder="如 1.95"></div>
+                                    <div class="form-group"><label>初02</label><input type="text" id="odds-pos2" value="${data.pos2 || ''}" placeholder="如 1.90"></div>
+                                    <div class="form-group"><label>初盘预测（多选）</label>
+                                        <div id="odds-multiselect-container" style="flex:1;"></div>
+                                        <span style="font-size:12px; color:#4b657a; margin-left:8px;">点击选项切换选中</span>
+                                    </div>
+                                `;
+                            oddsFormContainer.innerHTML = html;
+                            oddsModal.style.display = 'flex';
+                            saveOddsBtn.dataset.id = id;
+
+                            buildMultiselect('odds-multiselect-container', predictionOptions, selectedPreds);
+
+                            if (focusTarget === 'focus_prediction') {
+                                setTimeout(() => {
+                                    const container = document.getElementById(
+                                    'odds-multiselect-container');
+                                    if (container) {
+                                        container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        container.style.transition = 'background 0.6s';
+                                        container.style.background = '#eef6ff';
+                                        setTimeout(() => {
+                                            container.style.background = 'transparent';
+                                        }, 1200);
+                                        const wrapper = container.querySelector('.custom-multiselect');
+                                        if (wrapper) {
+                                            const display = wrapper.querySelector('.selected-display');
+                                            if (display) display.focus && display.focus();
+                                        }
+                                    }
+                                }, 200);
+                            }
+                        });
+                }
+
+                // ---------- 保存编辑模态框 ----------
+                function saveOdds() {
+                    const id = saveOddsBtn.dataset.id;
+                    const multiselectContainer = document.getElementById('odds-multiselect-container');
+                    let initialPrediction = [];
+                    if (multiselectContainer) {
+                        const wrapper = multiselectContainer.querySelector('.custom-multiselect');
+                        if (wrapper && typeof wrapper.getSelected === 'function') {
+                            initialPrediction = wrapper.getSelected();
+                        } else {
+                            const selectedItems = multiselectContainer.querySelectorAll('.option-item.selected');
+                            initialPrediction = Array.from(selectedItems).map(el => el.dataset.value);
+                        }
+                    }
+
+                    const payload = {
+                        asian_odds: document.getElementById('odds-asian').value || '',
+                        range: document.getElementById('odds-range').value || '',
+                        pos1: document.getElementById('odds-pos1').value || '',
+                        pos2: document.getElementById('odds-pos2').value || '',
+                        initial_prediction: JSON.stringify(initialPrediction)
+                    };
+
+                    const fullData = { ...currentOddsData, ...payload };
+
+                    saveOddsBtn.textContent = '⏳ 保存中...';
+                    saveOddsBtn.disabled = true;
+
+                    fetch('/api/match/' + id, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(fullData)
+                        })
+                        .then(res => {
+                            if (!res.ok) return res.json().then(err => { throw new Error(err.error || 'HTTP ' + res
+                                    .status); });
+                            return res.json();
+                        })
+                        .then(res => {
+                            if (res.success) {
+                                oddsModal.style.display = 'none';
+                                showToast('✅ 赔率数据保存成功！');
+                                loadHistory(currentDateFilter, currentLimit, currentOffset);
+                            } else {
+                                showToast('❌ 保存失败: ' + (res.error || '未知错误'));
+                            }
+                        })
+                        .catch(err => {
+                            showToast('❌ 请求出错: ' + err.message);
+                            console.error('保存错误:', err);
+                        })
+                        .finally(() => {
+                            saveOddsBtn.textContent = '💾 保存赔率';
+                            saveOddsBtn.disabled = false;
+                        });
+                }
+
+                function closeOddsModal() {
+                    oddsModal.style.display = 'none';
+                    currentOddsData = null;
+                }
+
+                // ---------- 分页 ----------
+                function updatePagination() {
+                    const totalPages = Math.ceil(totalItems / currentLimit) || 1;
+                    const currentPage = Math.floor(currentOffset / currentLimit) + 1;
+                    totalCountSpan.textContent = totalItems;
+
+                    let html = '';
+                    const maxVisible = 7;
+                    let startPage = 1,
+                        endPage = totalPages;
+                    if (totalPages > maxVisible) {
+                        const half = Math.floor(maxVisible / 2);
+                        if (currentPage <= half + 1) endPage = maxVisible;
+                        else if (currentPage >= totalPages - half) startPage = totalPages - maxVisible + 1;
+                        else { startPage = currentPage - half;
+                            endPage = currentPage + half; }
+                    }
+                    if (startPage > 1) {
+                        html += `<span class="page-num" data-page="1">1</span>`;
+                        if (startPage > 2) html += `<span class="ellipsis">…</span>`;
+                    }
+                    for (let i = startPage; i <= endPage; i++) {
+                        html += `<span class="page-num ${i===currentPage?'active':''}" data-page="${i}">${i}</span>`;
+                    }
+                    if (endPage < totalPages) {
+                        if (endPage < totalPages - 1) html += `<span class="ellipsis">…</span>`;
+                        html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
+                    }
+                    pageNumbers.innerHTML = html;
+                    document.querySelectorAll('.page-num').forEach(el => {
+                        el.addEventListener('click', function() {
+                            const page = parseInt(this.dataset.page);
+                            if (page >= 1 && page <= totalPages) goToPage((page - 1) * currentLimit);
+                        });
+                    });
+                    prevPageBtn.disabled = currentOffset === 0;
+                    nextPageBtn.disabled = currentOffset + currentLimit >= totalItems;
+                    pagination.style.display = 'flex';
+                }
+
+                function goToPage(offset) {
+                    if (offset < 0) offset = 0;
+                    if (offset >= totalItems) offset = Math.max(0, totalItems - currentLimit);
+                    currentOffset = offset;
+                    loadHistory(currentDateFilter, currentLimit, currentOffset);
+                }
+
+                // ---------- 手动添加 ----------
+                function addEmptyMatch() {
+                    const payload = {
+                        date: '',
+                        time: '',
+                        league: '',
+                        home_team: '主队',
+                        away_team: '客队',
+                        home_score: 0,
+                        away_score: 0,
+                        home_prob: 0.33,
+                        draw_prob: 0.34,
+                        away_prob: 0.33,
+                        judgment: 'equal',
+                        asian_odds: '',
+                        range: '',
+                        pos1: '',
+                        pos2: '',
+                        initial_prediction: '[]'
+                    };
+                    fetch('/api/save', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        })
+                        .then(res => res.json())
+                        .then(res => {
+                            if (res.success) {
+                                showToast('✅ 空记录已创建，ID: ' + res.id);
+                                loadHistory(currentDateFilter, currentLimit, currentOffset);
+                            } else showToast('❌ 创建失败: ' + (res.error || '未知错误'));
+                        })
+                        .catch(err => showToast('❌ 请求出错: ' + err.message));
+                }
+
+                // ---------- 全局事件绑定 ----------
+                filterBtn.addEventListener('click', function() {
+                    currentDateFilter = filterDate.value;
+                    currentOffset = 0;
+                    loadHistory(currentDateFilter, currentLimit, 0);
+                });
+                clearFilterBtn.addEventListener('click', function() {
+                    filterDate.value = '';
+                    currentDateFilter = '';
+                    currentOffset = 0;
+                    loadHistory('', currentLimit, 0);
+                });
+                addMatchBtn.addEventListener('click', addEmptyMatch);
+
+                prevPageBtn.addEventListener('click', () => goToPage(currentOffset - currentLimit));
+                nextPageBtn.addEventListener('click', () => goToPage(currentOffset + currentLimit));
+                perPageSelect.addEventListener('change', function() {
+                    currentLimit = parseInt(this.value);
+                    currentOffset = 0;
+                    loadHistory(currentDateFilter, currentLimit, 0);
+                });
+
+                // 编辑模态框事件
+                saveOddsBtn.addEventListener('click', saveOdds);
+                cancelOddsBtn.addEventListener('click', closeOddsModal);
+                window.addEventListener('click', function(e) {
+                    if (e.target === oddsModal) closeOddsModal();
+                });
+
+                // 展示模态框事件
+                closeAnalysisBtn.addEventListener('click', closeAnalysisModal);
+                saveAnalysisBtn.addEventListener('click', saveAnalysisData);
+                window.addEventListener('click', function(e) {
+                    if (e.target === analysisModal) closeAnalysisModal();
+                });
+
+                // 旧编辑模态框
+                cancelEditBtn.addEventListener('click', function() { editModal.style.display = 'none'; });
+                window.addEventListener('click', function(e) {
+                    if (e.target === editModal) editModal.style.display = 'none';
+                });
+                saveEditBtn.addEventListener('click', function() {
+                    alert('此功能已迁移至“初盘预测”点击编辑，请使用该方式。');
+                });
+
+                // 初始加载
+                loadHistory('', 20, 0);
+            })();
+        </script>
     </div>
-
-    <div class="footer-note">
-        输入基本面数据计算得分，结合赔率进行预测。身价基准：英冠平均 70M€。
-    </div>
-</div>
-
-<!-- Toast 提示 -->
-<div id="toast" class="toast"></div>
-
-<script>
-(function() {
-    "use strict";
-
-    // ---------- 常量 ----------
-    const LEAGUE_AVG_GOALS_SCORED = 1.5;
-    const LEAGUE_AVG_GOALS_CONCEDED = 1.5;
-    const LEAGUE_AVG_VALUE = 70.0;
-
-    // ---------- DOM ----------
-    const $ = id => document.getElementById(id);
-    const homeName = $('home-name');
-    const awayName = $('away-name');
-    const leagueName = $('league-name');
-    const matchDate = $('match-date');
-    const homeRank = $('home-rank');
-    const homeScored = $('home-scored');
-    const homeConceded = $('home-conceded');
-    const homeRecent = $('home-recent');
-    const homeHW = $('home-hw');
-    const homeHD = $('home-hd');
-    const homeHL = $('home-hl');
-    const homeInjuries = $('home-injuries');
-    const homeMotivation = $('home-motivation');
-    const homeValue = $('home-value');
-    const homeUnexpected = $('home-unexpected');
-    const awayRank = $('away-rank');
-    const awayScored = $('away-scored');
-    const awayConceded = $('away-conceded');
-    const awayRecent = $('away-recent');
-    const awayAW = $('away-aw');
-    const awayAD = $('away-ad');
-    const awayAL = $('away-al');
-    const awayInjuries = $('away-injuries');
-    const awayMotivation = $('away-motivation');
-    const awayValue = $('away-value');
-    const awayUnexpected = $('away-unexpected');
-    const homeOdds = $('home-odds');
-    const drawOdds = $('draw-odds');
-    const awayOdds = $('away-odds');
-    const oddsPrediction = $('odds-prediction');
-
-    const resultArea = $('resultArea');
-    const resultHomeName = $('result-home-name');
-    const resultAwayName = $('result-away-name');
-    const resultHomeScore = $('result-home-score');
-    const resultAwayScore = $('result-away-score');
-    const probHome = $('prob-home');
-    const probDraw = $('prob-draw');
-    const probAway = $('prob-away');
-    const barHome = $('bar-home');
-    const barDraw = $('bar-draw');
-    const barAway = $('bar-away');
-    const unexpectedDisplay = $('unexpected-display');
-    const basicJudge = $('basic-judge');
-    const saveBtn = $('saveBtn');
-    const toast = $('toast');
-    const sliders = document.querySelectorAll('.w-slider');
-
-    // 设置默认日期
-    (function setDefaultDate() {
-        const today = new Date();
-        const y = today.getFullYear();
-        const m = String(today.getMonth() + 1).padStart(2, '0');
-        const d = String(today.getDate()).padStart(2, '0');
-        matchDate.value = y + '-' + m + '-' + d;
-    })();
-
-    // ---------- 权重 ----------
-    function getWeights() {
-        const raw = {};
-        sliders.forEach(s => raw[s.dataset.key] = parseFloat(s.value));
-        let total = 0; for (let k in raw) total += raw[k];
-        if (total === 0) total = 1;
-        const norm = {}; for (let k in raw) norm[k] = raw[k] / total;
-        return norm;
-    }
-    sliders.forEach(s => s.addEventListener('input', function() {
-        const span = this.parentElement.querySelector('.weight-val');
-        if (span) span.textContent = this.value;
-    }));
-
-    // ---------- 评分函数 ----------
-    function rankScore(rank, totalTeams=20) {
-        if (totalTeams <= 1) return 100;
-        return Math.max(0, 100 - (rank - 1) * (100 / (totalTeams - 1)));
-    }
-    function goalScore(gs, gc) {
-        const avgS = Math.max(LEAGUE_AVG_GOALS_SCORED, 0.1);
-        const avgC = Math.max(LEAGUE_AVG_GOALS_CONCEDED, 0.1);
-        const attack = Math.min(100, (gs / avgS) * 50);
-        const defenseRatio = Math.max(0, 1 - (gc / avgC));
-        const defense = Math.min(100, defenseRatio * 50);
-        return (attack + defense) / 2;
-    }
-    function formScore(recent, games=3) {
-        const maxP = games * 3;
-        if (maxP === 0) return 50;
-        return Math.min(100, (recent / maxP) * 100);
-    }
-    function homeAwayScore(w, d, l) {
-        const total = w + d + l;
-        if (total === 0) return 50;
-        return (w / total) * 100;
-    }
-    function personnelScore(inj) { return Math.max(0, 100 - Math.min(100, inj * 10)); }
-    function motivationScore(level) { return Math.min(100, level * 20); }
-    function valueScore(v) { const avg = Math.max(LEAGUE_AVG_VALUE, 0.1); return Math.min(100, (v / avg) * 50); }
-
-    function calculateTeamScore(data, isHome) {
-        const rank = data.rank || 10;
-        const strength = 0.5 * rankScore(rank) + 0.5 * goalScore(data.goalsScored || 0, data.goalsConceded || 0);
-        const form = formScore(data.recentPoints || 0, 3);
-        let w, d, l;
-        if (isHome) { w = data.homeWins||0; d = data.homeDraws||0; l = data.homeLosses||0; }
-        else { w = data.awayWins||0; d = data.awayDraws||0; l = data.awayLosses||0; }
-        const ha = homeAwayScore(w, d, l);
-        const pers = personnelScore(data.keyInjuries||0);
-        const mot = motivationScore(data.motivation||3);
-        const val = valueScore(data.teamValue||0);
-        const weights = getWeights();
-        return weights.strength * strength + weights.form * form + weights.home_away * ha +
-               weights.personnel * pers + weights.motivation * mot + weights.value * val;
-    }
-
-    function predictMatch(homeData, awayData) {
-        const hs = calculateTeamScore(homeData, true);
-        const as = calculateTeamScore(awayData, false);
-        const diff = hs - as;
-        const pDraw = 0.35 * Math.exp(-(diff*diff)/2000);
-        const pHomeRaw = 1 / (1 + Math.exp(-diff/20));
-        const pAwayRaw = 1 / (1 + Math.exp(diff/20));
-        const total = pHomeRaw + pAwayRaw + pDraw;
-        return { homeScore: hs, awayScore: as, homeProb: pHomeRaw/total, drawProb: pDraw/total, awayProb: pAwayRaw/total };
-    }
-
-    function autoSelectJudgment(hs, as) {
-        const diff = hs - as;
-        let val = 'equal';
-        if (diff > 25) val = 'home_dominant';
-        else if (diff > 12) val = 'home_strong';
-        else if (diff > 5) val = 'home_advantage';
-        else if (diff < -25) val = 'away_dominant';
-        else if (diff < -12) val = 'away_strong';
-        else if (diff < -5) val = 'away_advantage';
-        else {
-            if (hs < 40 && as < 40) val = 'both_weak';
-            else val = 'equal';
-        }
-        basicJudge.value = val;
-    }
-
-    // ---------- 读取球队数据 ----------
-    function readTeamData(prefix) {
-        const getVal = id => document.getElementById(prefix + '-' + id).value;
-        const getInt = id => parseInt(getVal(id)) || 0;
-        const getFloat = id => parseFloat(getVal(id)) || 0;
-        const isHome = prefix === 'home';
-        const data = {
-            rank: getInt('rank'),
-            goalsScored: getInt('scored'),
-            goalsConceded: getInt('conceded'),
-            recentPoints: getInt('recent'),
-            keyInjuries: getInt('injuries'),
-            motivation: parseInt(document.getElementById(prefix + '-motivation').value, 10) || 3,
-            teamValue: getFloat('value'),
-            unexpected: getVal('unexpected') || ''
-        };
-        if (isHome) {
-            data.homeWins = getInt('hw');
-            data.homeDraws = getInt('hd');
-            data.homeLosses = getInt('hl');
-        } else {
-            data.awayWins = getInt('aw');
-            data.awayDraws = getInt('ad');
-            data.awayLosses = getInt('al');
-        }
-        return data;
-    }
-
-    // ---------- 显示结果 ----------
-    function displayResult(homeStr, awayStr, homeData, awayData, result) {
-        resultArea.style.display = 'block';
-        resultHomeName.textContent = homeStr;
-        resultAwayName.textContent = awayStr;
-        resultHomeScore.textContent = result.homeScore.toFixed(2);
-        resultAwayScore.textContent = result.awayScore.toFixed(2);
-        const pH = result.homeProb * 100, pD = result.drawProb * 100, pA = result.awayProb * 100;
-        probHome.textContent = pH.toFixed(1) + '%';
-        probDraw.textContent = pD.toFixed(1) + '%';
-        probAway.textContent = pA.toFixed(1) + '%';
-        barHome.style.width = pH + '%';
-        barHome.textContent = pH >= 5 ? '主胜' : '';
-        barDraw.style.width = pD + '%';
-        barDraw.textContent = pD >= 5 ? '平局' : '';
-        barAway.style.width = pA + '%';
-        barAway.textContent = pA >= 5 ? '客胜' : '';
-        const hU = homeData.unexpected || '', aU = awayData.unexpected || '';
-        if (hU || aU) {
-            unexpectedDisplay.style.display = 'block';
-            let html = '⚠️ 意外因素：';
-            if (hU) html += `<br>🏠 ${homeStr}: ${hU}`;
-            if (aU) html += `<br>✈️ ${awayStr}: ${aU}`;
-            unexpectedDisplay.innerHTML = html;
-        } else unexpectedDisplay.style.display = 'none';
-        autoSelectJudgment(result.homeScore, result.awayScore);
-    }
-
-    // ---------- 计算 ----------
-    function compute() {
-        const hName = homeName.value.trim() || '主队';
-        const aName = awayName.value.trim() || '客队';
-        const homeData = readTeamData('home');
-        const awayData = readTeamData('away');
-        const result = predictMatch(homeData, awayData);
-        displayResult(hName, aName, homeData, awayData, result);
-    }
-
-    // ---------- 保存（赔率专用） ----------
-    function saveOdds() {
-        if (resultArea.style.display === 'none') {
-            showToast('请先点击“计算评分与预测”');
-            return;
-        }
-        const home = homeName.value.trim() || '主队';
-        const away = awayName.value.trim() || '客队';
-        const homeOddsVal = parseFloat(homeOdds.value);
-        const drawOddsVal = parseFloat(drawOdds.value);
-        const awayOddsVal = parseFloat(awayOdds.value);
-        if (isNaN(homeOddsVal) || isNaN(drawOddsVal) || isNaN(awayOddsVal)) {
-            showToast('❌ 请填写有效的赔率数字');
-            return;
-        }
-        const data = {
-            home_team: home,
-            away_team: away,
-            home_odds: homeOddsVal,
-            draw_odds: drawOddsVal,
-            away_odds: awayOddsVal,
-            prediction: oddsPrediction.value,
-            // 额外记录基本面数据（可选，但表里没有，我们忽略）
-        };
-        fetch('/api/odds/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        })
-        .then(res => {
-            if (!res.ok) return res.json().then(err => { throw new Error(err.error || 'HTTP ' + res.status); });
-            return res.json();
-        })
-        .then(res => {
-            if (res.success) showToast('✅ 赔率预测已保存！ID: ' + res.id);
-            else showToast('❌ 保存失败: ' + (res.error || '未知错误'));
-        })
-        .catch(err => showToast('❌ 请求出错: ' + err.message));
-    }
-
-    // ---------- Toast ----------
-    let toastTimer;
-    function showToast(msg) {
-        toast.textContent = msg;
-        toast.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
-    }
-
-    // ---------- 示例 ----------
-    function loadExample() {
-        homeName.value = '利物浦';
-        leagueName.value = 'Premier League';
-        homeRank.value = '2'; homeScored.value = '75'; homeConceded.value = '28';
-        homeRecent.value = '7'; homeHW.value = '2'; homeHD.value = '1'; homeHL.value = '0';
-        homeInjuries.value = '1'; homeMotivation.value = '4'; homeValue.value = '950';
-        homeUnexpected.value = '萨拉赫回归，士气高涨';
-        awayName.value = '阿森纳';
-        awayRank.value = '3'; awayScored.value = '70'; awayConceded.value = '30';
-        awayRecent.value = '6'; awayAW.value = '1'; awayAD.value = '1'; awayAL.value = '1';
-        awayInjuries.value = '0'; awayMotivation.value = '4'; awayValue.value = '780';
-        awayUnexpected.value = '多名主力轮换，体能占优';
-        // 赔率示例
-        homeOdds.value = '1.80';
-        drawOdds.value = '3.50';
-        awayOdds.value = '4.20';
-        oddsPrediction.value = '主胜';
-        const defs = { strength:30, form:25, home_away:15, personnel:10, motivation:10, value:10 };
-        sliders.forEach(s => { const k = s.dataset.key; if (defs.hasOwnProperty(k)) { s.value = defs[k]; const sp = s.parentElement.querySelector('.weight-val'); if (sp) sp.textContent = defs[k]; } });
-        compute();
-    }
-
-    function resetAll() {
-        document.querySelectorAll('input[type="number"]').forEach(inp => {
-            if (inp.id.includes('value')) inp.value = '0';
-            else if (inp.id.includes('rank')) inp.value = '10';
-            else if (inp.id.includes('recent')) inp.value = '0';
-            else if (inp.id.includes('hw') || inp.id.includes('hd') || inp.id.includes('hl') ||
-                     inp.id.includes('aw') || inp.id.includes('ad') || inp.id.includes('al')) inp.value = '0';
-            else if (inp.id.includes('injuries')) inp.value = '0';
-            else if (inp.id.includes('scored') || inp.id.includes('conceded')) inp.value = '0';
-        });
-        document.querySelectorAll('select').forEach(s => { if (s.id === 'basic-judge') s.value = 'equal'; else s.value = '3'; });
-        document.querySelectorAll('input[type="text"]').forEach(inp => {
-            if (inp.id === 'home-name') inp.value = '主队';
-            else if (inp.id === 'away-name') inp.value = '客队';
-            else if (inp.id === 'league-name') inp.value = '';
-            else inp.value = '';
-        });
-        homeOdds.value = '';
-        drawOdds.value = '';
-        awayOdds.value = '';
-        oddsPrediction.value = '主胜';
-        const defs = { strength:30, form:25, home_away:15, personnel:10, motivation:10, value:10 };
-        sliders.forEach(s => { const k = s.dataset.key; if (defs.hasOwnProperty(k)) { s.value = defs[k]; const sp = s.parentElement.querySelector('.weight-val'); if (sp) sp.textContent = defs[k]; } });
-        resultArea.style.display = 'none';
-    }
-
-    // ---------- 事件绑定 ----------
-    document.getElementById('calcBtn').addEventListener('click', compute);
-    document.getElementById('loadExampleBtn').addEventListener('click', loadExample);
-    document.getElementById('resetBtn').addEventListener('click', resetAll);
-    saveBtn.addEventListener('click', saveOdds);
-    document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest('.form-group')) compute(); });
-    window.addEventListener('load', loadExample);
-})();
-</script>
 </body>
 </html>

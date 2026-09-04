@@ -37,12 +37,18 @@
         输入两队基本面和赔率数据，预测赛果（主胜/平局/客胜）
     </div>
 
-    <!-- 日期和联赛（与预测页一致） -->
+    <!-- 日期、时间、联赛（调整顺序：日期 + 时间 + 联赛） -->
     <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:center; margin-bottom:15px;">
         <div class="form-group" style="margin:0;">
             <label style="width:80px;">比赛日期</label>
             <input type="date" id="match-date" style="flex:0 1 180px;">
             <span style="margin-left:8px;font-size:12px;color:#6b7280;">（默认今日）</span>
+        </div>
+        <!-- 新增：比赛时间 -->
+        <div class="form-group" style="margin:0;">
+            <label style="width:80px;">比赛时间</label>
+            <input type="time" id="match-time" value="20:00" style="flex:0 1 140px;">
+            <span style="margin-left:8px;font-size:12px;color:#6b7280;">（如 20:00）</span>
         </div>
         <div class="form-group" style="margin:0;">
             <label style="width:80px;">联赛名称</label>
@@ -219,6 +225,7 @@
     const awayName = $('away-name');
     const leagueName = $('league-name');
     const matchDate = $('match-date');
+    const matchTime = $('match-time');  // 新增
     const homeRank = $('home-rank');
     const homeScored = $('home-scored');
     const homeConceded = $('home-conceded');
@@ -437,6 +444,11 @@
             showToast('❌ 请填写有效的赔率数字');
             return;
         }
+        // 收集日期、联赛、时间
+        const date = matchDate.value || '';
+        const league = leagueName.value.trim() || '';
+        const time = matchTime.value || '';
+
         const data = {
             home_team: home,
             away_team: away,
@@ -444,7 +456,9 @@
             draw_odds: drawOddsVal,
             away_odds: awayOddsVal,
             prediction: oddsPrediction.value,
-            // 额外记录基本面数据（可选，但表里没有，我们忽略）
+            match_date: date,
+            league_name: league,
+            match_time: time
         };
         fetch('/api/odds/save', {
             method: 'POST',
@@ -475,6 +489,8 @@
     function loadExample() {
         homeName.value = '利物浦';
         leagueName.value = 'Premier League';
+        matchDate.value = '2026-09-04';       // 示例日期
+        matchTime.value = '20:00';            // 示例时间
         homeRank.value = '2'; homeScored.value = '75'; homeConceded.value = '28';
         homeRecent.value = '7'; homeHW.value = '2'; homeHD.value = '1'; homeHL.value = '0';
         homeInjuries.value = '1'; homeMotivation.value = '4'; homeValue.value = '950';
@@ -509,8 +525,10 @@
             if (inp.id === 'home-name') inp.value = '主队';
             else if (inp.id === 'away-name') inp.value = '客队';
             else if (inp.id === 'league-name') inp.value = '';
+            else if (inp.id === 'match-time') inp.value = '';
             else inp.value = '';
         });
+        matchDate.value = '';
         homeOdds.value = '';
         drawOdds.value = '';
         awayOdds.value = '';
