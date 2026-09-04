@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>历史记录</title>
+    <title>赔率预测</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
         /* 通用样式 */
@@ -43,7 +43,7 @@
         .modal-edit-content .info-label { width: 120px; font-weight: 500; color: #4b657a; }
         .modal-edit-content .info-value { flex: 1; color: #1f2937; }
 
-        /* ===== 自定义下拉多选组件（仅模态框使用） ===== */
+        /* 自定义下拉多选组件（仅模态框使用） */
         .custom-multiselect {
             position: relative;
             flex: 1;
@@ -256,7 +256,7 @@
     <div class="container">
         {% include '_navbar.html' %}
 
-        <h1>📋 历史预测与赛事</h1>
+        <h1>📋 赔率预测</h1>
 
         <div class="section-divider">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
@@ -357,844 +357,844 @@
         <div id="toast" class="toast"></div>
 
         <script>
-            (function() {
-                // ---------- DOM 引用 ----------
-                const tbody = document.getElementById('historyBody');
-                const loading = document.getElementById('loading');
-                const tableWrap = document.getElementById('tableWrap');
-                const filterDate = document.getElementById('filter-date');
-                const filterBtn = document.getElementById('filterBtn');
-                const clearFilterBtn = document.getElementById('clearFilterBtn');
+        (function() {
+            // ---------- DOM 引用 ----------
+            const tbody = document.getElementById('historyBody');
+            const loading = document.getElementById('loading');
+            const tableWrap = document.getElementById('tableWrap');
+            const filterDate = document.getElementById('filter-date');
+            const filterBtn = document.getElementById('filterBtn');
+            const clearFilterBtn = document.getElementById('clearFilterBtn');
 
-                const analysisModal = document.getElementById('analysisModal');
-                const analysisModalTitle = document.getElementById('analysisModalTitle');
-                const analysisInfoContainer = document.getElementById('analysisInfoContainer');
-                const closeAnalysisBtn = document.getElementById('closeAnalysisBtn');
-                const saveAnalysisBtn = document.getElementById('saveAnalysisBtn');
+            const analysisModal = document.getElementById('analysisModal');
+            const analysisModalTitle = document.getElementById('analysisModalTitle');
+            const analysisInfoContainer = document.getElementById('analysisInfoContainer');
+            const closeAnalysisBtn = document.getElementById('closeAnalysisBtn');
+            const saveAnalysisBtn = document.getElementById('saveAnalysisBtn');
 
-                const oddsModal = document.getElementById('oddsModal');
-                const oddsModalTitle = document.getElementById('oddsModalTitle');
-                const oddsFormContainer = document.getElementById('oddsFormContainer');
-                const saveOddsBtn = document.getElementById('saveOddsBtn');
-                const cancelOddsBtn = document.getElementById('cancelOddsBtn');
+            const oddsModal = document.getElementById('oddsModal');
+            const oddsModalTitle = document.getElementById('oddsModalTitle');
+            const oddsFormContainer = document.getElementById('oddsFormContainer');
+            const saveOddsBtn = document.getElementById('saveOddsBtn');
+            const cancelOddsBtn = document.getElementById('cancelOddsBtn');
 
-                const editModal = document.getElementById('editModal');
-                const editTitle = document.getElementById('editTitle');
-                const editFormContainer = document.getElementById('editFormContainer');
-                const saveEditBtn = document.getElementById('saveEditBtn');
-                const cancelEditBtn = document.getElementById('cancelEditBtn');
+            const editModal = document.getElementById('editModal');
+            const editTitle = document.getElementById('editTitle');
+            const editFormContainer = document.getElementById('editFormContainer');
+            const saveEditBtn = document.getElementById('saveEditBtn');
+            const cancelEditBtn = document.getElementById('cancelEditBtn');
 
-                const batchDeleteBtn = document.getElementById('batchDeleteBtn');
-                const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-                const addMatchBtn = document.getElementById('addMatchBtn');
+            const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const addMatchBtn = document.getElementById('addMatchBtn');
 
-                const pagination = document.getElementById('pagination');
-                const prevPageBtn = document.getElementById('prevPageBtn');
-                const nextPageBtn = document.getElementById('nextPageBtn');
-                const pageNumbers = document.getElementById('pageNumbers');
-                const perPageSelect = document.getElementById('perPageSelect');
-                const totalCountSpan = document.getElementById('totalCount');
-                const toast = document.getElementById('toast');
+            const pagination = document.getElementById('pagination');
+            const prevPageBtn = document.getElementById('prevPageBtn');
+            const nextPageBtn = document.getElementById('nextPageBtn');
+            const pageNumbers = document.getElementById('pageNumbers');
+            const perPageSelect = document.getElementById('perPageSelect');
+            const totalCountSpan = document.getElementById('totalCount');
+            const toast = document.getElementById('toast');
 
-                let currentOffset = 0,
-                    currentLimit = 20,
-                    currentDateFilter = '',
-                    totalItems = 0;
-                let currentOddsData = null;
+            let currentOffset = 0,
+                currentLimit = 20,
+                currentDateFilter = '',
+                totalItems = 0;
+            let currentOddsData = null;
 
-                const judgmentMap = {
-                    'home_advantage': '主队占优',
-                    'away_advantage': '客队占优',
-                    'equal': '两队实力相当',
-                    'home_strong': '主队较强优势',
-                    'away_strong': '客队较强优势',
-                    'home_dominant': '主队绝对优势',
-                    'away_dominant': '客队绝对优势',
-                    'both_weak': '两队菜鸡'
-                };
+            const judgmentMap = {
+                'home_advantage': '主队占优',
+                'away_advantage': '客队占优',
+                'equal': '两队实力相当',
+                'home_strong': '主队较强优势',
+                'away_strong': '客队较强优势',
+                'home_dominant': '主队绝对优势',
+                'away_dominant': '客队绝对优势',
+                'both_weak': '两队菜鸡'
+            };
 
-                const predictionOptions = ['主胜', '平局', '客胜', '大球', '小球', '让球胜', '让球平', '让球负'];
+            const predictionOptions = ['主胜', '平局', '客胜', '大球', '小球', '让球胜', '让球平', '让球负'];
 
-                let toastTimer;
+            let toastTimer;
 
-                function showToast(msg) {
-                    toast.textContent = msg;
-                    toast.classList.add('show');
-                    clearTimeout(toastTimer);
-                    toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
-                }
+            function showToast(msg) {
+                toast.textContent = msg;
+                toast.classList.add('show');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+            }
 
-                function getPredictionDisplay(initialPrediction) {
-                    if (!initialPrediction) return '';
-                    try {
-                        const parsed = JSON.parse(initialPrediction);
-                        if (Array.isArray(parsed)) {
-                            return parsed.join('、');
-                        }
-                        return initialPrediction;
-                    } catch (e) {
-                        return initialPrediction;
+            function getPredictionDisplay(initialPrediction) {
+                if (!initialPrediction) return '';
+                try {
+                    const parsed = JSON.parse(initialPrediction);
+                    if (Array.isArray(parsed)) {
+                        return parsed.join('、');
                     }
+                    return initialPrediction;
+                } catch (e) {
+                    return initialPrediction;
                 }
+            }
 
-                // ---------- 保存单个字段 ----------
-                function saveField(id, field, value) {
-                    return fetch('/api/match/' + id)
-                        .then(res => {
-                            if (!res.ok) throw new Error('获取数据失败');
-                            return res.json();
-                        })
-                        .then(data => {
-                            const payload = { ...data };
-                            payload[field] = value;
-                            if (field === 'initial_prediction') {
-                                if (typeof value === 'string') {
-                                    try { JSON.parse(value); } catch (e) { value = JSON.stringify([value]); }
-                                } else if (Array.isArray(value)) {
-                                    value = JSON.stringify(value);
-                                } else {
-                                    value = JSON.stringify([]);
-                                }
-                                payload[field] = value;
+            // ---------- 保存单个字段 ----------
+            function saveField(id, field, value) {
+                return fetch('/api/match/' + id)
+                    .then(res => {
+                        if (!res.ok) throw new Error('获取数据失败');
+                        return res.json();
+                    })
+                    .then(data => {
+                        const payload = { ...data };
+                        payload[field] = value;
+                        if (field === 'initial_prediction') {
+                            if (typeof value === 'string') {
+                                try { JSON.parse(value); } catch (e) { value = JSON.stringify([value]); }
+                            } else if (Array.isArray(value)) {
+                                value = JSON.stringify(value);
+                            } else {
+                                value = JSON.stringify([]);
                             }
-                            return fetch('/api/match/' + id, {
+                            payload[field] = value;
+                        }
+                        return fetch('/api/match/' + id, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                    })
+                    .then(res => {
+                        if (!res.ok) return res.json().then(err => { throw new Error(err.error || '保存失败'); });
+                        return res.json();
+                    });
+            }
+
+            // ---------- 加载历史 ----------
+            function loadHistory(date, limit, offset) {
+                if (date === undefined) date = currentDateFilter;
+                if (limit === undefined) limit = currentLimit;
+                if (offset === undefined) offset = currentOffset;
+
+                loading.style.display = 'block';
+                tableWrap.style.display = 'none';
+                let url = `/api/history?limit=${limit}&offset=${offset}`;
+                if (date) url += '&date=' + date;
+
+                fetch(url)
+                    .then(res => {
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        return res.json();
+                    })
+                    .then(data => {
+                        loading.style.display = 'none';
+                        tableWrap.style.display = 'block';
+                        const matches = data.data || [];
+                        totalItems = data.total || 0;
+                        currentLimit = data.limit || limit;
+                        currentOffset = data.offset || offset;
+
+                        if (matches.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
+                            pagination.style.display = 'none';
+                            return;
+                        }
+
+                        let html = '';
+                        matches.forEach(m => {
+                            const result = m.result || '未定';
+                            let resultHtml = result;
+                            if (result === '红') resultHtml = `<span style="color:#dc2626;font-weight:600;">红</span>`;
+                            else if (result === '黑') resultHtml = `<span style="color:#1f2937;font-weight:600;">黑</span>`;
+                            else if (result === '走盘') resultHtml =
+                                `<span style="color:#d97706;font-weight:600;">走盘</span>`;
+                            const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
+                            const homeScore = Math.round(parseFloat(m.home_score) || 0);
+                            const awayScore = Math.round(parseFloat(m.away_score) || 0);
+                            const scoreDisplay =
+                                `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
+
+                            const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
+                            const isEmptyPred = !m.initial_prediction || m.initial_prediction === '[]' || m
+                                .initial_prediction === '""' || m.initial_prediction === 'null';
+
+                            const pos1Val = m.pos1 || '';
+                            const pos2Val = m.pos2 || '';
+
+                            html += `<tr>
+                                    <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
+                                    <td>${m.id}</td>
+                                    <td>${m.date || ''}</td>
+                                    <td>${m.time || ''}</td>
+                                    <td>${m.league || ''}</td>
+                                    <td><a href="/?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/?id=${m.id}" class="team-link">${m.away_team}</a></td>
+                                    <td>${scoreDisplay}</td>
+                                    <td>${judgmentDisplay}</td>
+                                    <!-- 初01 -->
+                                    <td>
+                                        <input type="text" class="inline-edit inline-pos1" data-id="${m.id}" data-field="pos1" value="${pos1Val}" placeholder="—" title="点击编辑初01">
+                                        <span class="save-tag" id="saveTag-pos1-${m.id}">✓</span>
+                                    </td>
+                                    <!-- 初02 -->
+                                    <td>
+                                        <input type="text" class="inline-edit inline-pos2" data-id="${m.id}" data-field="pos2" value="${pos2Val}" placeholder="—" title="点击编辑初02">
+                                        <span class="save-tag" id="saveTag-pos2-${m.id}">✓</span>
+                                    </td>
+                                    <!-- 初盘预测 -->
+                                    <td>
+                                        <span class="prediction-clickable ${isEmptyPred ? 'empty' : ''}" data-id="${m.id}" title="点击编辑初盘预测（多选）">
+                                            ${predDisplay || '点击选择'}
+                                        </span>
+                                        <span class="save-tag" id="saveTag-pred-${m.id}">✓</span>
+                                    </td>
+                                    <td>
+                                        <select class="result-select" data-id="${m.id}">
+                                            <option value="">未定</option>
+                                            <option value="红" ${result==='红'?'selected':''}>红</option>
+                                            <option value="黑" ${result==='黑'?'selected':''}>黑</option>
+                                            <option value="走盘" ${result==='走盘'?'selected':''}>走盘</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <button class="action-btn odds-analysis-btn" data-id="${m.id}">📊 赔率分析</button>
+                                        <button class="action-btn delete-btn" data-id="${m.id}">🗑️ 删除</button>
+                                    </td>
+                                </tr>`;
+                        });
+                        tbody.innerHTML = html;
+                        bindEvents();
+                        updatePagination();
+                    })
+                    .catch(err => {
+                        loading.textContent = '❌ 加载失败: ' + err.message;
+                        console.error('加载失败:', err);
+                    });
+            }
+
+            // ---------- 事件绑定 ----------
+            function bindEvents() {
+                // 结果下拉
+                document.querySelectorAll('.result-select').forEach(sel => {
+                    sel.addEventListener('change', function() {
+                        const id = this.dataset.id;
+                        const val = this.value;
+                        fetch('/api/match/' + id + '/result', {
                                 method: 'PUT',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload)
+                                body: JSON.stringify({ result: val || null })
+                            })
+                            .then(res => res.json())
+                            .then(res => {
+                                if (res.success) loadHistory(currentDateFilter, currentLimit,
+                                currentOffset);
+                                else alert('更新失败: ' + (res.error || '未知错误'));
                             });
-                        })
-                        .then(res => {
-                            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '保存失败'); });
-                            return res.json();
-                        });
-                }
-
-                // ---------- 加载历史 ----------
-                function loadHistory(date, limit, offset) {
-                    if (date === undefined) date = currentDateFilter;
-                    if (limit === undefined) limit = currentLimit;
-                    if (offset === undefined) offset = currentOffset;
-
-                    loading.style.display = 'block';
-                    tableWrap.style.display = 'none';
-                    let url = `/api/history?limit=${limit}&offset=${offset}`;
-                    if (date) url += '&date=' + date;
-
-                    fetch(url)
-                        .then(res => {
-                            if (!res.ok) throw new Error('HTTP ' + res.status);
-                            return res.json();
-                        })
-                        .then(data => {
-                            loading.style.display = 'none';
-                            tableWrap.style.display = 'block';
-                            const matches = data.data || [];
-                            totalItems = data.total || 0;
-                            currentLimit = data.limit || limit;
-                            currentOffset = data.offset || offset;
-
-                            if (matches.length === 0) {
-                                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
-                                pagination.style.display = 'none';
-                                return;
-                            }
-
-                            let html = '';
-                            matches.forEach(m => {
-                                const result = m.result || '未定';
-                                let resultHtml = result;
-                                if (result === '红') resultHtml = `<span style="color:#dc2626;font-weight:600;">红</span>`;
-                                else if (result === '黑') resultHtml = `<span style="color:#1f2937;font-weight:600;">黑</span>`;
-                                else if (result === '走盘') resultHtml =
-                                    `<span style="color:#d97706;font-weight:600;">走盘</span>`;
-                                const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
-                                const homeScore = Math.round(parseFloat(m.home_score) || 0);
-                                const awayScore = Math.round(parseFloat(m.away_score) || 0);
-                                const scoreDisplay =
-                                    `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
-
-                                const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
-                                const isEmptyPred = !m.initial_prediction || m.initial_prediction === '[]' || m
-                                    .initial_prediction === '""' || m.initial_prediction === 'null';
-
-                                const pos1Val = m.pos1 || '';
-                                const pos2Val = m.pos2 || '';
-
-                                html += `<tr>
-                                        <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
-                                        <td>${m.id}</td>
-                                        <td>${m.date || ''}</td>
-                                        <td>${m.time || ''}</td>
-                                        <td>${m.league || ''}</td>
-                                        <td><a href="/?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/?id=${m.id}" class="team-link">${m.away_team}</a></td>
-                                        <td>${scoreDisplay}</td>
-                                        <td>${judgmentDisplay}</td>
-                                        <!-- 初01 -->
-                                        <td>
-                                            <input type="text" class="inline-edit inline-pos1" data-id="${m.id}" data-field="pos1" value="${pos1Val}" placeholder="—" title="点击编辑初01">
-                                            <span class="save-tag" id="saveTag-pos1-${m.id}">✓</span>
-                                        </td>
-                                        <!-- 初02 -->
-                                        <td>
-                                            <input type="text" class="inline-edit inline-pos2" data-id="${m.id}" data-field="pos2" value="${pos2Val}" placeholder="—" title="点击编辑初02">
-                                            <span class="save-tag" id="saveTag-pos2-${m.id}">✓</span>
-                                        </td>
-                                        <!-- 初盘预测 -->
-                                        <td>
-                                            <span class="prediction-clickable ${isEmptyPred ? 'empty' : ''}" data-id="${m.id}" title="点击编辑初盘预测（多选）">
-                                                ${predDisplay || '点击选择'}
-                                            </span>
-                                            <span class="save-tag" id="saveTag-pred-${m.id}">✓</span>
-                                        </td>
-                                        <td>
-                                            <select class="result-select" data-id="${m.id}">
-                                                <option value="">未定</option>
-                                                <option value="红" ${result==='红'?'selected':''}>红</option>
-                                                <option value="黑" ${result==='黑'?'selected':''}>黑</option>
-                                                <option value="走盘" ${result==='走盘'?'selected':''}>走盘</option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <button class="action-btn odds-analysis-btn" data-id="${m.id}">📊 赔率分析</button>
-                                            <button class="action-btn delete-btn" data-id="${m.id}">🗑️ 删除</button>
-                                        </td>
-                                    </tr>`;
-                            });
-                            tbody.innerHTML = html;
-                            bindEvents();
-                            updatePagination();
-                        })
-                        .catch(err => {
-                            loading.textContent = '❌ 加载失败: ' + err.message;
-                            console.error('加载失败:', err);
-                        });
-                }
-
-                // ---------- 事件绑定 ----------
-                function bindEvents() {
-                    // 结果下拉
-                    document.querySelectorAll('.result-select').forEach(sel => {
-                        sel.addEventListener('change', function() {
-                            const id = this.dataset.id;
-                            const val = this.value;
-                            fetch('/api/match/' + id + '/result', {
-                                    method: 'PUT',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ result: val || null })
-                                })
-                                .then(res => res.json())
-                                .then(res => {
-                                    if (res.success) loadHistory(currentDateFilter, currentLimit,
-                                    currentOffset);
-                                    else alert('更新失败: ' + (res.error || '未知错误'));
-                                });
-                        });
                     });
+                });
 
-                    // 删除单行
-                    document.querySelectorAll('.delete-btn').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            const id = this.dataset.id;
-                            if (confirm('确定删除该预测记录吗？')) {
-                                fetch('/api/match/' + id, { method: 'DELETE' })
-                                    .then(res => res.json())
-                                    .then(res => {
-                                        if (res.success) loadHistory(currentDateFilter, currentLimit,
-                                            currentOffset);
-                                        else alert('删除失败: ' + (res.error || '未知错误'));
-                                    });
-                            }
-                        });
-                    });
-
-                    // 全选
-                    selectAllCheckbox.addEventListener('change', function() {
-                        const checked = this.checked;
-                        document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
-                    });
-
-                    // 批量删除
-                    batchDeleteBtn.addEventListener('click', function() {
-                        const selected = document.querySelectorAll('.row-checkbox:checked');
-                        if (selected.length === 0) { showToast('请至少选择一条记录'); return; }
-                        if (!confirm(`确定要删除 ${selected.length} 条记录吗？此操作不可恢复！`)) return;
-
-                        const ids = Array.from(selected).map(cb => parseInt(cb.dataset.id));
-                        let successCount = 0,
-                            failCount = 0;
-                        ids.forEach(id => {
+                // 删除单行
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        if (confirm('确定删除该预测记录吗？')) {
                             fetch('/api/match/' + id, { method: 'DELETE' })
                                 .then(res => res.json())
                                 .then(res => {
-                                    res.success ? successCount++ : failCount++;
-                                    if (successCount + failCount === ids.length) {
-                                        showToast(
-                                            `批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`
-                                            );
-                                        loadHistory(currentDateFilter, currentLimit, currentOffset);
-                                    }
-                                })
-                                .catch(() => {
-                                    failCount++;
-                                    if (successCount + failCount === ids.length) {
-                                        showToast(
-                                            `批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`
-                                            );
-                                        loadHistory(currentDateFilter, currentLimit, currentOffset);
-                                    }
+                                    if (res.success) loadHistory(currentDateFilter, currentLimit,
+                                        currentOffset);
+                                    else alert('删除失败: ' + (res.error || '未知错误'));
                                 });
-                        });
-                    });
-
-                    // 初01、初02 输入框（表格内联 - 保留自动保存，但用户未要求删除表格内联的自动保存，仅删除模态框中的）
-                    // 但为了保持一致性，我们也保留表格中的自动保存（如果用户有要求可再处理）
-                    document.querySelectorAll('.inline-pos1, .inline-pos2').forEach(inp => {
-                        inp.addEventListener('blur', function() {
-                            handleInlineSave(this);
-                        });
-                        inp.addEventListener('keydown', function(e) {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                this.blur();
-                            }
-                            if (e.key === 'Escape') {
-                                this.blur();
-                            }
-                        });
-                        inp.addEventListener('input', function() {
-                            const id = this.dataset.id;
-                            const field = this.dataset.field;
-                            const tag = document.getElementById(`saveTag-${field}-${id}`);
-                            if (tag) tag.classList.remove('show');
-                        });
-                    });
-
-                    // 初盘预测点击：打开编辑模态框
-                    document.querySelectorAll('.prediction-clickable').forEach(el => {
-                        el.addEventListener('click', function() {
-                            const id = this.dataset.id;
-                            if (id) {
-                                openOddsModal(id, 'focus_prediction');
-                            }
-                        });
-                    });
-
-                    // 赔率分析按钮：打开展示模态框（初01/02可编辑）
-                    document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
-                        btn.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            const id = this.dataset.id;
-                            if (id) {
-                                openAnalysisModal(id);
-                            }
-                        });
-                    });
-                }
-
-                // ---------- 内联保存处理（表格内） ----------
-                function handleInlineSave(input) {
-                    const id = input.dataset.id;
-                    const field = input.dataset.field;
-                    const value = input.value.trim();
-                    const tag = document.getElementById(`saveTag-${field}-${id}`);
-
-                    const oldVal = input.defaultValue || '';
-                    if (value === oldVal) {
-                        if (tag) tag.classList.remove('show');
-                        return;
-                    }
-
-                    input.classList.add('saving');
-                    if (tag) tag.classList.remove('show');
-
-                    saveField(id, field, value)
-                        .then(res => {
-                            if (res.success) {
-                                input.defaultValue = value;
-                                if (tag) tag.classList.add('show');
-                                showToast(`✅ ${field} 已保存`);
-                            } else {
-                                showToast('❌ 保存失败: ' + (res.error || '未知错误'));
-                                input.value = oldVal;
-                            }
-                        })
-                        .catch(err => {
-                            showToast('❌ 请求出错: ' + err.message);
-                            input.value = oldVal;
-                        })
-                        .finally(() => {
-                            input.classList.remove('saving');
-                        });
-                }
-
-                // ---------- 自定义多选组件 ----------
-                function buildMultiselect(containerId, options, selectedValues) {
-                    const container = document.getElementById(containerId);
-                    if (!container) return;
-                    container.innerHTML = '';
-
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'custom-multiselect';
-
-                    const display = document.createElement('div');
-                    display.className = 'selected-display';
-                    const textSpan = document.createElement('span');
-                    textSpan.className = 'text';
-                    textSpan.textContent = selectedValues.length ? selectedValues.join('、') : '请选择';
-                    const arrow = document.createElement('span');
-                    arrow.className = 'arrow';
-                    arrow.textContent = '▼';
-                    display.appendChild(textSpan);
-                    display.appendChild(arrow);
-                    wrapper.appendChild(display);
-
-                    const dropdown = document.createElement('div');
-                    dropdown.className = 'dropdown-list';
-                    options.forEach(opt => {
-                        const item = document.createElement('div');
-                        item.className = 'option-item' + (selectedValues.includes(opt) ? ' selected' : '');
-                        item.textContent = opt;
-                        item.dataset.value = opt;
-                        dropdown.appendChild(item);
-                    });
-                    wrapper.appendChild(dropdown);
-
-                    container.appendChild(wrapper);
-
-                    const arrowIcon = display.querySelector('.arrow');
-                    const dropdownList = dropdown;
-                    const textEl = textSpan;
-
-                    display.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        dropdownList.classList.toggle('open');
-                        arrowIcon.classList.toggle('open');
-                    });
-
-                    dropdownList.querySelectorAll('.option-item').forEach(item => {
-                        item.addEventListener('click', function(e) {
-                            e.stopPropagation();
-                            const val = this.dataset.value;
-                            this.classList.toggle('selected');
-                            const selected = dropdownList.querySelectorAll('.option-item.selected');
-                            const values = Array.from(selected).map(el => el.dataset.value);
-                            textEl.textContent = values.length ? values.join('、') : '请选择';
-                        });
-                    });
-
-                    document.addEventListener('click', function(e) {
-                        if (!wrapper.contains(e.target)) {
-                            dropdownList.classList.remove('open');
-                            arrowIcon.classList.remove('open');
                         }
                     });
+                });
 
-                    wrapper.getSelected = function() {
-                        const selected = this.querySelectorAll('.option-item.selected');
-                        return Array.from(selected).map(el => el.dataset.value);
-                    };
-                    wrapper.dataset.id = containerId;
-                    return wrapper;
-                }
+                // 全选
+                selectAllCheckbox.addEventListener('change', function() {
+                    const checked = this.checked;
+                    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
+                });
 
-                // ---------- 打开赔率分析（展示+编辑初01/02）模态框（无自动保存） ----------
-                function openAnalysisModal(id) {
-                    fetch('/api/match/' + id)
-                        .then(res => {
-                            if (!res.ok) throw new Error('获取数据失败');
-                            return res.json();
-                        })
-                        .then(data => {
-                            if (data.error) { alert(data.error); return; }
+                // 批量删除
+                batchDeleteBtn.addEventListener('click', function() {
+                    const selected = document.querySelectorAll('.row-checkbox:checked');
+                    if (selected.length === 0) { showToast('请至少选择一条记录'); return; }
+                    if (!confirm(`确定要删除 ${selected.length} 条记录吗？此操作不可恢复！`)) return;
 
-                            analysisModal.dataset.id = id;
-
-                            analysisModalTitle.textContent = `📊 赔率分析 - ${data.home_team} vs ${data.away_team}`;
-                            const judgmentDisplay = judgmentMap[data.judgment] || data.judgment || '—';
-                            const pos1Val = data.pos1 || '';
-                            const pos2Val = data.pos2 || '';
-                            const predDisplay = getPredictionDisplay(data.initial_prediction) || '—';
-
-                            let infoHtml = `
-                                <div class="info-row"><span class="info-label">ID</span><span class="info-value">${data.id}</span></div>
-                                <div class="info-row"><span class="info-label">日期</span><span class="info-value">${data.date || '—'}</span></div>
-                                <div class="info-row"><span class="info-label">时间</span><span class="info-value">${data.time || '—'}</span></div>
-                                <div class="info-row"><span class="info-label">主队 VS 客队</span><span class="info-value">${data.home_team} vs ${data.away_team}</span></div>
-                                <div class="info-row"><span class="info-label">基本面判断</span><span class="info-value">${judgmentDisplay}</span></div>
-                                <div class="info-row"><span class="info-label">联赛</span><span class="info-value">${data.league || '—'}</span></div>
-                                <!-- 初01 可编辑 -->
-                                <div class="form-group" style="margin-top:10px;">
-                                    <label style="width:110px;font-weight:500;font-size:13px;color:#2d3f55;">初01</label>
-                                    <input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1">
-                                    <span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span>
-                                </div>
-                                <!-- 初02 可编辑 -->
-                                <div class="form-group">
-                                    <label style="width:110px;font-weight:500;font-size:13px;color:#2d3f55;">初02</label>
-                                    <input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2">
-                                    <span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span>
-                                </div>
-                                <div class="info-row"><span class="info-label">初盘预测</span><span class="info-value">${predDisplay}</span></div>
-                            `;
-                            analysisInfoContainer.innerHTML = infoHtml;
-                            analysisModal.style.display = 'flex';
-
-                            // 绑定输入框事件：清除保存标记，但不触发自动保存
-                            document.querySelectorAll('#analysis-pos1, #analysis-pos2').forEach(inp => {
-                                inp.addEventListener('input', function() {
-                                    const id = this.dataset.id;
-                                    const field = this.dataset.field;
-                                    const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
-                                    if (tag) tag.classList.remove('show');
-                                });
-                                // 按回车键时不做保存，只清除标记
-                                inp.addEventListener('keydown', function(e) {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        // 不保存，只是失去焦点
-                                        this.blur();
-                                    }
-                                    if (e.key === 'Escape') {
-                                        this.blur();
-                                    }
-                                });
+                    const ids = Array.from(selected).map(cb => parseInt(cb.dataset.id));
+                    let successCount = 0,
+                        failCount = 0;
+                    ids.forEach(id => {
+                        fetch('/api/match/' + id, { method: 'DELETE' })
+                            .then(res => res.json())
+                            .then(res => {
+                                res.success ? successCount++ : failCount++;
+                                if (successCount + failCount === ids.length) {
+                                    showToast(
+                                        `批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`
+                                        );
+                                    loadHistory(currentDateFilter, currentLimit, currentOffset);
+                                }
+                            })
+                            .catch(() => {
+                                failCount++;
+                                if (successCount + failCount === ids.length) {
+                                    showToast(
+                                        `批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`
+                                        );
+                                    loadHistory(currentDateFilter, currentLimit, currentOffset);
+                                }
                             });
-                        })
-                        .catch(err => {
-                            showToast('❌ 加载数据失败: ' + err.message);
-                        });
-                }
-
-                function closeAnalysisModal() {
-                    analysisModal.style.display = 'none';
-                }
-
-                // ---------- 保存初01/02（仅显式保存） ----------
-                function saveAnalysisData() {
-                    const id = analysisModal.dataset.id;
-                    if (!id) {
-                        showToast('❌ 未找到赛事ID');
-                        return;
-                    }
-                    const pos1Input = document.getElementById('analysis-pos1');
-                    const pos2Input = document.getElementById('analysis-pos2');
-                    const pos1Val = pos1Input ? pos1Input.value.trim() : '';
-                    const pos2Val = pos2Input ? pos2Input.value.trim() : '';
-
-                    const oldPos1 = pos1Input ? pos1Input.defaultValue : '';
-                    const oldPos2 = pos2Input ? pos2Input.defaultValue : '';
-
-                    // 如果值没有变化，直接刷新表格并提示
-                    if (pos1Val === oldPos1 && pos2Val === oldPos2) {
-                        showToast('ℹ️ 数据已是最新，刷新表格');
-                        loadHistory(currentDateFilter, currentLimit, currentOffset);
-                        return;
-                    }
-
-                    saveAnalysisBtn.textContent = '⏳ 保存中...';
-                    saveAnalysisBtn.disabled = true;
-
-                    const promises = [];
-                    if (pos1Val !== oldPos1) {
-                        promises.push(saveField(id, 'pos1', pos1Val));
-                    }
-                    if (pos2Val !== oldPos2) {
-                        promises.push(saveField(id, 'pos2', pos2Val));
-                    }
-
-                    Promise.all(promises)
-                        .then(results => {
-                            const allSuccess = results.every(r => r && r.success);
-                            if (allSuccess) {
-                                // 更新输入框显示
-                                if (pos1Input && pos1Val !== oldPos1) {
-                                    pos1Input.value = pos1Val;
-                                    pos1Input.defaultValue = pos1Val;
-                                    const tag1 = document.getElementById(`analysis-saveTag-pos1-${id}`);
-                                    if (tag1) tag1.classList.add('show');
-                                }
-                                if (pos2Input && pos2Val !== oldPos2) {
-                                    pos2Input.value = pos2Val;
-                                    pos2Input.defaultValue = pos2Val;
-                                    const tag2 = document.getElementById(`analysis-saveTag-pos2-${id}`);
-                                    if (tag2) tag2.classList.add('show');
-                                }
-                                showToast('✅ 初01、初02 保存成功！');
-                                // 刷新表格
-                                loadHistory(currentDateFilter, currentLimit, currentOffset);
-                            } else {
-                                // 恢复旧值
-                                if (pos1Input) pos1Input.value = oldPos1;
-                                if (pos2Input) pos2Input.value = oldPos2;
-                                const errors = results.map(r => r.error || '未知错误').filter(Boolean);
-                                showToast('❌ 保存失败: ' + errors.join('; '));
-                            }
-                        })
-                        .catch(err => {
-                            showToast('❌ 请求出错: ' + err.message);
-                            if (pos1Input) pos1Input.value = oldPos1;
-                            if (pos2Input) pos2Input.value = oldPos2;
-                            console.error(err);
-                        })
-                        .finally(() => {
-                            saveAnalysisBtn.textContent = '💾 保存修改';
-                            saveAnalysisBtn.disabled = false;
-                        });
-                }
-
-                // ---------- 打开赔率编辑模态框（完整编辑，含初盘预测） ----------
-                function openOddsModal(id, focusTarget) {
-                    fetch('/api/match/' + id)
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.error) { alert(data.error); return; }
-                            currentOddsData = data;
-                            oddsModalTitle.textContent = `📊 赔率分析 - ${data.home_team} vs ${data.away_team}`;
-
-                            let selectedPreds = [];
-                            if (data.initial_prediction) {
-                                try {
-                                    const parsed = JSON.parse(data.initial_prediction);
-                                    if (Array.isArray(parsed)) selectedPreds = parsed;
-                                } catch (e) {}
-                            }
-
-                            let html = `
-                                    <div class="form-group"><label>日期</label><input type="date" id="odds-date" value="${data.date || ''}" readonly style="background:#f3f4f6;"></div>
-                                    <div class="form-group"><label>时间</label><input type="text" id="odds-time" value="${data.time || ''}" readonly style="background:#f3f4f6;"></div>
-                                    <div class="form-group"><label>联赛</label><input type="text" id="odds-league" value="${data.league || ''}" readonly style="background:#f3f4f6;"></div>
-                                    <div class="form-group"><label>主队</label><input type="text" id="odds-home" value="${data.home_team}" readonly style="background:#f3f4f6;"></div>
-                                    <div class="form-group"><label>客队</label><input type="text" id="odds-away" value="${data.away_team}" readonly style="background:#f3f4f6;"></div>
-                                    <div class="section-title">📈 赔率数据</div>
-                                    <div class="form-group"><label>亚初终</label><input type="text" id="odds-asian" value="${data.asian_odds || ''}" placeholder="如 0.85 半球 0.95"></div>
-                                    <div class="form-group"><label>区间</label><input type="text" id="odds-range" value="${data.range || ''}" placeholder="如 2.5-3"></div>
-                                    <div class="form-group"><label>初01</label><input type="text" id="odds-pos1" value="${data.pos1 || ''}" placeholder="如 1.95"></div>
-                                    <div class="form-group"><label>初02</label><input type="text" id="odds-pos2" value="${data.pos2 || ''}" placeholder="如 1.90"></div>
-                                    <div class="form-group"><label>初盘预测（多选）</label>
-                                        <div id="odds-multiselect-container" style="flex:1;"></div>
-                                        <span style="font-size:12px; color:#4b657a; margin-left:8px;">点击选项切换选中</span>
-                                    </div>
-                                `;
-                            oddsFormContainer.innerHTML = html;
-                            oddsModal.style.display = 'flex';
-                            saveOddsBtn.dataset.id = id;
-
-                            buildMultiselect('odds-multiselect-container', predictionOptions, selectedPreds);
-
-                            if (focusTarget === 'focus_prediction') {
-                                setTimeout(() => {
-                                    const container = document.getElementById(
-                                    'odds-multiselect-container');
-                                    if (container) {
-                                        container.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        container.style.transition = 'background 0.6s';
-                                        container.style.background = '#eef6ff';
-                                        setTimeout(() => {
-                                            container.style.background = 'transparent';
-                                        }, 1200);
-                                        const wrapper = container.querySelector('.custom-multiselect');
-                                        if (wrapper) {
-                                            const display = wrapper.querySelector('.selected-display');
-                                            if (display) display.focus && display.focus();
-                                        }
-                                    }
-                                }, 200);
-                            }
-                        });
-                }
-
-                // ---------- 保存编辑模态框 ----------
-                function saveOdds() {
-                    const id = saveOddsBtn.dataset.id;
-                    const multiselectContainer = document.getElementById('odds-multiselect-container');
-                    let initialPrediction = [];
-                    if (multiselectContainer) {
-                        const wrapper = multiselectContainer.querySelector('.custom-multiselect');
-                        if (wrapper && typeof wrapper.getSelected === 'function') {
-                            initialPrediction = wrapper.getSelected();
-                        } else {
-                            const selectedItems = multiselectContainer.querySelectorAll('.option-item.selected');
-                            initialPrediction = Array.from(selectedItems).map(el => el.dataset.value);
-                        }
-                    }
-
-                    const payload = {
-                        asian_odds: document.getElementById('odds-asian').value || '',
-                        range: document.getElementById('odds-range').value || '',
-                        pos1: document.getElementById('odds-pos1').value || '',
-                        pos2: document.getElementById('odds-pos2').value || '',
-                        initial_prediction: JSON.stringify(initialPrediction)
-                    };
-
-                    const fullData = { ...currentOddsData, ...payload };
-
-                    saveOddsBtn.textContent = '⏳ 保存中...';
-                    saveOddsBtn.disabled = true;
-
-                    fetch('/api/match/' + id, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(fullData)
-                        })
-                        .then(res => {
-                            if (!res.ok) return res.json().then(err => { throw new Error(err.error || 'HTTP ' + res
-                                    .status); });
-                            return res.json();
-                        })
-                        .then(res => {
-                            if (res.success) {
-                                oddsModal.style.display = 'none';
-                                showToast('✅ 赔率数据保存成功！');
-                                loadHistory(currentDateFilter, currentLimit, currentOffset);
-                            } else {
-                                showToast('❌ 保存失败: ' + (res.error || '未知错误'));
-                            }
-                        })
-                        .catch(err => {
-                            showToast('❌ 请求出错: ' + err.message);
-                            console.error('保存错误:', err);
-                        })
-                        .finally(() => {
-                            saveOddsBtn.textContent = '💾 保存赔率';
-                            saveOddsBtn.disabled = false;
-                        });
-                }
-
-                function closeOddsModal() {
-                    oddsModal.style.display = 'none';
-                    currentOddsData = null;
-                }
-
-                // ---------- 分页 ----------
-                function updatePagination() {
-                    const totalPages = Math.ceil(totalItems / currentLimit) || 1;
-                    const currentPage = Math.floor(currentOffset / currentLimit) + 1;
-                    totalCountSpan.textContent = totalItems;
-
-                    let html = '';
-                    const maxVisible = 7;
-                    let startPage = 1,
-                        endPage = totalPages;
-                    if (totalPages > maxVisible) {
-                        const half = Math.floor(maxVisible / 2);
-                        if (currentPage <= half + 1) endPage = maxVisible;
-                        else if (currentPage >= totalPages - half) startPage = totalPages - maxVisible + 1;
-                        else { startPage = currentPage - half;
-                            endPage = currentPage + half; }
-                    }
-                    if (startPage > 1) {
-                        html += `<span class="page-num" data-page="1">1</span>`;
-                        if (startPage > 2) html += `<span class="ellipsis">…</span>`;
-                    }
-                    for (let i = startPage; i <= endPage; i++) {
-                        html += `<span class="page-num ${i===currentPage?'active':''}" data-page="${i}">${i}</span>`;
-                    }
-                    if (endPage < totalPages) {
-                        if (endPage < totalPages - 1) html += `<span class="ellipsis">…</span>`;
-                        html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
-                    }
-                    pageNumbers.innerHTML = html;
-                    document.querySelectorAll('.page-num').forEach(el => {
-                        el.addEventListener('click', function() {
-                            const page = parseInt(this.dataset.page);
-                            if (page >= 1 && page <= totalPages) goToPage((page - 1) * currentLimit);
-                        });
                     });
-                    prevPageBtn.disabled = currentOffset === 0;
-                    nextPageBtn.disabled = currentOffset + currentLimit >= totalItems;
-                    pagination.style.display = 'flex';
+                });
+
+                // 初01、初02 输入框（表格内联）
+                document.querySelectorAll('.inline-pos1, .inline-pos2').forEach(inp => {
+                    inp.addEventListener('blur', function() {
+                        handleInlineSave(this);
+                    });
+                    inp.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            this.blur();
+                        }
+                        if (e.key === 'Escape') {
+                            this.blur();
+                        }
+                    });
+                    inp.addEventListener('input', function() {
+                        const id = this.dataset.id;
+                        const field = this.dataset.field;
+                        const tag = document.getElementById(`saveTag-${field}-${id}`);
+                        if (tag) tag.classList.remove('show');
+                    });
+                });
+
+                // 初盘预测点击：打开编辑模态框
+                document.querySelectorAll('.prediction-clickable').forEach(el => {
+                    el.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        if (id) {
+                            openOddsModal(id, 'focus_prediction');
+                        }
+                    });
+                });
+
+                // 赔率分析按钮：打开展示模态框（初01/02可编辑）
+                document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const id = this.dataset.id;
+                        if (id) {
+                            openAnalysisModal(id);
+                        }
+                    });
+                });
+            }
+
+            // ---------- 内联保存处理（表格内） ----------
+            function handleInlineSave(input) {
+                const id = input.dataset.id;
+                const field = input.dataset.field;
+                const value = input.value.trim();
+                const tag = document.getElementById(`saveTag-${field}-${id}`);
+
+                const oldVal = input.defaultValue || '';
+                if (value === oldVal) {
+                    if (tag) tag.classList.remove('show');
+                    return;
                 }
 
-                function goToPage(offset) {
-                    if (offset < 0) offset = 0;
-                    if (offset >= totalItems) offset = Math.max(0, totalItems - currentLimit);
-                    currentOffset = offset;
-                    loadHistory(currentDateFilter, currentLimit, currentOffset);
+                input.classList.add('saving');
+                if (tag) tag.classList.remove('show');
+
+                saveField(id, field, value)
+                    .then(res => {
+                        if (res.success) {
+                            input.defaultValue = value;
+                            if (tag) tag.classList.add('show');
+                            showToast(`✅ ${field} 已保存`);
+                        } else {
+                            showToast('❌ 保存失败: ' + (res.error || '未知错误'));
+                            input.value = oldVal;
+                        }
+                    })
+                    .catch(err => {
+                        showToast('❌ 请求出错: ' + err.message);
+                        input.value = oldVal;
+                    })
+                    .finally(() => {
+                        input.classList.remove('saving');
+                    });
+            }
+
+            // ---------- 自定义多选组件 ----------
+            function buildMultiselect(containerId, options, selectedValues) {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                container.innerHTML = '';
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'custom-multiselect';
+
+                const display = document.createElement('div');
+                display.className = 'selected-display';
+                const textSpan = document.createElement('span');
+                textSpan.className = 'text';
+                textSpan.textContent = selectedValues.length ? selectedValues.join('、') : '请选择';
+                const arrow = document.createElement('span');
+                arrow.className = 'arrow';
+                arrow.textContent = '▼';
+                display.appendChild(textSpan);
+                display.appendChild(arrow);
+                wrapper.appendChild(display);
+
+                const dropdown = document.createElement('div');
+                dropdown.className = 'dropdown-list';
+                options.forEach(opt => {
+                    const item = document.createElement('div');
+                    item.className = 'option-item' + (selectedValues.includes(opt) ? ' selected' : '');
+                    item.textContent = opt;
+                    item.dataset.value = opt;
+                    dropdown.appendChild(item);
+                });
+                wrapper.appendChild(dropdown);
+
+                container.appendChild(wrapper);
+
+                const arrowIcon = display.querySelector('.arrow');
+                const dropdownList = dropdown;
+                const textEl = textSpan;
+
+                display.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    dropdownList.classList.toggle('open');
+                    arrowIcon.classList.toggle('open');
+                });
+
+                dropdownList.querySelectorAll('.option-item').forEach(item => {
+                    item.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const val = this.dataset.value;
+                        this.classList.toggle('selected');
+                        const selected = dropdownList.querySelectorAll('.option-item.selected');
+                        const values = Array.from(selected).map(el => el.dataset.value);
+                        textEl.textContent = values.length ? values.join('、') : '请选择';
+                    });
+                });
+
+                document.addEventListener('click', function(e) {
+                    if (!wrapper.contains(e.target)) {
+                        dropdownList.classList.remove('open');
+                        arrowIcon.classList.remove('open');
+                    }
+                });
+
+                wrapper.getSelected = function() {
+                    const selected = this.querySelectorAll('.option-item.selected');
+                    return Array.from(selected).map(el => el.dataset.value);
+                };
+                wrapper.dataset.id = containerId;
+                return wrapper;
+            }
+
+            // ---------- 打开赔率分析（展示+编辑初01/02）模态框 ----------
+            function openAnalysisModal(id) {
+                fetch('/api/match/' + id)
+                    .then(res => {
+                        if (!res.ok) throw new Error('获取数据失败');
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (data.error) { alert(data.error); return; }
+
+                        analysisModal.dataset.id = id;
+
+                        analysisModalTitle.textContent = `📊 赔率分析 - ${data.home_team} vs ${data.away_team}`;
+                        const judgmentDisplay = judgmentMap[data.judgment] || data.judgment || '—';
+                        const pos1Val = data.pos1 || '';
+                        const pos2Val = data.pos2 || '';
+                        const predDisplay = getPredictionDisplay(data.initial_prediction) || '—';
+
+                        // ===== 保存旧值到 dataset =====
+                        analysisModal.dataset.oldPos1 = pos1Val;
+                        analysisModal.dataset.oldPos2 = pos2Val;
+
+                        let infoHtml = `
+                            <div class="info-row"><span class="info-label">ID</span><span class="info-value">${data.id}</span></div>
+                            <div class="info-row"><span class="info-label">日期</span><span class="info-value">${data.date || '—'}</span></div>
+                            <div class="info-row"><span class="info-label">时间</span><span class="info-value">${data.time || '—'}</span></div>
+                            <div class="info-row"><span class="info-label">主队 VS 客队</span><span class="info-value">${data.home_team} vs ${data.away_team}</span></div>
+                            <div class="info-row"><span class="info-label">基本面判断</span><span class="info-value">${judgmentDisplay}</span></div>
+                            <div class="info-row"><span class="info-label">联赛</span><span class="info-value">${data.league || '—'}</span></div>
+                            <!-- 初01 可编辑 -->
+                            <div class="form-group" style="margin-top:10px;">
+                                <label style="width:110px;font-weight:500;font-size:13px;color:#2d3f55;">初01</label>
+                                <input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1">
+                                <span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span>
+                            </div>
+                            <!-- 初02 可编辑 -->
+                            <div class="form-group">
+                                <label style="width:110px;font-weight:500;font-size:13px;color:#2d3f55;">初02</label>
+                                <input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2">
+                                <span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span>
+                            </div>
+                            <div class="info-row"><span class="info-label">初盘预测</span><span class="info-value">${predDisplay}</span></div>
+                        `;
+                        analysisInfoContainer.innerHTML = infoHtml;
+                        analysisModal.style.display = 'flex';
+
+                        // 绑定输入框事件：清除保存标记，但不触发自动保存
+                        document.querySelectorAll('#analysis-pos1, #analysis-pos2').forEach(inp => {
+                            inp.addEventListener('input', function() {
+                                const id = this.dataset.id;
+                                const field = this.dataset.field;
+                                const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
+                                if (tag) tag.classList.remove('show');
+                            });
+                            inp.addEventListener('keydown', function(e) {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    this.blur();
+                                }
+                                if (e.key === 'Escape') {
+                                    this.blur();
+                                }
+                            });
+                        });
+                    })
+                    .catch(err => {
+                        showToast('❌ 加载数据失败: ' + err.message);
+                    });
+            }
+
+            function closeAnalysisModal() {
+                analysisModal.style.display = 'none';
+            }
+
+            // ---------- 保存初01/02（显式保存） ----------
+           function saveAnalysisData() {
+    const id = analysisModal.dataset.id;
+    if (!id) {
+        showToast('❌ 未找到赛事ID');
+        return;
+    }
+
+    const pos1Input = document.getElementById('analysis-pos1');
+    const pos2Input = document.getElementById('analysis-pos2');
+    const pos1Val = pos1Input ? pos1Input.value.trim() : '';
+    const pos2Val = pos2Input ? pos2Input.value.trim() : '';
+
+    // 禁用按钮，防止重复点击
+    saveAnalysisBtn.textContent = '⏳ 保存中...';
+    saveAnalysisBtn.disabled = true;
+
+    // 先获取当前完整数据
+    fetch('/api/match/' + id)
+        .then(res => {
+            if (!res.ok) throw new Error('获取当前数据失败');
+            return res.json();
+        })
+        .then(data => {
+            // 更新 pos1 和 pos2
+            data.pos1 = pos1Val;
+            data.pos2 = pos2Val;
+
+            // 发送 PUT 请求更新全部字段
+            return fetch('/api/match/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+        })
+        .then(res => {
+            if (!res.ok) return res.json().then(err => { throw new Error(err.error || '更新失败'); });
+            return res.json();
+        })
+        .then(result => {
+            if (result.success) {
+                // 更新 dataset 中的旧值（用于恢复）
+                analysisModal.dataset.oldPos1 = pos1Val;
+                analysisModal.dataset.oldPos2 = pos2Val;
+
+                // 显示成功标记
+                const tag1 = document.getElementById(`analysis-saveTag-pos1-${id}`);
+                if (tag1) tag1.classList.add('show');
+                const tag2 = document.getElementById(`analysis-saveTag-pos2-${id}`);
+                if (tag2) tag2.classList.add('show');
+
+                showToast('✅ 初01、初02 保存成功！');
+                // 刷新表格
+                loadHistory(currentDateFilter, currentLimit, currentOffset);
+            } else {
+                throw new Error(result.error || '未知错误');
+            }
+        })
+        .catch(err => {
+            showToast('❌ 保存失败: ' + err.message);
+            console.error('保存错误:', err);
+            // 如果可能，恢复输入框为旧值
+            const oldPos1 = analysisModal.dataset.oldPos1 || '';
+            const oldPos2 = analysisModal.dataset.oldPos2 || '';
+            if (pos1Input) pos1Input.value = oldPos1;
+            if (pos2Input) pos2Input.value = oldPos2;
+        })
+        .finally(() => {
+            saveAnalysisBtn.textContent = '💾 保存修改';
+            saveAnalysisBtn.disabled = false;
+        });
+}
+            // ---------- 打开赔率编辑模态框（完整编辑，含初盘预测） ----------
+            function openOddsModal(id, focusTarget) {
+                fetch('/api/match/' + id)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) { alert(data.error); return; }
+                        currentOddsData = data;
+                        oddsModalTitle.textContent = `📊 赔率分析 - ${data.home_team} vs ${data.away_team}`;
+
+                        let selectedPreds = [];
+                        if (data.initial_prediction) {
+                            try {
+                                const parsed = JSON.parse(data.initial_prediction);
+                                if (Array.isArray(parsed)) selectedPreds = parsed;
+                            } catch (e) {}
+                        }
+
+                        let html = `
+                                <div class="form-group"><label>日期</label><input type="date" id="odds-date" value="${data.date || ''}" readonly style="background:#f3f4f6;"></div>
+                                <div class="form-group"><label>时间</label><input type="text" id="odds-time" value="${data.time || ''}" readonly style="background:#f3f4f6;"></div>
+                                <div class="form-group"><label>联赛</label><input type="text" id="odds-league" value="${data.league || ''}" readonly style="background:#f3f4f6;"></div>
+                                <div class="form-group"><label>主队</label><input type="text" id="odds-home" value="${data.home_team}" readonly style="background:#f3f4f6;"></div>
+                                <div class="form-group"><label>客队</label><input type="text" id="odds-away" value="${data.away_team}" readonly style="background:#f3f4f6;"></div>
+                                <div class="section-title">📈 赔率数据</div>
+                                <div class="form-group"><label>亚初终</label><input type="text" id="odds-asian" value="${data.asian_odds || ''}" placeholder="如 0.85 半球 0.95"></div>
+                                <div class="form-group"><label>区间</label><input type="text" id="odds-range" value="${data.range || ''}" placeholder="如 2.5-3"></div>
+                                <div class="form-group"><label>初01</label><input type="text" id="odds-pos1" value="${data.pos1 || ''}" placeholder="如 1.95"></div>
+                                <div class="form-group"><label>初02</label><input type="text" id="odds-pos2" value="${data.pos2 || ''}" placeholder="如 1.90"></div>
+                                <div class="form-group"><label>初盘预测（多选）</label>
+                                    <div id="odds-multiselect-container" style="flex:1;"></div>
+                                    <span style="font-size:12px; color:#4b657a; margin-left:8px;">点击选项切换选中</span>
+                                </div>
+                            `;
+                        oddsFormContainer.innerHTML = html;
+                        oddsModal.style.display = 'flex';
+                        saveOddsBtn.dataset.id = id;
+
+                        buildMultiselect('odds-multiselect-container', predictionOptions, selectedPreds);
+
+                        if (focusTarget === 'focus_prediction') {
+                            setTimeout(() => {
+                                const container = document.getElementById(
+                                'odds-multiselect-container');
+                                if (container) {
+                                    container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    container.style.transition = 'background 0.6s';
+                                    container.style.background = '#eef6ff';
+                                    setTimeout(() => {
+                                        container.style.background = 'transparent';
+                                    }, 1200);
+                                    const wrapper = container.querySelector('.custom-multiselect');
+                                    if (wrapper) {
+                                        const display = wrapper.querySelector('.selected-display');
+                                        if (display) display.focus && display.focus();
+                                    }
+                                }
+                            }, 200);
+                        }
+                    });
+            }
+
+            // ---------- 保存编辑模态框 ----------
+            function saveOdds() {
+                const id = saveOddsBtn.dataset.id;
+                const multiselectContainer = document.getElementById('odds-multiselect-container');
+                let initialPrediction = [];
+                if (multiselectContainer) {
+                    const wrapper = multiselectContainer.querySelector('.custom-multiselect');
+                    if (wrapper && typeof wrapper.getSelected === 'function') {
+                        initialPrediction = wrapper.getSelected();
+                    } else {
+                        const selectedItems = multiselectContainer.querySelectorAll('.option-item.selected');
+                        initialPrediction = Array.from(selectedItems).map(el => el.dataset.value);
+                    }
                 }
 
-                // ---------- 手动添加 ----------
-                function addEmptyMatch() {
-                    const payload = {
-                        date: '',
-                        time: '',
-                        league: '',
-                        home_team: '主队',
-                        away_team: '客队',
-                        home_score: 0,
-                        away_score: 0,
-                        home_prob: 0.33,
-                        draw_prob: 0.34,
-                        away_prob: 0.33,
-                        judgment: 'equal',
-                        asian_odds: '',
-                        range: '',
-                        pos1: '',
-                        pos2: '',
-                        initial_prediction: '[]'
-                    };
-                    fetch('/api/save', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        })
-                        .then(res => res.json())
-                        .then(res => {
-                            if (res.success) {
-                                showToast('✅ 空记录已创建，ID: ' + res.id);
-                                loadHistory(currentDateFilter, currentLimit, currentOffset);
-                            } else showToast('❌ 创建失败: ' + (res.error || '未知错误'));
-                        })
-                        .catch(err => showToast('❌ 请求出错: ' + err.message));
+                const payload = {
+                    asian_odds: document.getElementById('odds-asian').value || '',
+                    range: document.getElementById('odds-range').value || '',
+                    pos1: document.getElementById('odds-pos1').value || '',
+                    pos2: document.getElementById('odds-pos2').value || '',
+                    initial_prediction: JSON.stringify(initialPrediction)
+                };
+
+                const fullData = { ...currentOddsData, ...payload };
+
+                saveOddsBtn.textContent = '⏳ 保存中...';
+                saveOddsBtn.disabled = true;
+
+                fetch('/api/match/' + id, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(fullData)
+                    })
+                    .then(res => {
+                        if (!res.ok) return res.json().then(err => { throw new Error(err.error || 'HTTP ' + res
+                                .status); });
+                        return res.json();
+                    })
+                    .then(res => {
+                        if (res.success) {
+                            oddsModal.style.display = 'none';
+                            showToast('✅ 赔率数据保存成功！');
+                            loadHistory(currentDateFilter, currentLimit, currentOffset);
+                        } else {
+                            showToast('❌ 保存失败: ' + (res.error || '未知错误'));
+                        }
+                    })
+                    .catch(err => {
+                        showToast('❌ 请求出错: ' + err.message);
+                        console.error('保存错误:', err);
+                    })
+                    .finally(() => {
+                        saveOddsBtn.textContent = '💾 保存赔率';
+                        saveOddsBtn.disabled = false;
+                    });
+            }
+
+            function closeOddsModal() {
+                oddsModal.style.display = 'none';
+                currentOddsData = null;
+            }
+
+            // ---------- 分页 ----------
+            function updatePagination() {
+                const totalPages = Math.ceil(totalItems / currentLimit) || 1;
+                const currentPage = Math.floor(currentOffset / currentLimit) + 1;
+                totalCountSpan.textContent = totalItems;
+
+                let html = '';
+                const maxVisible = 7;
+                let startPage = 1,
+                    endPage = totalPages;
+                if (totalPages > maxVisible) {
+                    const half = Math.floor(maxVisible / 2);
+                    if (currentPage <= half + 1) endPage = maxVisible;
+                    else if (currentPage >= totalPages - half) startPage = totalPages - maxVisible + 1;
+                    else { startPage = currentPage - half;
+                        endPage = currentPage + half; }
                 }
+                if (startPage > 1) {
+                    html += `<span class="page-num" data-page="1">1</span>`;
+                    if (startPage > 2) html += `<span class="ellipsis">…</span>`;
+                }
+                for (let i = startPage; i <= endPage; i++) {
+                    html += `<span class="page-num ${i===currentPage?'active':''}" data-page="${i}">${i}</span>`;
+                }
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) html += `<span class="ellipsis">…</span>`;
+                    html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
+                }
+                pageNumbers.innerHTML = html;
+                document.querySelectorAll('.page-num').forEach(el => {
+                    el.addEventListener('click', function() {
+                        const page = parseInt(this.dataset.page);
+                        if (page >= 1 && page <= totalPages) goToPage((page - 1) * currentLimit);
+                    });
+                });
+                prevPageBtn.disabled = currentOffset === 0;
+                nextPageBtn.disabled = currentOffset + currentLimit >= totalItems;
+                pagination.style.display = 'flex';
+            }
 
-                // ---------- 全局事件绑定 ----------
-                filterBtn.addEventListener('click', function() {
-                    currentDateFilter = filterDate.value;
-                    currentOffset = 0;
-                    loadHistory(currentDateFilter, currentLimit, 0);
-                });
-                clearFilterBtn.addEventListener('click', function() {
-                    filterDate.value = '';
-                    currentDateFilter = '';
-                    currentOffset = 0;
-                    loadHistory('', currentLimit, 0);
-                });
-                addMatchBtn.addEventListener('click', addEmptyMatch);
+            function goToPage(offset) {
+                if (offset < 0) offset = 0;
+                if (offset >= totalItems) offset = Math.max(0, totalItems - currentLimit);
+                currentOffset = offset;
+                loadHistory(currentDateFilter, currentLimit, currentOffset);
+            }
 
-                prevPageBtn.addEventListener('click', () => goToPage(currentOffset - currentLimit));
-                nextPageBtn.addEventListener('click', () => goToPage(currentOffset + currentLimit));
-                perPageSelect.addEventListener('change', function() {
-                    currentLimit = parseInt(this.value);
-                    currentOffset = 0;
-                    loadHistory(currentDateFilter, currentLimit, 0);
-                });
+            // ---------- 手动添加 ----------
+            function addEmptyMatch() {
+                const payload = {
+                    date: '',
+                    time: '',
+                    league: '',
+                    home_team: '主队',
+                    away_team: '客队',
+                    home_score: 0,
+                    away_score: 0,
+                    home_prob: 0.33,
+                    draw_prob: 0.34,
+                    away_prob: 0.33,
+                    judgment: 'equal',
+                    asian_odds: '',
+                    range: '',
+                    pos1: '',
+                    pos2: '',
+                    initial_prediction: '[]'
+                };
+                fetch('/api/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.success) {
+                            showToast('✅ 空记录已创建，ID: ' + res.id);
+                            loadHistory(currentDateFilter, currentLimit, currentOffset);
+                        } else showToast('❌ 创建失败: ' + (res.error || '未知错误'));
+                    })
+                    .catch(err => showToast('❌ 请求出错: ' + err.message));
+            }
 
-                // 编辑模态框事件
-                saveOddsBtn.addEventListener('click', saveOdds);
-                cancelOddsBtn.addEventListener('click', closeOddsModal);
-                window.addEventListener('click', function(e) {
-                    if (e.target === oddsModal) closeOddsModal();
-                });
+            // ---------- 全局事件绑定 ----------
+            filterBtn.addEventListener('click', function() {
+                currentDateFilter = filterDate.value;
+                currentOffset = 0;
+                loadHistory(currentDateFilter, currentLimit, 0);
+            });
+            clearFilterBtn.addEventListener('click', function() {
+                filterDate.value = '';
+                currentDateFilter = '';
+                currentOffset = 0;
+                loadHistory('', currentLimit, 0);
+            });
+            addMatchBtn.addEventListener('click', addEmptyMatch);
 
-                // 展示模态框事件
-                closeAnalysisBtn.addEventListener('click', closeAnalysisModal);
-                saveAnalysisBtn.addEventListener('click', saveAnalysisData);
-                window.addEventListener('click', function(e) {
-                    if (e.target === analysisModal) closeAnalysisModal();
-                });
+            prevPageBtn.addEventListener('click', () => goToPage(currentOffset - currentLimit));
+            nextPageBtn.addEventListener('click', () => goToPage(currentOffset + currentLimit));
+            perPageSelect.addEventListener('change', function() {
+                currentLimit = parseInt(this.value);
+                currentOffset = 0;
+                loadHistory(currentDateFilter, currentLimit, 0);
+            });
 
-                // 旧编辑模态框
-                cancelEditBtn.addEventListener('click', function() { editModal.style.display = 'none'; });
-                window.addEventListener('click', function(e) {
-                    if (e.target === editModal) editModal.style.display = 'none';
-                });
-                saveEditBtn.addEventListener('click', function() {
-                    alert('此功能已迁移至“初盘预测”点击编辑，请使用该方式。');
-                });
+            // 编辑模态框事件
+            saveOddsBtn.addEventListener('click', saveOdds);
+            cancelOddsBtn.addEventListener('click', closeOddsModal);
+            window.addEventListener('click', function(e) {
+                if (e.target === oddsModal) closeOddsModal();
+            });
 
-                // 初始加载
-                loadHistory('', 20, 0);
-            })();
+            // 展示模态框事件
+            closeAnalysisBtn.addEventListener('click', closeAnalysisModal);
+            saveAnalysisBtn.addEventListener('click', saveAnalysisData);
+            window.addEventListener('click', function(e) {
+                if (e.target === analysisModal) closeAnalysisModal();
+            });
+
+            // 旧编辑模态框
+            cancelEditBtn.addEventListener('click', function() { editModal.style.display = 'none'; });
+            window.addEventListener('click', function(e) {
+                if (e.target === editModal) editModal.style.display = 'none';
+            });
+            saveEditBtn.addEventListener('click', function() {
+                alert('此功能已迁移至“初盘预测”点击编辑，请使用该方式。');
+            });
+
+            // 初始加载
+            loadHistory('', 20, 0);
+        })();
         </script>
     </div>
 </body>
