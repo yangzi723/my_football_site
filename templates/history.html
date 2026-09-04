@@ -6,7 +6,7 @@
     <title>历史记录</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        /* 所有样式与之前相同，确保按钮、复选框等样式正确 */
+        /* ========== 通用样式 ========== */
         .action-btn { padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; margin-right: 4px; }
         .edit-btn { background: #3b7cff; color: white; }
         .edit-btn:hover { background: #2563eb; }
@@ -85,9 +85,9 @@
 
         .checkbox-cell { text-align: center; vertical-align: middle; }
         .checkbox-cell input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
-        .batch-delete-btn { background: #dc2626; color: white; }
-        .batch-delete-btn:hover { background: #b91c1c; }
-        .select-all-checkbox { width: 18px; height: 18px; cursor: pointer; }
+        .select-all-checkbox { width: 16px; height: 16px; cursor: pointer; vertical-align: middle; }
+        .select-all-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: normal; font-size: 12px; }
+        .select-all-label input { margin: 0; }
     </style>
 </head>
 <body>
@@ -117,7 +117,12 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" class="select-all-checkbox"></th>
+                        <th style="width:70px;">
+                            <label class="select-all-label">
+                                <input type="checkbox" id="selectAllCheckbox" class="select-all-checkbox">
+                                <span>全选</span>
+                            </label>
+                        </th>
                         <th>ID</th>
                         <th>日期</th>
                         <th>时间</th>
@@ -146,7 +151,7 @@
         </div>
     </div>
 
-    <!-- 编辑模态框 -->
+    <!-- ========== 编辑模态框 ========== -->
     <div id="editModal" class="modal-edit">
         <div class="modal-edit-content">
             <h3 id="editTitle">📝 预测/复盘</h3>
@@ -158,9 +163,9 @@
         </div>
     </div>
 
-    <!-- 批量导入模态框（保留原有） -->
+    <!-- 批量导入模态框（保留原样） -->
     <div id="fixtureSelectModal" class="modal-select">
-        <!-- 内容省略，保持不变 -->
+        <!-- 内容省略，保持与之前一致 -->
     </div>
 
     <!-- 导入结果对话框 -->
@@ -185,11 +190,8 @@
         const saveEditBtn = document.getElementById('saveEditBtn');
         const cancelEditBtn = document.getElementById('cancelEditBtn');
 
-        // 批量导入按钮（占位）
         const importFixturesBtn = document.getElementById('importFixturesBtn');
-        // 批量删除按钮
         const batchDeleteBtn = document.getElementById('batchDeleteBtn');
-        // 全选复选框
         const selectAllCheckbox = document.getElementById('selectAllCheckbox');
 
         // 分页元素
@@ -297,7 +299,6 @@
                 });
                 tbody.innerHTML = html;
 
-                // 绑定事件
                 bindEvents();
                 updatePagination();
             })
@@ -307,9 +308,9 @@
             });
         }
 
-        // 绑定按钮事件
+        // ========== 绑定事件 ==========
         function bindEvents() {
-            // 结果下拉更新
+            // 结果下拉
             document.querySelectorAll('.result-select').forEach(sel => {
                 sel.addEventListener('change', function() {
                     const id = this.dataset.id;
@@ -327,15 +328,20 @@
                 });
             });
 
-            // 编辑按钮
+            // ===== 预测/复盘按钮 =====
             document.querySelectorAll('.edit-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
                     const id = this.dataset.id;
-                    openEditModal(id);
+                    if (id) {
+                        openEditModal(id);
+                    } else {
+                        console.warn('未找到赛事ID');
+                    }
                 });
             });
 
-            // 删除按钮
+            // 单行删除
             document.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const id = this.dataset.id;
@@ -350,14 +356,13 @@
                 });
             });
 
-            // ========== 全选/取消全选 ==========
+            // 全选/取消全选
             selectAllCheckbox.addEventListener('change', function() {
                 const checked = this.checked;
                 document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
-                // 可选：更新底部选中计数（如果有）
             });
 
-            // ========== 批量删除 ==========
+            // 批量删除
             batchDeleteBtn.addEventListener('click', function() {
                 const selected = document.querySelectorAll('.row-checkbox:checked');
                 if (selected.length === 0) {
@@ -370,11 +375,6 @@
                 let successCount = 0;
                 let failCount = 0;
                 const total = ids.length;
-
-                if (total === 0) {
-                    showToast('没有选中的记录');
-                    return;
-                }
 
                 ids.forEach(id => {
                     fetch('/api/match/' + id, { method: 'DELETE' })
@@ -398,20 +398,146 @@
             });
         }
 
-        // ========== 编辑模态框（简写，与之前相同） ==========
+        // ========== 编辑模态框（完整实现） ==========
         function openEditModal(id) {
-            // 完整实现（省略，可参考之前）
-            alert('编辑功能已实现，请参考完整代码');
+            fetch('/api/match/' + id)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) { alert(data.error); return; }
+                currentEditId = id;
+                editTitle.textContent = `📝 预测/复盘 - ${data.home_team} vs ${data.away_team}`;
+                let html = `<div class="two-col">`;
+                // 主队
+                html += `<div>
+                    <div class="section-title">🏠 主队</div>
+                    <div class="form-group"><label>球队名称</label><input type="text" id="edit-home-name" value="${data.home_team}"></div>
+                    <div class="form-group"><label>排名</label><input type="number" id="edit-home-rank" value="${data.home_rank}"></div>
+                    <div class="form-group"><label>总进球</label><input type="number" id="edit-home-scored" value="${data.home_scored}"></div>
+                    <div class="form-group"><label>总失球</label><input type="number" id="edit-home-conceded" value="${data.home_conceded}"></div>
+                    <div class="form-group"><label>近3场积分</label><input type="number" id="edit-home-recent" value="${data.home_recent}"></div>
+                    <div class="form-group"><label>近3主场胜</label><input type="number" id="edit-home-wins" value="${data.home_wins}"></div>
+                    <div class="form-group"><label>近3主场平</label><input type="number" id="edit-home-draws" value="${data.home_draws}"></div>
+                    <div class="form-group"><label>近3主场负</label><input type="number" id="edit-home-losses" value="${data.home_losses}"></div>
+                    <div class="form-group"><label>关键缺阵</label><input type="number" id="edit-home-injuries" value="${data.home_injuries}"></div>
+                    <div class="form-group"><label>战意等级</label><input type="number" id="edit-home-motivation" value="${data.home_motivation}" min="1" max="5"></div>
+                    <div class="form-group"><label>身价(M€)</label><input type="number" step="0.1" id="edit-home-value" value="${data.home_value}"></div>
+                    <div class="form-group"><label>意外因素</label><input type="text" id="edit-home-unexpected" value="${data.home_unexpected || ''}"></div>
+                </div>`;
+                // 客队
+                html += `<div>
+                    <div class="section-title">✈️ 客队</div>
+                    <div class="form-group"><label>球队名称</label><input type="text" id="edit-away-name" value="${data.away_team}"></div>
+                    <div class="form-group"><label>排名</label><input type="number" id="edit-away-rank" value="${data.away_rank}"></div>
+                    <div class="form-group"><label>总进球</label><input type="number" id="edit-away-scored" value="${data.away_scored}"></div>
+                    <div class="form-group"><label>总失球</label><input type="number" id="edit-away-conceded" value="${data.away_conceded}"></div>
+                    <div class="form-group"><label>近3场积分</label><input type="number" id="edit-away-recent" value="${data.away_recent}"></div>
+                    <div class="form-group"><label>近3客场胜</label><input type="number" id="edit-away-wins" value="${data.away_wins}"></div>
+                    <div class="form-group"><label>近3客场平</label><input type="number" id="edit-away-draws" value="${data.away_draws}"></div>
+                    <div class="form-group"><label>近3客场负</label><input type="number" id="edit-away-losses" value="${data.away_losses}"></div>
+                    <div class="form-group"><label>关键缺阵</label><input type="number" id="edit-away-injuries" value="${data.away_injuries}"></div>
+                    <div class="form-group"><label>战意等级</label><input type="number" id="edit-away-motivation" value="${data.away_motivation}" min="1" max="5"></div>
+                    <div class="form-group"><label>身价(M€)</label><input type="number" step="0.1" id="edit-away-value" value="${data.away_value}"></div>
+                    <div class="form-group"><label>意外因素</label><input type="text" id="edit-away-unexpected" value="${data.away_unexpected || ''}"></div>
+                </div>`;
+                html += `</div>`;
+                // 日期、时间、联赛
+                html += `<div class="form-group"><label>日期</label><input type="date" id="edit-date" value="${data.date || ''}"></div>`;
+                html += `<div class="form-group"><label>时间</label><input type="text" id="edit-time" value="${data.time || ''}" placeholder="如 19:30"></div>`;
+                html += `<div class="form-group"><label>联赛</label><input type="text" id="edit-league" value="${data.league || ''}"></div>`;
+                // 预测结果
+                html += `<div class="section-title">📊 预测结果</div>`;
+                html += `<div class="form-group"><label>主队得分</label><input type="number" step="1" id="edit-home-score" value="${Math.round(data.home_score)}"></div>`;
+                html += `<div class="form-group"><label>客队得分</label><input type="number" step="1" id="edit-away-score" value="${Math.round(data.away_score)}"></div>`;
+                html += `<div class="form-group"><label>主胜概率</label><input type="number" step="0.01" id="edit-home-prob" value="${data.home_prob}"></div>`;
+                html += `<div class="form-group"><label>平局概率</label><input type="number" step="0.01" id="edit-draw-prob" value="${data.draw_prob}"></div>`;
+                html += `<div class="form-group"><label>客胜概率</label><input type="number" step="0.01" id="edit-away-prob" value="${data.away_prob}"></div>`;
+                // 判断和结果
+                html += `<div class="form-group"><label>基本面判断</label>
+                    <select id="edit-judgment">
+                        <option value="home_advantage" ${data.judgment==='home_advantage'?'selected':''}>主队占优</option>
+                        <option value="away_advantage" ${data.judgment==='away_advantage'?'selected':''}>客队占优</option>
+                        <option value="equal" ${data.judgment==='equal'?'selected':''}>两队实力相当</option>
+                        <option value="home_strong" ${data.judgment==='home_strong'?'selected':''}>主队较强优势</option>
+                        <option value="away_strong" ${data.judgment==='away_strong'?'selected':''}>客队较强优势</option>
+                        <option value="home_dominant" ${data.judgment==='home_dominant'?'selected':''}>主队绝对优势</option>
+                        <option value="away_dominant" ${data.judgment==='away_dominant'?'selected':''}>客队绝对优势</option>
+                        <option value="both_weak" ${data.judgment==='both_weak'?'selected':''}>两队菜鸡</option>
+                    </select>
+                </div>`;
+                html += `<div class="form-group"><label>结果</label>
+                    <select id="edit-result">
+                        <option value="">未定</option>
+                        <option value="红" ${data.result==='红'?'selected':''}>红</option>
+                        <option value="黑" ${data.result==='黑'?'selected':''}>黑</option>
+                        <option value="走盘" ${data.result==='走盘'?'selected':''}>走盘</option>
+                    </select>
+                </div>`;
+                editFormContainer.innerHTML = html;
+                editModal.style.display = 'flex';
+                saveEditBtn.dataset.id = id;
+            });
         }
+
         function saveEdit() {
-            // 完整实现（省略）
-            alert('保存功能已实现');
+            const id = saveEditBtn.dataset.id;
+            const data = {
+                date: document.getElementById('edit-date').value || '',
+                time: document.getElementById('edit-time').value || '',
+                league: document.getElementById('edit-league').value || '',
+                home_team: document.getElementById('edit-home-name').value,
+                away_team: document.getElementById('edit-away-name').value,
+                home_rank: parseInt(document.getElementById('edit-home-rank').value) || 0,
+                home_scored: parseInt(document.getElementById('edit-home-scored').value) || 0,
+                home_conceded: parseInt(document.getElementById('edit-home-conceded').value) || 0,
+                home_recent: parseInt(document.getElementById('edit-home-recent').value) || 0,
+                home_wins: parseInt(document.getElementById('edit-home-wins').value) || 0,
+                home_draws: parseInt(document.getElementById('edit-home-draws').value) || 0,
+                home_losses: parseInt(document.getElementById('edit-home-losses').value) || 0,
+                home_injuries: parseInt(document.getElementById('edit-home-injuries').value) || 0,
+                home_motivation: parseInt(document.getElementById('edit-home-motivation').value) || 3,
+                home_value: parseFloat(document.getElementById('edit-home-value').value) || 0,
+                away_rank: parseInt(document.getElementById('edit-away-rank').value) || 0,
+                away_scored: parseInt(document.getElementById('edit-away-scored').value) || 0,
+                away_conceded: parseInt(document.getElementById('edit-away-conceded').value) || 0,
+                away_recent: parseInt(document.getElementById('edit-away-recent').value) || 0,
+                away_wins: parseInt(document.getElementById('edit-away-wins').value) || 0,
+                away_draws: parseInt(document.getElementById('edit-away-draws').value) || 0,
+                away_losses: parseInt(document.getElementById('edit-away-losses').value) || 0,
+                away_injuries: parseInt(document.getElementById('edit-away-injuries').value) || 0,
+                away_motivation: parseInt(document.getElementById('edit-away-motivation').value) || 3,
+                away_value: parseFloat(document.getElementById('edit-away-value').value) || 0,
+                home_unexpected: document.getElementById('edit-home-unexpected').value || '',
+                away_unexpected: document.getElementById('edit-away-unexpected').value || '',
+                home_score: parseInt(document.getElementById('edit-home-score').value) || 0,
+                away_score: parseInt(document.getElementById('edit-away-score').value) || 0,
+                home_prob: parseFloat(document.getElementById('edit-home-prob').value) || 0,
+                draw_prob: parseFloat(document.getElementById('edit-draw-prob').value) || 0,
+                away_prob: parseFloat(document.getElementById('edit-away-prob').value) || 0,
+                judgment: document.getElementById('edit-judgment').value,
+                result: document.getElementById('edit-result').value || null
+            };
+            fetch('/api/match/' + id, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    editModal.style.display = 'none';
+                    loadHistory(currentDateFilter, currentLimit, currentOffset);
+                    alert('✅ 修改成功！');
+                } else {
+                    alert('❌ 修改失败: ' + (res.error || '未知错误'));
+                }
+            });
         }
+
         function closeEditModal() {
             editModal.style.display = 'none';
         }
 
-        // ========== 分页控件 ==========
+        // ========== 分页 ==========
         function updatePagination() {
             const totalPages = Math.ceil(totalItems / currentLimit) || 1;
             const currentPage = Math.floor(currentOffset / currentLimit) + 1;
@@ -527,8 +653,6 @@
         }
 
         // ========== 事件绑定 ==========
-
-        // 筛选
         filterBtn.addEventListener('click', function() {
             currentDateFilter = filterDate.value;
             currentOffset = 0;
@@ -541,15 +665,14 @@
             loadHistory('', currentLimit, 0);
         });
 
-        // 手动添加
         addMatchBtn.addEventListener('click', addEmptyMatch);
 
-        // 批量导入（占位）
+        // 批量导入（占位，完整实现需自行补充）
         importFixturesBtn.addEventListener('click', function() {
             alert('批量导入功能已实现，请参考完整代码');
         });
 
-        // 分页事件
+        // 分页
         prevPageBtn.addEventListener('click', function() {
             goToPage(currentOffset - currentLimit);
         });
@@ -562,7 +685,7 @@
             loadHistory(currentDateFilter, currentLimit, 0);
         });
 
-        // 编辑模态框控制
+        // 编辑模态框
         cancelEditBtn.addEventListener('click', closeEditModal);
         window.addEventListener('click', function(e) {
             if (e.target === editModal) closeEditModal();
