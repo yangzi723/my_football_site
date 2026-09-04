@@ -16,22 +16,23 @@
     </div>
 
     <!-- 日期、时间、联赛 -->
-    <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:center; margin-bottom:15px;">
-        <div class="form-group" style="margin:0;">
-            <label style="width:80px;">比赛日期</label>
-            <input type="date" id="match-date" style="flex:0 1 180px;">
-            <span style="margin-left:8px;font-size:12px;color:#6b7280;">（默认今日）</span>
-        </div>
-        <div class="form-group" style="margin:0;">
-            <label style="width:80px;">比赛时间</label>
-            <input type="text" id="match-time" placeholder="如 19:30" style="flex:0 1 120px;">
-        </div>
-        <div class="form-group" style="margin:0;">
-            <label style="width:80px;">联赛名称</label>
-            <input type="text" id="league-name" placeholder="如 Premier League" style="flex:0 1 220px;">
-            <span style="margin-left:8px;font-size:12px;color:#6b7280;">（抓取后自动填充）</span>
-        </div>
+    <!-- 日期、时间、联赛（优化样式） -->
+<div style="display:flex; gap:15px; flex-wrap:wrap; align-items:center; margin-bottom:20px; background:#f8fafc; padding:12px 18px; border-radius:10px;">
+    <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px;">
+        <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55;">比赛日期</label>
+        <input type="date" id="match-date" style="flex:0 1 160px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px;">
+
     </div>
+    <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px;">
+        <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55;">比赛时间</label>
+        <input type="text" id="match-time" placeholder="如 19:30" style="flex:0 1 100px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px;">
+    </div>
+    <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px;">
+        <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55;">联赛名称</label>
+        <input type="text" id="league-name" placeholder="如 Premier League" style="flex:0 1 180px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px;">
+
+    </div>
+</div>
 
     <!-- 权重调节 -->
     <div style="background:#f1f5f9; border-radius:12px; padding:12px 18px; margin-bottom:20px;">
@@ -74,7 +75,7 @@
                 </select>
             </div>
             <div class="section-title">身价因子</div>
-            <div class="form-group"><label>球队总身价 (M€)</label><input type="number" id="home-value" value="950" min="0" step="10"></div>
+            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="home-value" value="950" min="0" step="10"></div>
             <div class="section-title">意外因素 (仅供参考)</div>
             <div class="form-group"><label>备注</label><input type="text" id="home-unexpected" value="萨拉赫回归，士气高涨" placeholder="如天气、裁判等"></div>
         </div>
@@ -104,7 +105,7 @@
                 </select>
             </div>
             <div class="section-title">身价因子</div>
-            <div class="form-group"><label>球队总身价 (M€)</label><input type="number" id="away-value" value="780" min="0" step="10"></div>
+            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="away-value" value="780" min="0" step="10"></div>
             <div class="section-title">意外因素 (仅供参考)</div>
             <div class="form-group"><label>备注</label><input type="text" id="away-unexpected" value="多名主力轮换，体能占优" placeholder="如天气、裁判等"></div>
         </div>
@@ -703,17 +704,57 @@
         resultArea.style.display = 'none';
     }
 
-    function fillFromUrlParams() {
-        const params = new URLSearchParams(window.location.search);
-        const home = params.get('home');
-        const away = params.get('away');
-        if (home && away) {
-            homeName.value = home;
-            awayName.value = away;
-            enableAllControls();
-            showToast('已从赛事列表导入球队名称');
-        }
+    // ---------- 从 URL 参数填充数据 ----------
+function fillFromUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    const date = params.get('date');
+    const time = params.get('time');
+    const league = params.get('league');
+    const home = params.get('home');
+    const away = params.get('away');
+
+    // 获取 DOM 元素
+    const matchDateInput = document.getElementById('match-date');
+    const matchTimeInput = document.getElementById('match-time');
+    const leagueNameInput = document.getElementById('league-name');
+    const homeNameInput = document.getElementById('home-name');
+    const awayNameInput = document.getElementById('away-name');
+
+    // 填充数据（如果元素存在）
+    if (date && matchDateInput) {
+        matchDateInput.value = date;
+        console.log('填充日期:', date);
     }
+    if (time && matchTimeInput) {
+        matchTimeInput.value = time;
+        console.log('填充时间:', time);
+    }
+    if (league && leagueNameInput) {
+        leagueNameInput.value = league;
+        console.log('填充联赛:', league);
+    }
+    if (home && homeNameInput) {
+        homeNameInput.value = home;
+        console.log('填充主队:', home);
+    }
+    if (away && awayNameInput) {
+        awayNameInput.value = away;
+        console.log('填充客队:', away);
+    }
+
+    // 如果同时有主队和客队，自动计算预测
+    if (home && away) {
+        // 延迟执行以确保 DOM 完全渲染
+        setTimeout(function() {
+            if (typeof compute === 'function') {
+                compute();
+                console.log('自动计算预测');
+            } else {
+                console.warn('compute 函数未定义，请检查 index.html 的 JavaScript');
+            }
+        }, 200);
+    }
+}
 
     // 事件绑定
     fetchBtn.addEventListener('click', fetchMatches);
@@ -728,27 +769,22 @@
     });
 
     window.addEventListener('load', function() {
-        const params = new URLSearchParams(window.location.search);
-        const id = params.get('id');
-        if (id) {
-            loadMatchById(id);
-        } else {
-            const home = params.get('home');
-            const away = params.get('away');
-            if (home && away) {
-                homeName.value = home;
-                awayName.value = away;
-                enableAllControls();
-                loadExample();
-                homeName.value = home;
-                awayName.value = away;
-                compute();
-                showToast('已从赛事列表导入球队名称');
-            } else {
-                loadLatestMatch();
-            }
-        }
-    });
+    // 检查 URL 参数
+    const params = new URLSearchParams(window.location.search);
+    const hasParams = params.has('date') || params.has('time') || params.has('league') || params.has('home') || params.has('away');
+
+    if (hasParams) {
+        // 有参数时：先填充 URL 数据，不加载示例或历史记录
+        fillFromUrlParams();
+        // 注意：如果 fillFromUrlParams 中调用了 compute，则无需额外操作
+        // 否则，可以在这里再次尝试调用 compute（但 fillFromUrlParams 已包含）
+    } else {
+        // 无参数时：加载默认内容（示例或最近记录）
+        // 根据您的首页逻辑选择：
+        // loadLatestMatch();  // 如果存在
+        loadExample(); // 加载示例数据
+    }
+});
 })();
 </script>
 </body>

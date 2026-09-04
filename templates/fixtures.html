@@ -47,36 +47,13 @@
         .pagination .ellipsis { padding: 6px 8px; color: #6b7280; }
         .toast { position: fixed; top: 20px; right: 20px; background: #1f3a5f; color: white; padding: 12px 24px; border-radius: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); z-index: 9999; display: none; font-size: 14px; }
         .toast.show { display: block; }
-        /* 状态标签样式（与按钮字体大小一致） */
-        .status-badge {
-            padding: 2px 10px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-            display: inline-block;
-            text-align: center;
-            min-width: 36px;
-        }
+        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 500; display: inline-block; min-width: 36px; text-align: center; }
         .status-finished { background: #d1fae5; color: #065f46; }
         .status-pending { background: #fef3c7; color: #92400e; }
         .vs-large { font-weight: 800; font-size: 1.2em; color: #3b7cff; margin: 0 8px; text-shadow: 0 0 6px rgba(59,124,255,0.25); }
-        /* 圆形勾选标记样式 */
-        .analyzed-checkbox {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            accent-color: #3b7cff;
-            transform: scale(1.1);
-            border-radius: 50%;
-            transition: 0.15s;
-        }
-        .analyzed-checkbox:hover {
-            transform: scale(1.2);
-        }
-        .analyzed-cell {
-            text-align: center;
-            vertical-align: middle;
-        }
+        .analyzed-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #3b7cff; transform: scale(1.1); border-radius: 50%; transition: 0.15s; }
+        .analyzed-checkbox:hover { transform: scale(1.2); }
+        .analyzed-cell { text-align: center; vertical-align: middle; }
     </style>
 </head>
 <body>
@@ -316,11 +293,26 @@
             });
         });
 
+        // 基本面分析 -> 跳转首页并携带数据
         document.querySelectorAll('.analysis-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                const id = this.dataset.id;
-                alert('基本面分析功能开发中，赛事ID: ' + id);
+                const tr = this.closest('tr');
+                const date = tr.querySelector('td:nth-child(2)').textContent.trim();
+                const time = tr.querySelector('td:nth-child(3)').textContent.trim();
+                const league = tr.querySelector('td:nth-child(4)').textContent.trim();
+                const homeAwayText = tr.querySelector('td:nth-child(5)').textContent.trim();
+                const vsIndex = homeAwayText.indexOf('VS');
+                let home = homeAwayText.substring(0, vsIndex).trim();
+                let away = homeAwayText.substring(vsIndex + 2).trim();
+                const params = new URLSearchParams({
+                    date: date,
+                    time: time,
+                    league: league,
+                    home: home,
+                    away: away
+                });
+                window.location.href = '/?' + params.toString();
             });
         });
 
@@ -367,7 +359,6 @@
             });
         });
 
-        // 已分析复选框点击保存
         document.querySelectorAll('.analyzed-checkbox').forEach(cb => {
             cb.addEventListener('change', function(e) {
                 e.stopPropagation();

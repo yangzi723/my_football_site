@@ -404,7 +404,69 @@ function loadFromUrl() {
 window.addEventListener('load', function() {
     loadExample();  // 原有
     loadFromUrl();  // 新增
+	const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const home = params.get('home');
+    const away = params.get('away');
+    const date = params.get('date');
+    const time = params.get('time');
+    const league = params.get('league');
+
+    if (id) {
+        // 加载历史记录（只读模式）
+        loadMatchById(id);
+    } else if (home && away) {
+        // 从赛事列表跳转（只填充球队名）
+        homeName.value = home;
+        awayName.value = away;
+        if (date) document.getElementById('match-date').value = date;
+        if (time) document.getElementById('match-time').value = time;
+        if (league) leagueName.value = league;
+        clearReadonlyMode();
+        // 触发计算或保持手动
+        // 可选自动计算
+        // compute();
+        showToast('已从赛事列表导入数据');
+    } else {
+        // 无参数，加载最近记录（可编辑）
+        loadLatestMatch();
+    }
 });
+// 从 URL 参数填充数据
+// ---------- 从 URL 参数填充数据 ----------
+function fillFromUrlParams() {
+    const params = new URLSearchParams(window.location.search);
+    const date = params.get('date');
+    const time = params.get('time');
+    const league = params.get('league');
+    const home = params.get('home');
+    const away = params.get('away');
+
+    // 填充数据（如果 DOM 元素存在）
+    const matchDateInput = document.getElementById('match-date');
+    const matchTimeInput = document.getElementById('match-time');
+    const leagueNameInput = document.getElementById('league-name');
+    const homeNameInput = document.getElementById('home-name');
+    const awayNameInput = document.getElementById('away-name');
+
+    if (date && matchDateInput) matchDateInput.value = date;
+    if (time && matchTimeInput) matchTimeInput.value = time;
+    if (league && leagueNameInput) leagueNameInput.value = league;
+    if (home && homeNameInput) homeNameInput.value = home;
+    if (away && awayNameInput) awayNameInput.value = away;
+
+    // 如果同时有主队和客队，自动计算预测
+    if (home && away) {
+        // 延迟执行以确保 DOM 完全渲染
+        setTimeout(function() {
+            if (typeof compute === 'function') {
+                compute();
+            } else {
+                console.warn('compute 函数未定义，请检查 index.html 的 JavaScript');
+            }
+        }, 150);
+    }
+}
     // 示例和重置
     function loadExample() {
         homeName.value = '利物浦';
@@ -477,7 +539,27 @@ function fillFromUrl() {
     }
 }
 	window.addEventListener('load', function() {
-    loadExample();
+
     fillFromUrl();
+	fillFromUrlParams();
+	// 检查是否有 URL 参数（来自赛事列表跳转）
+    const params = new URLSearchParams(window.location.search);
+    const hasParams = params.has('date') || params.has('time') || params.has('league') || params.has('home') || params.has('away');
+
+    if (hasParams) {
+        // 优先填充 URL 参数
+        fillFromUrlParams();
+        // 如果只有主客队，自动计算，否则不覆盖其他数据（如示例数据）
+        // 但为了确保示例数据被清理，我们可以选择不清除示例，但覆盖主客队后自动计算
+        // 注意：如果示例数据已被加载，可能会覆盖部分字段，因此我们应在 loadExample 之前填充
+        // 但 loadExample 可能在之前已调用，我们需调整顺序
+        // 我们可以先不调用 loadExample，直接由 fillFromUrlParams 填充
+        // 由于 fillFromUrlParams 已填充，且 compute 被调用，不再需要 loadExample
+    } else {
+        // 无参数时加载最近记录（或示例）
+        // 请根据您的实际逻辑选择：
+        // loadLatestMatch();  // 如果存在此函数
+        loadExample(); // 否则加载示例
+    }
 });
 })();
