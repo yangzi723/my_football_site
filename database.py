@@ -55,6 +55,14 @@ def init_db():
         for col in ['date', 'time', 'league']:
             if col not in existing_cols:
                 conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
+        
+        # ===== 新增：添加赔率相关字段 =====
+        odds_cols = ['pos1', 'pos2', 'asian_odds', 'range', 'initial_prediction']
+        for col in odds_cols:
+            if col not in existing_cols:
+                conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
+        # ===== 新增结束 =====
+        
         conn.commit()
     init_fixtures_table()
     init_odds_table()
@@ -135,6 +143,13 @@ def delete_match(match_id):
         conn.commit()
 
 def update_match_full(match_id, data):
+    # 为可能缺失的字段设置默认值，避免参数绑定错误
+    data.setdefault('pos1', '')
+    data.setdefault('pos2', '')
+    data.setdefault('asian_odds', '')
+    data.setdefault('range', '')
+    data.setdefault('initial_prediction', '')
+
     with closing(get_db()) as conn:
         conn.execute('''
             UPDATE matches SET
@@ -171,7 +186,12 @@ def update_match_full(match_id, data):
                 draw_prob = :draw_prob,
                 away_prob = :away_prob,
                 judgment = :judgment,
-                result = :result
+                result = :result,
+                pos1 = :pos1,
+                pos2 = :pos2,
+                asian_odds = :asian_odds,
+                range = :range,
+                initial_prediction = :initial_prediction
             WHERE id = :id
         ''', {**data, 'id': match_id})
         conn.commit()
