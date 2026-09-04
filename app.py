@@ -15,6 +15,7 @@ app = Flask(__name__)
 init_db()
 
 # ---------- 页面路由 ----------
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -312,7 +313,24 @@ def api_add_fixture():
         return jsonify({'success': True, 'id': fid})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+@app.route('/api/match/find', methods=['GET'])
+def api_find_match():
+    date = request.args.get('date')
+    home_team = request.args.get('home_team')
+    away_team = request.args.get('away_team')
+    if not date or not home_team or not away_team:
+        return jsonify({'error': '缺少参数: date, home_team, away_team'}), 400
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            'SELECT * FROM matches WHERE date = ? AND home_team = ? AND away_team = ? ORDER BY created_at DESC LIMIT 1',
+            (date, home_team, away_team)
+        )
+        row = cur.fetchone()
+        if row:
+            return jsonify(dict(row))
+        else:
+            return jsonify(None), 200  # 返回 null
 # ---------- odds API ----------
 @app.route('/api/odds/save', methods=['POST'])
 def api_odds_save():

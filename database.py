@@ -57,7 +57,7 @@ def init_db():
                 conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
         
         # ===== 新增：添加赔率相关字段 =====
-        odds_cols = ['pos1', 'pos2', 'asian_odds', 'range', 'initial_prediction']
+        odds_cols = ['pos1', 'pos2', 'asian_odds', 'range', 'initial_prediction', 'initial_analysis', 'final_analysis']
         for col in odds_cols:
             if col not in existing_cols:
                 conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
@@ -149,6 +149,8 @@ def update_match_full(match_id, data):
     data.setdefault('asian_odds', '')
     data.setdefault('range', '')
     data.setdefault('initial_prediction', '')
+    data.setdefault('initial_analysis', '')   # 新增
+    data.setdefault('final_analysis', '')     # 新增
 
     with closing(get_db()) as conn:
         conn.execute('''
@@ -191,6 +193,8 @@ def update_match_full(match_id, data):
                 pos2 = :pos2,
                 asian_odds = :asian_odds,
                 range = :range,
+                initial_analysis = :initial_analysis,   -- 新增
+                final_analysis = :final_analysis,       -- 新增
                 initial_prediction = :initial_prediction
             WHERE id = :id
         ''', {**data, 'id': match_id})

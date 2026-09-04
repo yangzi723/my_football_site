@@ -1,3 +1,4 @@
+html
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -15,24 +16,22 @@
         六因子模型：实力 · 近3场状态 · 近3场主客场 · 人员 · 战意 · 身价 &nbsp;|&nbsp; 英冠平均身价基准 70M €
     </div>
 
-    <!-- 日期、时间、联赛 -->
-    <!-- 日期、时间、联赛（优化样式） -->
-<div style="display:flex; gap:15px; flex-wrap:wrap; align-items:center; margin-bottom:20px; background:#f8fafc; padding:12px 18px; border-radius:10px;">
-    <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px;">
-        <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55;">比赛日期</label>
-        <input type="date" id="match-date" style="flex:0 1 160px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px;">
-
+    <!-- 日期、时间、联赛 + 保存按钮（强制不换行） -->
+    <div style="display:flex; gap:15px; flex-wrap:nowrap; align-items:center; margin-bottom:20px; background:#f8fafc; padding:12px 18px; border-radius:10px; overflow-x:auto;">
+        <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px; flex-shrink:0;">
+            <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55; white-space:nowrap;">比赛日期</label>
+            <input type="date" id="match-date" style="width:160px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px; flex-shrink:0;">
+        </div>
+        <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px; flex-shrink:0;">
+            <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55; white-space:nowrap;">比赛时间</label>
+            <input type="text" id="match-time" placeholder="如 19:30" style="width:100px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px; flex-shrink:0;">
+        </div>
+        <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px; flex:1 1 auto; min-width:200px;">
+            <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55; white-space:nowrap;">联赛名称</label>
+            <input type="text" id="league-name" placeholder="如 Premier League" style="flex:1 1 auto; min-width:120px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px;">
+            <button class="btn" id="saveBtn" style="padding:6px 16px; white-space:nowrap; flex-shrink:0;">💾 保存比赛</button>
+        </div>
     </div>
-    <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px;">
-        <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55;">比赛时间</label>
-        <input type="text" id="match-time" placeholder="如 19:30" style="flex:0 1 100px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px;">
-    </div>
-    <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px;">
-        <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55;">联赛名称</label>
-        <input type="text" id="league-name" placeholder="如 Premier League" style="flex:0 1 180px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px;">
-
-    </div>
-</div>
 
     <!-- 权重调节 -->
     <div style="background:#f1f5f9; border-radius:12px; padding:12px 18px; margin-bottom:20px;">
@@ -52,19 +51,19 @@
     <div class="two-col">
         <div class="team-box">
             <h2>🏠 主队 <span class="badge">近3场数据</span></h2>
-            <div class="form-group"><label>球队名称</label><input type="text" id="home-name" value="利物浦" placeholder="输入主队名"></div>
+            <div class="form-group"><label>球队名称</label><input type="text" id="home-name" placeholder="输入主队名"></div>
             <div class="section-title">实力因子</div>
-            <div class="form-group"><label>联赛排名</label><input type="number" id="home-rank" value="2" min="1"></div>
-            <div class="form-group"><label>赛季总进球</label><input type="number" id="home-scored" value="75" min="0"></div>
-            <div class="form-group"><label>赛季总失球</label><input type="number" id="home-conceded" value="28" min="0"></div>
+            <div class="form-group"><label>联赛排名</label><input type="number" id="home-rank" min="1"></div>
+            <div class="form-group"><label>赛季总进球</label><input type="number" id="home-scored" min="0"></div>
+            <div class="form-group"><label>赛季总失球</label><input type="number" id="home-conceded" min="0"></div>
             <div class="section-title">状态因子 (近3场)</div>
-            <div class="form-group"><label>近3场积分</label><input type="number" id="home-recent" value="7" min="0" max="9"> <span class="hint">胜3平1负0</span></div>
-            <div class="section-title">主客场因子 (近3场主场)</div>
-            <div class="form-group"><label>主场胜</label><input type="number" id="home-hw" value="2" min="0"></div>
-            <div class="form-group"><label>主场平</label><input type="number" id="home-hd" value="1" min="0"></div>
-            <div class="form-group"><label>主场负</label><input type="number" id="home-hl" value="0" min="0"></div>
+            <div class="form-group"><label>近3场积分</label><input type="number" id="home-recent" min="0" max="9"> <span class="hint">胜3平1负0</span></div>
+            <div class="section-title">主客场因子 (只填胜平负场次)</div>
+            <div class="form-group"><label>主场胜</label><input type="number" id="home-hw" min="0"></div>
+            <div class="form-group"><label>主场平</label><input type="number" id="home-hd" min="0"></div>
+            <div class="form-group"><label>主场负</label><input type="number" id="home-hl" min="0"></div>
             <div class="section-title">人员 & 战意</div>
-            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="home-injuries" value="1" min="0"></div>
+            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="home-injuries" min="0"></div>
             <div class="form-group"><label>战意等级</label>
                 <select id="home-motivation">
                     <option value="1">1 - 低</option>
@@ -75,39 +74,39 @@
                 </select>
             </div>
             <div class="section-title">身价因子</div>
-            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="home-value" value="950" min="0" step="10"></div>
+            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="home-value" min="0" step="10"></div>
             <div class="section-title">意外因素 (仅供参考)</div>
-            <div class="form-group"><label>备注</label><input type="text" id="home-unexpected" value="萨拉赫回归，士气高涨" placeholder="如天气、裁判等"></div>
+            <div class="form-group"><label>备注</label><input type="text" id="home-unexpected" placeholder="如天气、裁判等"></div>
         </div>
 
         <div class="team-box">
             <h2>✈️ 客队 <span class="badge">近3场数据</span></h2>
-            <div class="form-group"><label>球队名称</label><input type="text" id="away-name" value="阿森纳" placeholder="输入客队名"></div>
+            <div class="form-group"><label>球队名称</label><input type="text" id="away-name" placeholder="输入客队名"></div>
             <div class="section-title">实力因子</div>
-            <div class="form-group"><label>联赛排名</label><input type="number" id="away-rank" value="3" min="1"></div>
-            <div class="form-group"><label>赛季总进球</label><input type="number" id="away-scored" value="70" min="0"></div>
-            <div class="form-group"><label>赛季总失球</label><input type="number" id="away-conceded" value="30" min="0"></div>
+            <div class="form-group"><label>联赛排名</label><input type="number" id="away-rank" min="1"></div>
+            <div class="form-group"><label>赛季总进球</label><input type="number" id="away-scored" min="0"></div>
+            <div class="form-group"><label>赛季总失球</label><input type="number" id="away-conceded" min="0"></div>
             <div class="section-title">状态因子 (近3场)</div>
-            <div class="form-group"><label>近3场积分</label><input type="number" id="away-recent" value="6" min="0" max="9"> <span class="hint">胜3平1负0</span></div>
+            <div class="form-group"><label>近3场积分</label><input type="number" id="away-recent" min="0" max="9"> <span class="hint">胜3平1负0</span></div>
             <div class="section-title">主客场因子 (近3场客场)</div>
-            <div class="form-group"><label>客场胜</label><input type="number" id="away-aw" value="1" min="0"></div>
-            <div class="form-group"><label>客场平</label><input type="number" id="away-ad" value="1" min="0"></div>
-            <div class="form-group"><label>客场负</label><input type="number" id="away-al" value="1" min="0"></div>
+            <div class="form-group"><label>客场胜</label><input type="number" id="away-aw" min="0"></div>
+            <div class="form-group"><label>客场平</label><input type="number" id="away-ad" min="0"></div>
+            <div class="form-group"><label>客场负</label><input type="number" id="away-al" min="0"></div>
             <div class="section-title">人员 & 战意</div>
-            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="away-injuries" value="0" min="0"></div>
+            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="away-injuries" min="0"></div>
             <div class="form-group"><label>战意等级</label>
                 <select id="away-motivation">
                     <option value="1">1 - 低</option>
                     <option value="2">2 - 中低</option>
-                    <option value="3">3 - 中</option>
-                    <option value="4" selected>4 - 高</option>
+                    <option value="3" selected>3 - 中</option>
+                    <option value="4">4 - 高</option>
                     <option value="5">5 - 极高</option>
                 </select>
             </div>
             <div class="section-title">身价因子</div>
-            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="away-value" value="780" min="0" step="10"></div>
+            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="away-value" min="0" step="10"></div>
             <div class="section-title">意外因素 (仅供参考)</div>
-            <div class="form-group"><label>备注</label><input type="text" id="away-unexpected" value="多名主力轮换，体能占优" placeholder="如天气、裁判等"></div>
+            <div class="form-group"><label>备注</label><input type="text" id="away-unexpected" placeholder="如天气、裁判等"></div>
         </div>
     </div>
 
@@ -115,7 +114,6 @@
     <div class="btn-group">
         <button class="btn btn-success" id="fetchBtn">📡 抓取比赛</button>
         <button class="btn" id="calcBtn">📊 计算评分与预测</button>
-        <button class="btn btn-secondary" id="loadExampleBtn">📋 加载示例 (利物浦 vs 阿森纳)</button>
         <button class="btn btn-secondary" id="resetBtn">🔄 重置</button>
     </div>
 
@@ -151,8 +149,8 @@
                 <span style="font-size:13px; color:#4b657a; margin-left:6px;">（根据得分自动推荐，可手动更改）</span>
             </div>
             <div id="unexpected-display" class="unexpected" style="display:none;"></div>
+            <!-- 保存按钮已移到顶部，此处仅保留提示 -->
             <div class="save-row">
-                <button class="btn" id="saveBtn">💾 保存比赛</button>
                 <span style="font-size:13px; color:#4b657a;">保存后可在历史记录中查看和复盘</span>
             </div>
         </div>
@@ -192,7 +190,6 @@
         <div style="margin-top:12px;font-size:13px;color:#4b657a;">点击任意一行，自动填充主客队和联赛</div>
     </div>
 </div>
-
 <script>
 (function() {
     "use strict";
@@ -247,7 +244,6 @@
     const toast = $('toast');
     const fetchBtn = $('fetchBtn');
     const calcBtn = $('calcBtn');
-    const loadExampleBtn = $('loadExampleBtn');
     const resetBtn = $('resetBtn');
     const modal = $('matchModal');
     const modalClose = $('modalClose');
@@ -555,56 +551,7 @@
 
     function closeModal() { modal.style.display = 'none'; }
     modalClose.addEventListener('click', closeModal);
-   window.addEventListener('load', function() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
-    const date = params.get('date');
-    const time = params.get('time');
-    const league = params.get('league');
-    const home = params.get('home');
-    const away = params.get('away');
 
-    // 1. 优先处理 id（来自历史记录点击主客队链接）
-    if (id) {
-        if (typeof loadMatchById === 'function') {
-            loadMatchById(id);
-        } else {
-            console.warn('loadMatchById 未定义，加载示例');
-            loadExample();
-        }
-        return; // 处理完 id 后不再执行其他分支
-    }
-
-    // 2. 处理从赛事列表跳转（携带 date、home、away 等）
-    if (date && home && away) {
-        if (typeof loadMatchByFixture === 'function') {
-            loadMatchByFixture(date, home, away, time, league);
-        } else {
-            console.warn('loadMatchByFixture 未定义，填充基础数据');
-            fillFromUrlParams(); // 降级方案
-        }
-        return;
-    }
-
-    // 3. 仅主客队（无日期），直接填充并计算
-    if (home && away) {
-        const homeNameInput = document.getElementById('home-name');
-        const awayNameInput = document.getElementById('away-name');
-        if (homeNameInput) homeNameInput.value = home;
-        if (awayNameInput) awayNameInput.value = away;
-        setTimeout(() => {
-            if (typeof compute === 'function') compute();
-        }, 200);
-        return;
-    }
-
-    // 4. 无任何参数，加载默认内容
-    if (typeof loadLatestMatch === 'function') {
-        loadLatestMatch();
-    } else {
-        loadExample();
-    }
-});
     // 加载历史（可编辑，不设置只读）
     function fillMatchData(m) {
         homeName.value = m.home_team;
@@ -661,7 +608,6 @@
         } else unexpectedDisplay.style.display = 'none';
     }
 
-    // 确保所有控件启用（显式移除 disabled）
     function enableAllControls() {
         document.querySelectorAll('.team-box input, .team-box select, #league-name, #match-date, #match-time, .w-slider, .btn, .btn-success, .btn-secondary').forEach(el => {
             el.disabled = false;
@@ -700,114 +646,154 @@
                 enableAllControls();
             } else {
                 enableAllControls();
-                loadExample();
+                resetAll();
             }
         })
         .catch(() => {
             enableAllControls();
-            loadExample();
+            resetAll();
         });
     }
 
-    function loadExample() {
-        enableAllControls();
-        homeName.value = '利物浦';
-        leagueName.value = 'Premier League';
+    // 清空所有球队统计数据（排名、进球、失球、近3场、主客场、伤病、战意、身价、意外因素）
+    function clearTeamData() {
+        const ids = [
+            'home-rank', 'home-scored', 'home-conceded', 'home-recent',
+            'home-hw', 'home-hd', 'home-hl',
+            'home-injuries', 'home-motivation', 'home-value', 'home-unexpected',
+            'away-rank', 'away-scored', 'away-conceded', 'away-recent',
+            'away-aw', 'away-ad', 'away-al',
+            'away-injuries', 'away-motivation', 'away-value', 'away-unexpected'
+        ];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (el.type === 'number' || el.type === 'text') {
+                    el.value = '';
+                } else if (el.tagName === 'SELECT') {
+                    el.value = '3';
+                }
+            }
+        });
+    }
+
+    // 重置所有输入（完全清空）
+    function resetAll() {
+        // 清空所有文本输入框
+        document.querySelectorAll('input[type="text"]').forEach(inp => {
+            inp.value = '';
+        });
+        // 清空所有数字输入框
+        document.querySelectorAll('input[type="number"]').forEach(inp => {
+            inp.value = '';
+        });
+        // 重置所有下拉选择框为默认（战意=3，基本面判断=equal）
+        document.querySelectorAll('select').forEach(s => {
+            if (s.id === 'basic-judge') s.value = 'equal';
+            else s.value = '3';
+        });
+        // 重置权重滑块为初始值
+        const defs = { strength:30, form:25, home_away:15, personnel:10, motivation:10, value:10 };
+        document.querySelectorAll('.w-slider').forEach(s => {
+            const k = s.dataset.key;
+            if (defs.hasOwnProperty(k)) {
+                s.value = defs[k];
+                const sp = s.parentElement.querySelector('.weight-val');
+                if (sp) sp.textContent = defs[k];
+            }
+        });
+        // 隐藏结果区域
+        resultArea.style.display = 'none';
+        // 清空意外因素显示
+        unexpectedDisplay.style.display = 'none';
+        // 清空日期和时间（保留默认日期？可选择性清空，但为了彻底，这里清空）
         matchDate.value = '';
         matchTime.value = '';
-        homeRank.value = '2'; homeScored.value = '75'; homeConceded.value = '28';
-        homeRecent.value = '7'; homeHW.value = '2'; homeHD.value = '1'; homeHL.value = '0';
-        homeInjuries.value = '1'; homeMotivation.value = '4'; homeValue.value = '950';
-        homeUnexpected.value = '萨拉赫回归，士气高涨';
-        awayName.value = '阿森纳';
-        awayRank.value = '3'; awayScored.value = '70'; awayConceded.value = '30';
-        awayRecent.value = '6'; awayAW.value = '1'; awayAD.value = '1'; awayAL.value = '1';
-        awayInjuries.value = '0'; awayMotivation.value = '4'; awayValue.value = '780';
-        awayUnexpected.value = '多名主力轮换，体能占优';
-        const defs = { strength:30, form:25, home_away:15, personnel:10, motivation:10, value:10 };
-        sliders.forEach(s => { const k = s.dataset.key; if (defs.hasOwnProperty(k)) { s.value = defs[k]; const sp = s.parentElement.querySelector('.weight-val'); if (sp) sp.textContent = defs[k]; } });
-        compute();
+        leagueName.value = '';
+        homeName.value = '';
+        awayName.value = '';
     }
 
-    function resetAll() {
-        document.querySelectorAll('input[type="number"]').forEach(inp => {
-            if (inp.id.includes('value')) inp.value = '0';
-            else if (inp.id.includes('rank')) inp.value = '10';
-            else if (inp.id.includes('recent')) inp.value = '0';
-            else if (inp.id.includes('hw') || inp.id.includes('hd') || inp.id.includes('hl') ||
-                     inp.id.includes('aw') || inp.id.includes('ad') || inp.id.includes('al')) inp.value = '0';
-            else if (inp.id.includes('injuries')) inp.value = '0';
-            else if (inp.id.includes('scored') || inp.id.includes('conceded')) inp.value = '0';
-        });
-        document.querySelectorAll('select').forEach(s => { if (s.id === 'basic-judge') s.value = 'equal'; else s.value = '3'; });
-        document.querySelectorAll('input[type="text"]').forEach(inp => {
-            if (inp.id === 'home-name') inp.value = '主队';
-            else if (inp.id === 'away-name') inp.value = '客队';
-            else if (inp.id === 'league-name') inp.value = '';
-            else if (inp.id === 'match-time') inp.value = '';
-            else inp.value = '';
-        });
-        const defs = { strength:30, form:25, home_away:15, personnel:10, motivation:10, value:10 };
-        sliders.forEach(s => { const k = s.dataset.key; if (defs.hasOwnProperty(k)) { s.value = defs[k]; const sp = s.parentElement.querySelector('.weight-val'); if (sp) sp.textContent = defs[k]; } });
-        resultArea.style.display = 'none';
-    }
+    // 从 URL 参数填充数据（先查找数据库中是否已有该赛事，有则加载完整记录，无则仅填充基本信息并清空统计）
+    function fillFromUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        const date = params.get('date');
+        const time = params.get('time');
+        const league = params.get('league');
+        const home = params.get('home');
+        const away = params.get('away');
 
-    // ---------- 从 URL 参数填充数据 ----------
-function fillFromUrlParams() {
-    const params = new URLSearchParams(window.location.search);
-    const date = params.get('date');
-    const time = params.get('time');
-    const league = params.get('league');
-    const home = params.get('home');
-    const away = params.get('away');
-
-    // 获取 DOM 元素
-    const matchDateInput = document.getElementById('match-date');
-    const matchTimeInput = document.getElementById('match-time');
-    const leagueNameInput = document.getElementById('league-name');
-    const homeNameInput = document.getElementById('home-name');
-    const awayNameInput = document.getElementById('away-name');
-
-    // 填充数据（如果元素存在）
-    if (date && matchDateInput) {
-        matchDateInput.value = date;
-        console.log('填充日期:', date);
-    }
-    if (time && matchTimeInput) {
-        matchTimeInput.value = time;
-        console.log('填充时间:', time);
-    }
-    if (league && leagueNameInput) {
-        leagueNameInput.value = league;
-        console.log('填充联赛:', league);
-    }
-    if (home && homeNameInput) {
-        homeNameInput.value = home;
-        console.log('填充主队:', home);
-    }
-    if (away && awayNameInput) {
-        awayNameInput.value = away;
-        console.log('填充客队:', away);
-    }
-
-    // 如果同时有主队和客队，自动计算预测
-    if (home && away) {
-        // 延迟执行以确保 DOM 完全渲染
-        setTimeout(function() {
-            if (typeof compute === 'function') {
-                compute();
-                console.log('自动计算预测');
-            } else {
-                console.warn('compute 函数未定义，请检查 index.html 的 JavaScript');
+        // 如果缺少主客队或日期，无法查询，直接清空并提示
+        if (!date || !home || !away) {
+            // 仍然填充已有的基本信息
+            const matchDateInput = document.getElementById('match-date');
+            const matchTimeInput = document.getElementById('match-time');
+            const leagueNameInput = document.getElementById('league-name');
+            const homeNameInput = document.getElementById('home-name');
+            const awayNameInput = document.getElementById('away-name');
+            if (date && matchDateInput) matchDateInput.value = date;
+            if (time && matchTimeInput) matchTimeInput.value = time;
+            if (league && leagueNameInput) leagueNameInput.value = league;
+            if (home && homeNameInput) homeNameInput.value = home;
+            if (away && awayNameInput) awayNameInput.value = away;
+            clearTeamData();
+            // 自动计算（但数据不全，计算意义不大，但可以触发）
+            if (home && away) {
+                setTimeout(() => { if (typeof compute === 'function') compute(); }, 200);
             }
-        }, 200);
+            return;
+        }
+
+        // 查询数据库中是否存在该赛事
+        fetch('/api/match/find?date=' + encodeURIComponent(date) + '&home_team=' + encodeURIComponent(home) + '&away_team=' + encodeURIComponent(away))
+        .then(res => {
+            if (!res.ok) throw new Error('查询失败');
+            return res.json();
+        })
+        .then(data => {
+            // 如果找到记录（data 不为 null），则加载完整数据
+            if (data && data.id) {
+                fillMatchData(data);
+                enableAllControls();
+                showToast('✅ 已加载已保存的 ' + home + ' vs ' + away + ' 数据');
+            } else {
+                // 未找到，仅填充基本信息，清空统计数据
+                const matchDateInput = document.getElementById('match-date');
+                const matchTimeInput = document.getElementById('match-time');
+                const leagueNameInput = document.getElementById('league-name');
+                const homeNameInput = document.getElementById('home-name');
+                const awayNameInput = document.getElementById('away-name');
+                if (date && matchDateInput) matchDateInput.value = date;
+                if (time && matchTimeInput) matchTimeInput.value = time;
+                if (league && leagueNameInput) leagueNameInput.value = league;
+                if (home && homeNameInput) homeNameInput.value = home;
+                if (away && awayNameInput) awayNameInput.value = away;
+                clearTeamData();
+                // 自动计算（虽然数据为空，但可让用户看到默认预测）
+                setTimeout(() => { if (typeof compute === 'function') compute(); }, 200);
+            }
+        })
+        .catch(err => {
+            showToast('❌ 查询已有记录失败: ' + err.message);
+            // 出错时仍然填充基本信息并清空统计
+            const matchDateInput = document.getElementById('match-date');
+            const matchTimeInput = document.getElementById('match-time');
+            const leagueNameInput = document.getElementById('league-name');
+            const homeNameInput = document.getElementById('home-name');
+            const awayNameInput = document.getElementById('away-name');
+            if (date && matchDateInput) matchDateInput.value = date;
+            if (time && matchTimeInput) matchTimeInput.value = time;
+            if (league && leagueNameInput) leagueNameInput.value = league;
+            if (home && homeNameInput) homeNameInput.value = home;
+            if (away && awayNameInput) awayNameInput.value = away;
+            clearTeamData();
+            setTimeout(() => { if (typeof compute === 'function') compute(); }, 200);
+        });
     }
-}
 
     // 事件绑定
     fetchBtn.addEventListener('click', fetchMatches);
     calcBtn.addEventListener('click', compute);
-    loadExampleBtn.addEventListener('click', loadExample);
     resetBtn.addEventListener('click', resetAll);
     saveBtn.addEventListener('click', saveCurrentMatch);
     document.addEventListener('keydown', e => {
@@ -817,22 +803,67 @@ function fillFromUrlParams() {
     });
 
     window.addEventListener('load', function() {
-    // 检查 URL 参数
-    const params = new URLSearchParams(window.location.search);
-    const hasParams = params.has('date') || params.has('time') || params.has('league') || params.has('home') || params.has('away');
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        const date = params.get('date');
+        const time = params.get('time');
+        const league = params.get('league');
+        const home = params.get('home');
+        const away = params.get('away');
 
-    if (hasParams) {
-        // 有参数时：先填充 URL 数据，不加载示例或历史记录
-        fillFromUrlParams();
-        // 注意：如果 fillFromUrlParams 中调用了 compute，则无需额外操作
-        // 否则，可以在这里再次尝试调用 compute（但 fillFromUrlParams 已包含）
-    } else {
-        // 无参数时：加载默认内容（示例或最近记录）
-        // 根据您的首页逻辑选择：
-        // loadLatestMatch();  // 如果存在
-        loadExample(); // 加载示例数据
-    }
-});
+        // 1. 优先处理 id（来自历史记录点击主客队链接）
+        if (id) {
+            if (typeof loadMatchById === 'function') {
+                loadMatchById(id);
+            } else {
+                if (typeof resetAll === 'function') resetAll();
+            }
+            return;
+        }
+
+        // 2. 处理从赛事列表跳转（携带 date、home、away 等）
+        if (date && home && away) {
+            // 使用 fillFromUrlParams 进行查询并决定加载或清空
+            if (typeof fillFromUrlParams === 'function') {
+                fillFromUrlParams();
+            } else {
+                // 降级：直接填充基本并清空
+                const matchDateInput = document.getElementById('match-date');
+                const matchTimeInput = document.getElementById('match-time');
+                const leagueNameInput = document.getElementById('league-name');
+                const homeNameInput = document.getElementById('home-name');
+                const awayNameInput = document.getElementById('away-name');
+                if (date && matchDateInput) matchDateInput.value = date;
+                if (time && matchTimeInput) matchTimeInput.value = time;
+                if (league && leagueNameInput) leagueNameInput.value = league;
+                if (home && homeNameInput) homeNameInput.value = home;
+                if (away && awayNameInput) awayNameInput.value = away;
+                clearTeamData();
+                setTimeout(() => { if (typeof compute === 'function') compute(); }, 200);
+            }
+            return;
+        }
+
+        // 3. 仅主客队（无日期），直接填充并计算（不查询数据库，因为没有日期无法精确匹配）
+        if (home && away) {
+            const homeNameInput = document.getElementById('home-name');
+            const awayNameInput = document.getElementById('away-name');
+            if (homeNameInput) homeNameInput.value = home;
+            if (awayNameInput) awayNameInput.value = away;
+            clearTeamData();
+            setTimeout(() => {
+                if (typeof compute === 'function') compute();
+            }, 200);
+            return;
+        }
+
+        // 4. 无任何参数，加载最近一条记录（若无则清空）
+        if (typeof loadLatestMatch === 'function') {
+            loadLatestMatch();
+        } else {
+            if (typeof resetAll === 'function') resetAll();
+        }
+    });
 })();
 </script>
 </body>

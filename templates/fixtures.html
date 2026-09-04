@@ -317,12 +317,12 @@
         });
 
         document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const id = this.dataset.id;
-                alert('赔率分析功能开发中，赛事ID: ' + id);
-            });
-        });
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // 直接跳转到赔率分析页面
+        window.location.href = '/odds';
+    });
+});
 
         document.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
