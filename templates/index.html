@@ -555,8 +555,56 @@
 
     function closeModal() { modal.style.display = 'none'; }
     modalClose.addEventListener('click', closeModal);
-    window.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+   window.addEventListener('load', function() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const date = params.get('date');
+    const time = params.get('time');
+    const league = params.get('league');
+    const home = params.get('home');
+    const away = params.get('away');
 
+    // 1. 优先处理 id（来自历史记录点击主客队链接）
+    if (id) {
+        if (typeof loadMatchById === 'function') {
+            loadMatchById(id);
+        } else {
+            console.warn('loadMatchById 未定义，加载示例');
+            loadExample();
+        }
+        return; // 处理完 id 后不再执行其他分支
+    }
+
+    // 2. 处理从赛事列表跳转（携带 date、home、away 等）
+    if (date && home && away) {
+        if (typeof loadMatchByFixture === 'function') {
+            loadMatchByFixture(date, home, away, time, league);
+        } else {
+            console.warn('loadMatchByFixture 未定义，填充基础数据');
+            fillFromUrlParams(); // 降级方案
+        }
+        return;
+    }
+
+    // 3. 仅主客队（无日期），直接填充并计算
+    if (home && away) {
+        const homeNameInput = document.getElementById('home-name');
+        const awayNameInput = document.getElementById('away-name');
+        if (homeNameInput) homeNameInput.value = home;
+        if (awayNameInput) awayNameInput.value = away;
+        setTimeout(() => {
+            if (typeof compute === 'function') compute();
+        }, 200);
+        return;
+    }
+
+    // 4. 无任何参数，加载默认内容
+    if (typeof loadLatestMatch === 'function') {
+        loadLatestMatch();
+    } else {
+        loadExample();
+    }
+});
     // 加载历史（可编辑，不设置只读）
     function fillMatchData(m) {
         homeName.value = m.home_team;
