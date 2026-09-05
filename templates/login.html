@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 后台管理</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .login-container {
+            max-width: 400px;
+            margin: 80px auto;
+            background: white;
+            padding: 30px 35px;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+        .login-container h1 { text-align: center; font-size: 24px; margin-bottom: 20px; }
+        .login-container .form-group { margin-bottom: 15px; }
+        .login-container .form-group label { display: block; font-weight: 500; margin-bottom: 4px; }
+        .login-container .form-group input { width: 100%; padding: 8px 12px; border: 1px solid #cdd8e6; border-radius: 6px; font-size: 14px; }
+        .login-container .btn { width: 100%; padding: 10px; background: #1a3a6b; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
+        .login-container .btn:hover { background: #0f2a4a; }
+        .error { color: #dc2626; font-size: 14px; margin-top: 8px; text-align: center; }
+        .footer-note { text-align: center; margin-top: 12px; color: #6b7280; font-size: 13px; }
+        .back-link { display: block; text-align: center; margin-top: 10px; color: #3b7cff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <h1>🔐 管理员登录</h1>
+            <form method="POST">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" name="username" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" name="password" required>
+                </div>
+                {% if error %}
+                    <div class="error">{{ error }}</div>
+                {% endif %}
+                <button type="submit" class="btn">登 录</button>
+            </form>
+            <a href="/" class="back-link">← 返回首页</a>
+            <div class="footer-note">默认管理员账号: admin / 密码: admin123（首次登录后请修改）</div>
+        </div>
+    </div>
+</body>
+</html>

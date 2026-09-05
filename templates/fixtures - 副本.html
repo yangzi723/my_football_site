@@ -6,459 +6,610 @@
     <title>赛事列表</title>
     <link rel="stylesheet" href="/static/style.css">
     <style>
-        .action-btn {
-            padding: 4px 10px;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
-            font-size: 13px;
-            margin-right: 4px;
-        }
-        .edit-btn {
-            background: #3b7cff;
-            color: white;
-        }
-        .edit-btn:hover {
-            background: #2563eb;
-        }
-        .delete-btn {
-            background: #dc2626;
-            color: white;
-        }
-        .delete-btn:hover {
-            background: #b91c1c;
-        }
-        .add-btn {
-            background: #0f973d;
-            color: white;
-        }
-        .add-btn:hover {
-            background: #0b7a30;
-        }
-        .modify-score-btn {
-            background: #d97706;
-            color: white;
-        }
-        .modify-score-btn:hover {
-            background: #b45309;
-        }
-        .modal-edit {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-edit-content {
-            background: white;
-            border-radius: 16px;
-            max-width: 600px;
-            width: 95%;
-            padding: 20px 25px;
-        }
-        .modal-edit-content .form-group {
-            margin-bottom: 10px;
-        }
-        .modal-edit-content .form-group label {
-            width: 100px;
-            display: inline-block;
-        }
-        .filter-row {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        .filter-row input,
-        .filter-row button {
-            padding: 8px 14px;
-            border-radius: 8px;
-            border: 1px solid #cdd8e6;
-            font-size: 14px;
-        }
-        .filter-row button {
-            background: #1a3a6b;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .filter-row button:hover {
-            background: #0f2a4a;
-        }
-        .team-link {
-            cursor: pointer;
-            color: #1a3a6b;
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .team-link:hover {
-            text-decoration: underline;
-            color: #3b7cff;
-        }
-        .score-group {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .score-input {
-            width: 40px;
-            padding: 4px 6px;
-            border: 1px solid #cdd8e6;
-            border-radius: 4px;
-            text-align: center;
-            font-size: 14px;
-        }
-        .score-input:focus {
-            border-color: #3b7cff;
-            outline: none;
-        }
-        .score-separator {
-            font-weight: bold;
-            color: #1f3a5f;
-            font-size: 16px;
-        }
-        /* Toast 样式 */
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #1f3a5f;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 30px;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
-            z-index: 9999;
-            display: none;
-            font-size: 14px;
-        }
+        .action-btn { padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; margin-right: 4px; }
+        .edit-btn { background: #3b7cff; color: white; }
+        .edit-btn:hover { background: #2563eb; }
+        .delete-btn { background: #dc2626; color: white; }
+        .delete-btn:hover { background: #b91c1c; }
+        .add-btn { background: #0f973d; color: white; }
+        .add-btn:hover { background: #0b7a30; }
+        .save-score-btn { background: #d97706; color: white; }
+        .save-score-btn:hover { background: #b45309; }
+        .analysis-btn { background: #8b5cf6; color: white; }
+        .analysis-btn:hover { background: #7c3aed; }
+        .odds-analysis-btn { background: #3b82f6; color: white; }
+        .odds-analysis-btn:hover { background: #2563eb; }
+        .modal-edit { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-edit-content { background: white; border-radius: 16px; max-width: 600px; width: 95%; padding: 20px 25px; }
+        .modal-edit-content .form-group { margin-bottom: 10px; display: flex; align-items: center; }
+        .modal-edit-content .form-group label { width: 100px; font-weight: 500; font-size: 14px; }
+        .modal-edit-content .form-group input { flex: 1; padding: 6px 10px; border: 1px solid #cdd8e6; border-radius: 6px; font-size: 14px; }
+        .modal-edit-content .btn-group { margin-top: 15px; display: flex; gap: 10px; }
+        .filter-row { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-row input, .filter-row button { padding: 8px 14px; border-radius: 8px; border: 1px solid #cdd8e6; font-size: 14px; }
+        .filter-row button { background: #1a3a6b; color: white; border: none; cursor: pointer; }
+        .filter-row button:hover { background: #0f2a4a; }
+        .score-group { display: flex; align-items: center; gap: 4px; }
+        .score-input { width: 40px; padding: 4px 6px; border: 1px solid #cdd8e6; border-radius: 4px; text-align: center; font-size: 14px; }
+        .score-separator { font-weight: bold; color: #1f3a5f; font-size: 16px; }
+        .fetch-area { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; background: #f8fafc; padding: 12px 18px; border-radius: 10px; }
+        .fetch-area label { font-weight: 500; margin-right: 4px; }
+        .fetch-area input[type="date"] { padding: 6px 10px; border: 1px solid #cdd8e6; border-radius: 6px; }
+        .fetch-area .btn-success { background: #0f973d; color: white; border: none; padding: 6px 18px; border-radius: 30px; cursor: pointer; }
+        .fetch-area .btn-success:hover { background: #0b7a30; }
+        .fetch-area .checkbox-label { display: flex; align-items: center; gap: 4px; font-weight: normal; }
+        .pagination { display: flex; gap: 6px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+        .pagination button, .pagination .page-num { padding: 6px 12px; border-radius: 6px; border: 1px solid #cdd8e6; background: white; cursor: pointer; font-size: 14px; min-width: 36px; text-align: center; }
+        .pagination button:hover:not(:disabled), .pagination .page-num:hover { background: #e2e8f0; }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination .page-num.active { background: #1a3a6b; color: white; border-color: #1a3a6b; }
+        .pagination .page-num.active:hover { background: #0f2a4a; }
+        .pagination .ellipsis { padding: 6px 8px; color: #6b7280; }
+        .toast { position: fixed; top: 20px; right: 20px; background: #1f3a5f; color: white; padding: 12px 24px; border-radius: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); z-index: 9999; display: none; font-size: 14px; }
         .toast.show { display: block; }
+        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 500; display: inline-block; min-width: 36px; text-align: center; }
+        .status-finished { background: #d1fae5; color: #065f46; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .vs-large { font-weight: 800; font-size: 1.2em; color: #3b7cff; margin: 0 8px; text-shadow: 0 0 6px rgba(59,124,255,0.25); }
+        .analyzed-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: #3b7cff; transform: scale(1.1); border-radius: 50%; transition: 0.15s; }
+        .analyzed-checkbox:hover { transform: scale(1.2); }
+        .analyzed-cell { text-align: center; vertical-align: middle; }
     </style>
 </head>
 <body>
-    <div id="toast" class="toast"></div>
+<div class="container">
+    {% include '_navbar.html' %}
 
-    <div class="container">
-        {% include '_navbar.html' %}
+    <h1>📅 赛事列表</h1>
 
-        <h1>📅 赛事列表（抓取记录）</h1>
-
-        <div class="filter-row">
-            <label>日期筛选：</label>
-            <input type="date" id="filter-date">
-            <button id="filterBtn">筛选</button>
-            <button id="clearFilterBtn">清除筛选</button>
-            <button class="add-btn" id="addBtn">➕ 手动添加</button>
-        </div>
-
-        <div id="loading" style="padding:20px; text-align:center;">加载中...</div>
-        <div id="tableWrap" style="display:none; overflow-x:auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>日期</th>
-                        <th>时间</th>
-                        <th>联赛</th>
-                        <th>主队</th>
-                        <th>客队</th>
-                        <th>比分</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="fixturesBody"></tbody>
-            </table>
-        </div>
+    <div class="fetch-area">
+        <label>📡 获取赛事</label>
+        <input type="date" id="fetch-date">
+        <label class="checkbox-label">
+            <input type="checkbox" id="include-finished"> 包含已完赛
+        </label>
+        <button class="btn-success" id="fetchFixturesBtn">抓取</button>
     </div>
 
-    <!-- 编辑/添加模态框 -->
-    <div id="editModal" class="modal-edit">
-        <div class="modal-edit-content">
-            <h3 id="editTitle">编辑赛事</h3>
-            <div id="editFormContainer">
-                <div class="form-group"><label>日期</label><input type="date" id="edit-date"></div>
-                <div class="form-group"><label>时间</label><input type="text" id="edit-time" placeholder="如 19:30"></div>
-                <div class="form-group"><label>联赛</label><input type="text" id="edit-league"></div>
-                <div class="form-group"><label>主队</label><input type="text" id="edit-home"></div>
-                <div class="form-group"><label>客队</label><input type="text" id="edit-away"></div>
-                <div class="form-group">
-                    <label>比分</label>
-                    <div class="score-group">
-                        <input type="text" id="edit-home-score" class="score-input" placeholder="0">
-                        <span class="score-separator">:</span>
-                        <input type="text" id="edit-away-score" class="score-input" placeholder="0">
-                    </div>
+    <div class="filter-row">
+        <label>日期筛选：</label>
+        <input type="date" id="filter-date">
+        <button id="filterBtn">筛选</button>
+        <button id="clearFilterBtn">清除筛选</button>
+        <button class="add-btn" id="addBtn">➕ 手动添加</button>
+    </div>
+
+    <div id="loading" style="padding:20px; text-align:center;">加载中...</div>
+    <div id="tableWrap" style="display:none; overflow-x:auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>日期</th>
+                    <th>时间</th>
+                    <th>联赛</th>
+                    <th>主队 VS 客队</th>
+                    <th>比分</th>
+                    <th>状态</th>
+                    <th>已分析</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="fixturesBody"></tbody>
+        </table>
+    </div>
+
+    <div class="pagination" id="pagination" style="display:none;">
+        <button id="prevPageBtn" disabled>上一页</button>
+        <span id="pageNumbers"></span>
+        <button id="nextPageBtn" disabled>下一页</button>
+        <select id="perPageSelect" style="margin-left:10px;padding:4px 8px;border-radius:6px;border:1px solid #cdd8e6;">
+            <option value="10">10条/页</option>
+            <option value="20" selected>20条/页</option>
+            <option value="50">50条/页</option>
+            <option value="100">100条/页</option>
+        </select>
+        <span style="font-size:13px; color:#4b657a; margin-left:8px;">共 <span id="totalCount">0</span> 条</span>
+    </div>
+</div>
+
+<!-- 编辑/添加模态框 -->
+<div id="editModal" class="modal-edit">
+    <div class="modal-edit-content">
+        <h3 id="editTitle">编辑赛事</h3>
+        <div id="editFormContainer">
+            <div class="form-group"><label>日期</label><input type="date" id="edit-date"></div>
+            <div class="form-group"><label>时间</label><input type="text" id="edit-time" placeholder="如 19:30"></div>
+            <div class="form-group"><label>联赛</label><input type="text" id="edit-league"></div>
+            <div class="form-group"><label>主队</label><input type="text" id="edit-home"></div>
+            <div class="form-group"><label>客队</label><input type="text" id="edit-away"></div>
+            <div class="form-group"><label>比分</label>
+                <div class="score-group">
+                    <input type="text" id="edit-home-score" class="score-input" placeholder="0">
+                    <span class="score-separator">:</span>
+                    <input type="text" id="edit-away-score" class="score-input" placeholder="0">
                 </div>
             </div>
-            <div class="btn-group" style="margin-top:15px;">
-                <button class="btn" id="saveEditBtn">保存</button>
-                <button class="btn btn-secondary" id="cancelEditBtn">取消</button>
-            </div>
+        </div>
+        <div class="btn-group">
+            <button class="btn" id="saveEditBtn">保存</button>
+            <button class="btn btn-secondary" id="cancelEditBtn">取消</button>
         </div>
     </div>
+</div>
 
-    <script>
-        (function() {
-            const tbody = document.getElementById('fixturesBody');
-            const loading = document.getElementById('loading');
-            const tableWrap = document.getElementById('tableWrap');
-            const filterDate = document.getElementById('filter-date');
-            const filterBtn = document.getElementById('filterBtn');
-            const clearFilterBtn = document.getElementById('clearFilterBtn');
-            const addBtn = document.getElementById('addBtn');
-            const editModal = document.getElementById('editModal');
-            const editTitle = document.getElementById('editTitle');
-            const editDate = document.getElementById('edit-date');
-            const editTime = document.getElementById('edit-time');
-            const editLeague = document.getElementById('edit-league');
-            const editHome = document.getElementById('edit-home');
-            const editAway = document.getElementById('edit-away');
-            const editHomeScore = document.getElementById('edit-home-score');
-            const editAwayScore = document.getElementById('edit-away-score');
-            const saveEditBtn = document.getElementById('saveEditBtn');
-            const cancelEditBtn = document.getElementById('cancelEditBtn');
-            const toast = document.getElementById('toast');
+<!-- Toast -->
+<div id="toast" class="toast"></div>
 
-            let currentEditId = null;
-            let toastTimer = null;
+<script>
+(function() {
+    const tbody = document.getElementById('fixturesBody');
+    const loading = document.getElementById('loading');
+    const tableWrap = document.getElementById('tableWrap');
+    const filterDate = document.getElementById('filter-date');
+    const filterBtn = document.getElementById('filterBtn');
+    const clearFilterBtn = document.getElementById('clearFilterBtn');
+    const addBtn = document.getElementById('addBtn');
+    const editModal = document.getElementById('editModal');
+    const editTitle = document.getElementById('editTitle');
+    const editDate = document.getElementById('edit-date');
+    const editTime = document.getElementById('edit-time');
+    const editLeague = document.getElementById('edit-league');
+    const editHome = document.getElementById('edit-home');
+    const editAway = document.getElementById('edit-away');
+    const editHomeScore = document.getElementById('edit-home-score');
+    const editAwayScore = document.getElementById('edit-away-score');
+    const saveEditBtn = document.getElementById('saveEditBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const toast = document.getElementById('toast');
 
-            function showToast(msg) {
-                toast.textContent = msg;
-                toast.classList.add('show');
-                clearTimeout(toastTimer);
-                toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    const pagination = document.getElementById('pagination');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    const pageNumbers = document.getElementById('pageNumbers');
+    const perPageSelect = document.getElementById('perPageSelect');
+    const totalCountSpan = document.getElementById('totalCount');
+
+    const fetchDate = document.getElementById('fetch-date');
+    const includeFinished = document.getElementById('include-finished');
+    const fetchBtn = document.getElementById('fetchFixturesBtn');
+
+    let currentEditId = null;
+    let toastTimer = null;
+    let currentOffset = 0;
+    let currentLimit = 20;
+    let currentDateFilter = '';
+    let totalItems = 0;
+
+    function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function splitScore(scoreStr) {
+        if (!scoreStr) return ['', ''];
+        const parts = scoreStr.split(':');
+        if (parts.length === 2) return [parts[0].trim(), parts[1].trim()];
+        return ['', ''];
+    }
+
+    function isMatchFinished(dateStr, timeStr) {
+        if (!dateStr) return false;
+        if (!timeStr || timeStr.trim() === '') return false;
+        try {
+            const matchTime = new Date(dateStr + 'T' + timeStr.trim() + ':00');
+            const now = new Date();
+            return (now - matchTime) > 10800000;
+        } catch (e) { return false; }
+    }
+
+    function loadFixtures(date, limit, offset) {
+        if (date === undefined) date = currentDateFilter;
+        if (limit === undefined) limit = currentLimit;
+        if (offset === undefined) offset = currentOffset;
+
+        loading.style.display = 'block';
+        tableWrap.style.display = 'none';
+        let url = `/api/fixtures?limit=${limit}&offset=${offset}`;
+        if (date) url += '&date=' + date;
+
+        fetch(url)
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(text => {
+                    throw new Error(`HTTP ${res.status}: ${text.substring(0, 100)}`);
+                });
+            }
+            return res.json();
+        })
+        .then(data => {
+            loading.style.display = 'none';
+            tableWrap.style.display = 'block';
+            const fixtures = data.data || [];
+            totalItems = data.total || 0;
+            currentLimit = data.limit || limit;
+            currentOffset = data.offset || offset;
+
+            if (fixtures.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;">暂无赛事记录</td></tr>';
+                pagination.style.display = 'none';
+                return;
             }
 
-            function splitScore(scoreStr) {
-                if (!scoreStr) return ['', ''];
-                const parts = scoreStr.split(':');
-                if (parts.length === 2) return [parts[0].trim(), parts[1].trim()];
-                return ['', ''];
-            }
+            let html = '';
+            fixtures.forEach(item => {
+                const [homeScore, awayScore] = splitScore(item.score);
+                const finished = isMatchFinished(item.date, item.time);
+                const statusClass = finished ? 'status-finished' : 'status-pending';
+                const statusText = finished ? '完赛' : '待定';
+                const vsSymbol = '<span class="vs-large">VS</span>';
+                const analyzed = item.analyzed || 0;
 
-            function saveScoreForRow(id) {
-                const homeInput = document.querySelector(`.home-score[data-id="${id}"]`);
-                const awayInput = document.querySelector(`.away-score[data-id="${id}"]`);
-                if (!homeInput || !awayInput) return;
-                const home = homeInput.value.trim() || '0';
-                const away = awayInput.value.trim() || '0';
-                const newScore = home + ':' + away;
+                html += `<tr>
+                    <td>${item.id}</td>
+                    <td>${item.date}</td>
+                    <td>${item.time || ''}</td>
+                    <td>${item.league}</td>
+                    <td>${item.home_team} ${vsSymbol} ${item.away_team}</td>
+                    <td>
+                        <div class="score-group">
+                            <input type="text" class="score-input home-score" value="${homeScore}" data-id="${item.id}" placeholder="0">
+                            <span class="score-separator">:</span>
+                            <input type="text" class="score-input away-score" value="${awayScore}" data-id="${item.id}" placeholder="0">
+                        </div>
+                    </td>
+                    <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                    <td class="analyzed-cell">
+                        <input type="checkbox" class="analyzed-checkbox" data-id="${item.id}" ${analyzed ? 'checked' : ''}>
+                    </td>
+                    <td>
+                        <button class="action-btn save-score-btn" data-id="${item.id}">修改比分</button>
+                        <button class="action-btn analysis-btn" data-id="${item.id}">基本面分析</button>
+                        <button class="action-btn odds-analysis-btn" data-id="${item.id}">赔率分析</button>
+                        <button class="action-btn edit-btn" data-id="${item.id}">编辑</button>
+                        <button class="action-btn delete-btn" data-id="${item.id}">删除</button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+
+            bindEvents();
+            updatePagination();
+        })
+        .catch(err => {
+            loading.textContent = '❌ 加载失败: ' + err.message;
+            console.error('加载失败:', err);
+        });
+    }
+
+    function bindEvents() {
+        document.querySelectorAll('.save-score-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const id = this.dataset.id;
+                saveScoreForRow(id);
+            });
+        });
+
+        // 基本面分析 -> 跳转首页并携带数据
+        document.querySelectorAll('.analysis-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const tr = this.closest('tr');
+                const date = tr.querySelector('td:nth-child(2)').textContent.trim();
+                const time = tr.querySelector('td:nth-child(3)').textContent.trim();
+                const league = tr.querySelector('td:nth-child(4)').textContent.trim();
+                const homeAwayText = tr.querySelector('td:nth-child(5)').textContent.trim();
+                const vsIndex = homeAwayText.indexOf('VS');
+                let home = homeAwayText.substring(0, vsIndex).trim();
+                let away = homeAwayText.substring(vsIndex + 2).trim();
+                const params = new URLSearchParams({
+                    date: date,
+                    time: time,
+                    league: league,
+                    home: home,
+                    away: away
+                });
+                window.location.href = '/?' + params.toString();
+            });
+        });
+
+        document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // 直接跳转到赔率分析页面
+        window.location.href = '/odds';
+    });
+});
+
+        document.querySelectorAll('.edit-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const id = this.dataset.id;
+                openEditModal(id);
+            });
+        });
+
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const id = this.dataset.id;
+                if (confirm('确定删除该赛事吗？')) {
+                    fetch('/api/fixtures/' + id, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.success) loadFixtures(currentDateFilter, currentLimit, currentOffset);
+                        else alert('删除失败: ' + (res.error || '未知错误'));
+                    });
+                }
+            });
+        });
+
+        document.querySelectorAll('.score-input').forEach(input => {
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const id = this.dataset.id;
+                    if (id) {
+                        saveScoreForRow(id);
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll('.analyzed-checkbox').forEach(cb => {
+            cb.addEventListener('change', function(e) {
+                e.stopPropagation();
+                const id = this.dataset.id;
+                const analyzed = this.checked ? 1 : 0;
                 fetch('/api/fixtures/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ score: newScore })
+                    body: JSON.stringify({ analyzed: analyzed })
                 })
                 .then(res => res.json())
                 .then(res => {
                     if (res.success) {
-                        showToast('✅ 比分已更新');
-                        loadFixtures(filterDate.value);
+                        showToast('✅ 已分析状态已更新');
                     } else {
                         showToast('❌ 更新失败: ' + (res.error || '未知错误'));
+                        this.checked = !this.checked;
                     }
+                })
+                .catch(err => {
+                    showToast('❌ 请求出错: ' + err.message);
+                    this.checked = !this.checked;
                 });
+            });
+        });
+    }
+
+    function saveScoreForRow(id) {
+        const homeInput = document.querySelector(`.home-score[data-id="${id}"]`);
+        const awayInput = document.querySelector(`.away-score[data-id="${id}"]`);
+        if (!homeInput || !awayInput) return;
+        const home = homeInput.value.trim() || '0';
+        const away = awayInput.value.trim() || '0';
+        const newScore = home + ':' + away;
+        fetch('/api/fixtures/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ score: newScore })
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                showToast('✅ 比分已更新');
+                loadFixtures(currentDateFilter, currentLimit, currentOffset);
+            } else {
+                showToast('❌ 更新失败: ' + (res.error || '未知错误'));
             }
+        });
+    }
 
-            function loadFixtures(date) {
-                loading.style.display = 'block';
-                tableWrap.style.display = 'none';
-                let url = '/api/fixtures';
-                if (date) url += '?date=' + date;
-                fetch(url)
-                    .then(res => res.json())
-                    .then(data => {
-                        loading.style.display = 'none';
-                        tableWrap.style.display = 'block';
-                        if (!data || data.length === 0) {
-                            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">暂无赛事记录</td></tr>';
-                            return;
-                        }
-                        let html = '';
-                        data.forEach(item => {
-                            const [homeScore, awayScore] = splitScore(item.score);
-                            html += `<tr>
-                                <td>${item.id}</td>
-                                <td>${item.date}</td>
-                                <td>${item.time || ''}</td>
-                                <td>${item.league}</td>
-                                <td><span class="team-link" data-home="${item.home_team}">${item.home_team}</span></td>
-                                <td><span class="team-link" data-away="${item.away_team}">${item.away_team}</span></td>
-                                <td>
-                                    <div class="score-group">
-                                        <input type="text" class="score-input home-score" value="${homeScore}" data-id="${item.id}" placeholder="0">
-                                        <span class="score-separator">:</span>
-                                        <input type="text" class="score-input away-score" value="${awayScore}" data-id="${item.id}" placeholder="0">
-                                    </div>
-                                </td>
-                                <td>
-                                    <button class="action-btn modify-score-btn" data-id="${item.id}">修改比分</button>
-                                    <button class="action-btn edit-btn" data-id="${item.id}">编辑</button>
-                                    <button class="action-btn delete-btn" data-id="${item.id}">删除</button>
-                                </td>
-                            </tr>`;
-                        });
-                        tbody.innerHTML = html;
+    function openEditModal(id) {
+        if (id) {
+            currentEditId = id;
+            editTitle.textContent = '编辑赛事';
+            fetch('/api/fixtures/' + id)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) { alert(data.error); return; }
+                editDate.value = data.date;
+                editTime.value = data.time || '';
+                editLeague.value = data.league;
+                editHome.value = data.home_team;
+                editAway.value = data.away_team;
+                const [h, a] = splitScore(data.score);
+                editHomeScore.value = h;
+                editAwayScore.value = a;
+                editModal.style.display = 'flex';
+            });
+        } else {
+            currentEditId = null;
+            editTitle.textContent = '添加赛事';
+            editDate.value = '';
+            editTime.value = '';
+            editLeague.value = '';
+            editHome.value = '';
+            editAway.value = '';
+            editHomeScore.value = '';
+            editAwayScore.value = '';
+            editModal.style.display = 'flex';
+        }
+    }
 
-                        // 绑定球队名称点击跳转
-                        document.querySelectorAll('.team-link').forEach(span => {
-                            span.addEventListener('click', function(e) {
-                                e.stopPropagation();
-                                const home = this.dataset.home;
-                                const away = this.dataset.away;
-                                let homeTeam, awayTeam;
-                                if (home) {
-                                    homeTeam = home;
-                                    const tr = this.closest('tr');
-                                    const awaySpan = tr.querySelector('.team-link[data-away]');
-                                    awayTeam = awaySpan ? awaySpan.dataset.away : '';
-                                } else if (away) {
-                                    awayTeam = away;
-                                    const tr = this.closest('tr');
-                                    const homeSpan = tr.querySelector('.team-link[data-home]');
-                                    homeTeam = homeSpan ? homeSpan.dataset.home : '';
-                                }
-                                if (homeTeam && awayTeam) {
-                                    window.location.href = '/?home=' + encodeURIComponent(homeTeam) +
-                                        '&away=' + encodeURIComponent(awayTeam);
-                                }
-                            });
-                        });
-
-                        // 修改比分按钮
-                        document.querySelectorAll('.modify-score-btn').forEach(btn => {
-                            btn.addEventListener('click', function(e) {
-                                e.stopPropagation();
-                                const id = this.dataset.id;
-                                saveScoreForRow(id);
-                            });
-                        });
-
-                        // 编辑按钮
-                        document.querySelectorAll('.edit-btn').forEach(btn => {
-                            btn.addEventListener('click', function(e) {
-                                e.stopPropagation();
-                                const id = this.dataset.id;
-                                openEditModal(id);
-                            });
-                        });
-
-                        // 删除按钮
-                        document.querySelectorAll('.delete-btn').forEach(btn => {
-                            btn.addEventListener('click', function(e) {
-                                e.stopPropagation();
-                                const id = this.dataset.id;
-                                if (confirm('确定删除该赛事吗？')) {
-                                    fetch('/api/fixtures/' + id, { method: 'DELETE' })
-                                        .then(res => res.json())
-                                        .then(res => {
-                                            if (res.success) loadFixtures(filterDate.value);
-                                            else alert('删除失败: ' + (res.error || '未知错误'));
-                                        });
-                                }
-                            });
-                        });
-
-                        // 比分输入框回车保存
-                        document.querySelectorAll('.score-input').forEach(input => {
-                            input.addEventListener('keydown', function(e) {
-                                if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    const id = this.dataset.id;
-                                    if (id) {
-                                        saveScoreForRow(id);
-                                    }
-                                }
-                            });
-                        });
-                    })
-                    .catch(err => {
-                        loading.textContent = '❌ 加载失败: ' + err;
-                    });
+    function saveEdit() {
+        const homeScore = editHomeScore.value.trim() || '0';
+        const awayScore = editAwayScore.value.trim() || '0';
+        const score = homeScore + ':' + awayScore;
+        const data = {
+            date: editDate.value,
+            time: editTime.value,
+            league: editLeague.value,
+            home_team: editHome.value,
+            away_team: editAway.value,
+            score: score
+        };
+        if (!data.date || !data.league || !data.home_team || !data.away_team) {
+            alert('请填写日期、联赛、主队和客队');
+            return;
+        }
+        const url = currentEditId ? '/api/fixtures/' + currentEditId : '/api/fixtures';
+        const method = currentEditId ? 'PUT' : 'POST';
+        fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                editModal.style.display = 'none';
+                loadFixtures(currentDateFilter, currentLimit, currentOffset);
+                alert(currentEditId ? '修改成功' : '添加成功');
+            } else {
+                alert('操作失败: ' + (res.error || '未知错误'));
             }
+        });
+    }
 
-            // 编辑模态框相关
-            function openEditModal(id) {
-                if (id) {
-                    currentEditId = id;
-                    editTitle.textContent = '编辑赛事';
-                    fetch('/api/fixtures/' + id)
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.error) { alert(data.error); return; }
-                            editDate.value = data.date;
-                            editTime.value = data.time || '';
-                            editLeague.value = data.league;
-                            editHome.value = data.home_team;
-                            editAway.value = data.away_team;
-                            const [h, a] = splitScore(data.score);
-                            editHomeScore.value = h;
-                            editAwayScore.value = a;
-                            editModal.style.display = 'flex';
-                        });
-                } else {
-                    currentEditId = null;
-                    editTitle.textContent = '添加赛事';
-                    editDate.value = '';
-                    editTime.value = '';
-                    editLeague.value = '';
-                    editHome.value = '';
-                    editAway.value = '';
-                    editHomeScore.value = '';
-                    editAwayScore.value = '';
-                    editModal.style.display = 'flex';
+    function closeEditModal() {
+        editModal.style.display = 'none';
+    }
+
+    function updatePagination() {
+        const totalPages = Math.ceil(totalItems / currentLimit) || 1;
+        const currentPage = Math.floor(currentOffset / currentLimit) + 1;
+        totalCountSpan.textContent = totalItems;
+
+        let html = '';
+        const maxVisible = 7;
+        let startPage = 1;
+        let endPage = totalPages;
+
+        if (totalPages > maxVisible) {
+            const half = Math.floor(maxVisible / 2);
+            if (currentPage <= half + 1) {
+                endPage = maxVisible;
+            } else if (currentPage >= totalPages - half) {
+                startPage = totalPages - maxVisible + 1;
+            } else {
+                startPage = currentPage - half;
+                endPage = currentPage + half;
+            }
+        }
+
+        if (startPage > 1) {
+            html += `<span class="page-num" data-page="1">1</span>`;
+            if (startPage > 2) html += `<span class="ellipsis">…</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const activeClass = i === currentPage ? 'active' : '';
+            html += `<span class="page-num ${activeClass}" data-page="${i}">${i}</span>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) html += `<span class="ellipsis">…</span>`;
+            html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
+        }
+
+        pageNumbers.innerHTML = html;
+        document.querySelectorAll('.page-num').forEach(el => {
+            el.addEventListener('click', function() {
+                const page = parseInt(this.dataset.page);
+                if (page >= 1 && page <= totalPages) {
+                    const newOffset = (page - 1) * currentLimit;
+                    goToPage(newOffset);
                 }
+            });
+        });
+
+        prevPageBtn.disabled = currentOffset === 0;
+        nextPageBtn.disabled = currentOffset + currentLimit >= totalItems;
+        pagination.style.display = 'flex';
+    }
+
+    function goToPage(offset) {
+        if (offset < 0) offset = 0;
+        if (offset >= totalItems) offset = Math.max(0, totalItems - currentLimit);
+        currentOffset = offset;
+        loadFixtures(currentDateFilter, currentLimit, currentOffset);
+    }
+
+    function fetchMatches() {
+        const date = fetchDate.value;
+        if (!date) {
+            alert('请选择日期');
+            return;
+        }
+        const finished = includeFinished.checked;
+        const btn = fetchBtn;
+        btn.textContent = '⏳ 抓取中...';
+        btn.disabled = true;
+
+        fetch(`/api/fetch_matches?date=${date}&include_finished=${finished}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert('❌ 抓取失败: ' + data.error);
+            } else {
+                alert(`✅ 抓取成功，共 ${data.length} 场比赛`);
+                currentOffset = 0;
+                loadFixtures(currentDateFilter, currentLimit, 0);
             }
+        })
+        .catch(err => alert('❌ 请求出错: ' + err.message))
+        .finally(() => {
+            btn.textContent = '📡 抓取';
+            btn.disabled = false;
+        });
+    }
 
-            function saveFixture() {
-                const homeScore = editHomeScore.value.trim() || '0';
-                const awayScore = editAwayScore.value.trim() || '0';
-                const score = homeScore + ':' + awayScore;
-                const data = {
-                    date: editDate.value,
-                    time: editTime.value,
-                    league: editLeague.value,
-                    home_team: editHome.value,
-                    away_team: editAway.value,
-                    score: score
-                };
-                if (!data.date || !data.league || !data.home_team || !data.away_team) {
-                    alert('请填写日期、联赛、主队和客队');
-                    return;
-                }
-                const url = currentEditId ? '/api/fixtures/' + currentEditId : '/api/fixtures';
-                const method = currentEditId ? 'PUT' : 'POST';
-                fetch(url, {
-                        method: method,
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    })
-                    .then(res => res.json())
-                    .then(res => {
-                        if (res.success) {
-                            editModal.style.display = 'none';
-                            loadFixtures(filterDate.value);
-                            alert(currentEditId ? '修改成功' : '添加成功');
-                        } else {
-                            alert('操作失败: ' + (res.error || '未知错误'));
-                        }
-                    });
-            }
+    function setDefaultDate() {
+        const today = new Date().toISOString().split('T')[0];
+        fetchDate.value = today;
+    }
 
-            // 事件绑定
-            filterBtn.addEventListener('click', function() { loadFixtures(filterDate.value); });
-            clearFilterBtn.addEventListener('click', function() { filterDate.value = ''; loadFixtures(''); });
-            addBtn.addEventListener('click', function() { openEditModal(null); });
-            cancelEditBtn.addEventListener('click', function() { editModal.style.display = 'none'; });
-            window.addEventListener('click', function(e) { if (e.target === editModal) editModal.style.display = 'none'; });
-            saveEditBtn.addEventListener('click', saveFixture);
+    // ---- 事件绑定 ----
+    filterBtn.addEventListener('click', function() {
+        currentDateFilter = filterDate.value;
+        currentOffset = 0;
+        loadFixtures(currentDateFilter, currentLimit, 0);
+    });
+    clearFilterBtn.addEventListener('click', function() {
+        filterDate.value = '';
+        currentDateFilter = '';
+        currentOffset = 0;
+        loadFixtures('', currentLimit, 0);
+    });
+    addBtn.addEventListener('click', function() { openEditModal(null); });
+    cancelEditBtn.addEventListener('click', closeEditModal);
+    window.addEventListener('click', function(e) {
+        if (e.target === editModal) closeEditModal();
+    });
+    saveEditBtn.addEventListener('click', saveEdit);
 
-            loadFixtures('');
-        })();
-    </script>
+    prevPageBtn.addEventListener('click', function() {
+        goToPage(currentOffset - currentLimit);
+    });
+    nextPageBtn.addEventListener('click', function() {
+        goToPage(currentOffset + currentLimit);
+    });
+    perPageSelect.addEventListener('change', function() {
+        currentLimit = parseInt(this.value);
+        currentOffset = 0;
+        loadFixtures(currentDateFilter, currentLimit, 0);
+    });
+
+    fetchBtn.addEventListener('click', fetchMatches);
+
+    setDefaultDate();
+    loadFixtures('', 20, 0);
+})();
+</script>
 </body>
 </html>
