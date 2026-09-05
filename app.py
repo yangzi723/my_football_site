@@ -355,7 +355,19 @@ def api_odds_save():
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+# ----------  stats API ----------
+@app.route('/red_list')
+def red_list():
+    return render_template('red_list.html')
+@app.route('/black_list')
+def black_list():
+    return render_template('black_list.html')
 
+@app.route('/draw_list')
+def draw_list():
+    return render_template('draw_list.html')
+    
+    
 if __name__ == '__main__':
     print("🚀 启动 Flask 服务器...")
     app.run(debug=True, host='127.0.0.1', port=5000)
