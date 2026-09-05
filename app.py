@@ -178,6 +178,7 @@ def api_update_match(match_id):
     data.setdefault('final_analysis', '')
     # ===== 新增：ai_result 默认值 =====
     data.setdefault('ai_result', '')
+    data.setdefault('review', '')   # ← 新增
 
     # 数值类型确保为数字（可选，但建议）
     numeric_fields = ['home_rank', 'home_scored', 'home_conceded', 'home_recent',

@@ -32,7 +32,13 @@
     const deleteBtn = document.getElementById('deleteSelectedBtn');
     const selectAll = document.getElementById('selectAll');
 
-    // ---------- 保存复盘 ----------
+    // ---------- 自动调整 textarea 高度 ----------
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    }
+
+    // ---------- 保存复盘（自动保存） ----------
     function saveReview(id, value) {
         const textarea = document.querySelector(`.review-input[data-id="${id}"]`);
         const tag = document.getElementById(`review-tag-${id}`);
@@ -59,9 +65,11 @@
             .then(result => {
                 if (result.success) {
                     if (tag) tag.classList.add('show');
-                    if (textarea) textarea.defaultValue = value;
-                    // 更新 title
-                    if (textarea) textarea.title = value;
+                    if (textarea) {
+                        textarea.defaultValue = value;
+                        textarea.title = value;
+                        autoResize(textarea);
+                    }
                 } else {
                     throw new Error(result.error || '未知错误');
                 }
@@ -144,13 +152,18 @@
         tbody.innerHTML = html;
         totalCount.textContent = totalItems;
 
-        // 绑定复盘输入事件（textarea 特有）
+        // 绑定复盘输入事件
         tbody.querySelectorAll('.review-input').forEach(el => {
-            // 输入时自动更新 title，以便悬停显示最新内容
+            // 初始化高度
+            autoResize(el);
+
+            // 输入时自动调整高度 + 更新 title
             el.addEventListener('input', function() {
+                autoResize(this);
                 this.title = this.value;
             });
 
+            // 失焦自动保存（与 AI 结果下拉框选择后自动保存逻辑一致）
             el.addEventListener('blur', function() {
                 const id = this.dataset.id;
                 const value = this.value.trim();
@@ -159,8 +172,8 @@
                 saveReview(id, value);
             });
 
+            // 快捷键：Enter 失焦（Shift+Enter 换行），Escape 失焦
             el.addEventListener('keydown', function(e) {
-                // Enter 键失焦（Shift+Enter 允许换行，不触发）
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     this.blur();
@@ -244,7 +257,6 @@
 
     // ---------- 事件绑定 ----------
     document.addEventListener('DOMContentLoaded', function() {
-        // 分页按钮
         prevBtn.addEventListener('click', function() {
             if (currentOffset > 0) {
                 currentOffset = Math.max(0, currentOffset - currentLimit);
@@ -266,17 +278,14 @@
             updatePagination();
         });
 
-        // 删除按钮
         deleteBtn.addEventListener('click', deleteSelected);
 
-        // 全选
         if (selectAll) {
             selectAll.addEventListener('change', function() {
                 document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = this.checked);
             });
         }
 
-        // 加载数据
         loadList();
     });
 })();

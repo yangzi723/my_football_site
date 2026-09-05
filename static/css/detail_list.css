@@ -1,4 +1,4 @@
-/* static/css/detail_list.css */
+/* ===== 明细页面公共样式 ===== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
     font-family: 'Segoe UI', Roboto, Arial, sans-serif;
@@ -113,18 +113,18 @@ h1 { margin-bottom: 20px; }
 .pagination .page-num.active { background: #1a3a6b; color: white; border-color: #1a3a6b; }
 .pagination .ellipsis { padding: 6px 8px; color: #6b7280; }
 
-/* 复盘输入框样式 */
+/* ===== 复盘输入框（无滚动条，自动扩展高度） ===== */
 .review-input {
     width: 100%;
-    height: 48px;
+    min-height: 48px;
     padding: 6px 8px;
     border: 1px solid #cdd8e6;
     border-radius: 4px;
     font-size: 13px;
     font-family: inherit;
     background: #fafbfc;
-    resize: vertical;
-    overflow-y: auto;
+    resize: none;
+    overflow-y: hidden;
     transition: border-color 0.2s;
     box-sizing: border-box;
     line-height: 1.4;
@@ -153,5 +153,5 @@ h1 { margin-bottom: 20px; }
     .detail-table { font-size: 12px; table-layout: auto; }
     .detail-table th, .detail-table td { padding: 4px 3px; }
     .detail-table th:nth-child(n) { width: auto; }
-    .review-input { height: 40px; font-size: 12px; }
+    .review-input { min-height: 40px; font-size: 12px; }
 }
