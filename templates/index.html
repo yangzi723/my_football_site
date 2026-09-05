@@ -3,113 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>球队基本面评分与预测 - 只读</title>
+    <title>球队基本面评分与预测</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <div class="container">
     {% include '_navbar.html' %}
 
-    <h1>⚽ 球队基本面评分与预测 <span style="font-size:14px; background:#e2e8f0; padding:2px 12px; border-radius:12px; color:#4b657a;">只读模式</span></h1>
+    <h1>⚽ 球队基本面评分与预测</h1>
     <div class="subtitle">
         六因子模型：实力 · 近3场状态 · 近3场主客场 · 人员 · 战意 · 身价 &nbsp;|&nbsp; 英冠平均身价基准 70M €
     </div>
 
-    <!-- 日期、时间、联赛（只读） -->
+    <!-- 日期、时间、联赛（可编辑） -->
     <div style="display:flex; gap:15px; flex-wrap:wrap; align-items:center; margin-bottom:20px; background:#f8fafc; padding:12px 18px; border-radius:10px;">
         <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px;">
             <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55;">比赛日期</label>
-            <input type="date" id="match-date" style="width:160px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px; background:#f3f4f6;" readonly>
+            <input type="date" id="match-date" style="width:160px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px;">
         </div>
         <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px;">
             <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55;">比赛时间</label>
-            <input type="text" id="match-time" placeholder="如 19:30" style="width:100px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px; background:#f3f4f6;" readonly>
+            <input type="text" id="match-time" placeholder="如 19:30" style="width:100px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px;">
         </div>
         <div class="form-group" style="margin:0; display:flex; align-items:center; gap:6px;">
             <label style="width:70px; font-weight:500; font-size:14px; color:#2d3f55;">联赛名称</label>
-            <input type="text" id="league-name" placeholder="如 Premier League" style="flex:1; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px; background:#f3f4f6;" readonly>
+            <input type="text" id="league-name" placeholder="如 Premier League" style="flex:1; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px; font-size:14px;">
         </div>
     </div>
 
-    <!-- 权重调节（只读） -->
+    <!-- 权重调节（可拖动） -->
     <div style="background:#f1f5f9; border-radius:12px; padding:12px 18px; margin-bottom:20px;">
         <div style="font-weight:600; font-size:14px; margin-bottom:8px;">⚙️ 权重调节 (总和自动归一化)</div>
         <div class="flex-row" id="weight-sliders">
-            <div class="weight-group"><label>实力</label><input type="range" min="0" max="100" value="30" class="w-slider" data-key="strength" disabled><span class="weight-val">30</span></div>
-            <div class="weight-group"><label>状态</label><input type="range" min="0" max="100" value="25" class="w-slider" data-key="form" disabled><span class="weight-val">25</span></div>
-            <div class="weight-group"><label>主客场</label><input type="range" min="0" max="100" value="15" class="w-slider" data-key="home_away" disabled><span class="weight-val">15</span></div>
-            <div class="weight-group"><label>人员</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="personnel" disabled><span class="weight-val">10</span></div>
-            <div class="weight-group"><label>战意</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="motivation" disabled><span class="weight-val">10</span></div>
-            <div class="weight-group"><label>身价</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="value" disabled><span class="weight-val">10</span></div>
+            <div class="weight-group"><label>实力</label><input type="range" min="0" max="100" value="30" class="w-slider" data-key="strength"><span class="weight-val">30</span></div>
+            <div class="weight-group"><label>状态</label><input type="range" min="0" max="100" value="25" class="w-slider" data-key="form"><span class="weight-val">25</span></div>
+            <div class="weight-group"><label>主客场</label><input type="range" min="0" max="100" value="15" class="w-slider" data-key="home_away"><span class="weight-val">15</span></div>
+            <div class="weight-group"><label>人员</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="personnel"><span class="weight-val">10</span></div>
+            <div class="weight-group"><label>战意</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="motivation"><span class="weight-val">10</span></div>
+            <div class="weight-group"><label>身价</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="value"><span class="weight-val">10</span></div>
         </div>
         <div style="font-size:13px; color:#475569; margin-top:4px;">拖动滑块调整权重，系统自动归一化</div>
     </div>
 
-    <!-- 两队输入（只读） -->
+    <!-- 两队输入（可编辑） -->
     <div class="two-col">
         <div class="team-box">
             <h2>🏠 主队 <span class="badge">近3场数据</span></h2>
-            <div class="form-group"><label>球队名称</label><input type="text" id="home-name" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>球队名称</label><input type="text" id="home-name"></div>
             <div class="section-title">实力因子</div>
-            <div class="form-group"><label>联赛排名</label><input type="number" id="home-rank" min="1" readonly style="background:#f3f4f6;"></div>
-            <div class="form-group"><label>赛季总进球</label><input type="number" id="home-scored" min="0" readonly style="background:#f3f4f6;"></div>
-            <div class="form-group"><label>赛季总失球</label><input type="number" id="home-conceded" min="0" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>联赛排名</label><input type="number" id="home-rank" min="1"></div>
+            <div class="form-group"><label>赛季总进球</label><input type="number" id="home-scored" min="0"></div>
+            <div class="form-group"><label>赛季总失球</label><input type="number" id="home-conceded" min="0"></div>
             <div class="section-title">状态因子 (近3场)</div>
-            <div class="form-group"><label>近3场积分</label><input type="number" id="home-recent" min="0" max="9" readonly style="background:#f3f4f6;"> <span class="hint">胜3平1负0</span></div>
+            <div class="form-group"><label>近3场积分</label><input type="number" id="home-recent" min="0" max="9"> <span class="hint">胜3平1负0</span></div>
             <div class="section-title">主客场因子 (近3场主场)</div>
-            <div class="form-group"><label>主场胜</label><input type="number" id="home-hw" min="0" readonly style="background:#f3f4f6;"></div>
-            <div class="form-group"><label>主场平</label><input type="number" id="home-hd" min="0" readonly style="background:#f3f4f6;"></div>
-            <div class="form-group"><label>主场负</label><input type="number" id="home-hl" min="0" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>主场胜</label><input type="number" id="home-hw" min="0"></div>
+            <div class="form-group"><label>主场平</label><input type="number" id="home-hd" min="0"></div>
+            <div class="form-group"><label>主场负</label><input type="number" id="home-hl" min="0"></div>
             <div class="section-title">人员 & 战意</div>
-            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="home-injuries" min="0" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="home-injuries" min="0"></div>
             <div class="form-group"><label>战意等级</label>
-                <select id="home-motivation" disabled style="background:#f3f4f6;">
+                <select id="home-motivation">
                     <option value="1">1 - 低</option>
                     <option value="2">2 - 中低</option>
-                    <option value="3">3 - 中</option>
+                    <option value="3" selected>3 - 中</option>
                     <option value="4">4 - 高</option>
                     <option value="5">5 - 极高</option>
                 </select>
             </div>
             <div class="section-title">身价因子</div>
-            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="home-value" min="0" step="10" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="home-value" min="0" step="10"></div>
             <div class="section-title">意外因素 (仅供参考)</div>
-            <div class="form-group"><label>备注</label><input type="text" id="home-unexpected" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>备注</label><input type="text" id="home-unexpected"></div>
         </div>
 
         <div class="team-box">
             <h2>✈️ 客队 <span class="badge">近3场数据</span></h2>
-            <div class="form-group"><label>球队名称</label><input type="text" id="away-name" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>球队名称</label><input type="text" id="away-name"></div>
             <div class="section-title">实力因子</div>
-            <div class="form-group"><label>联赛排名</label><input type="number" id="away-rank" min="1" readonly style="background:#f3f4f6;"></div>
-            <div class="form-group"><label>赛季总进球</label><input type="number" id="away-scored" min="0" readonly style="background:#f3f4f6;"></div>
-            <div class="form-group"><label>赛季总失球</label><input type="number" id="away-conceded" min="0" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>联赛排名</label><input type="number" id="away-rank" min="1"></div>
+            <div class="form-group"><label>赛季总进球</label><input type="number" id="away-scored" min="0"></div>
+            <div class="form-group"><label>赛季总失球</label><input type="number" id="away-conceded" min="0"></div>
             <div class="section-title">状态因子 (近3场)</div>
-            <div class="form-group"><label>近3场积分</label><input type="number" id="away-recent" min="0" max="9" readonly style="background:#f3f4f6;"> <span class="hint">胜3平1负0</span></div>
+            <div class="form-group"><label>近3场积分</label><input type="number" id="away-recent" min="0" max="9"> <span class="hint">胜3平1负0</span></div>
             <div class="section-title">主客场因子 (近3场客场)</div>
-            <div class="form-group"><label>客场胜</label><input type="number" id="away-aw" min="0" readonly style="background:#f3f4f6;"></div>
-            <div class="form-group"><label>客场平</label><input type="number" id="away-ad" min="0" readonly style="background:#f3f4f6;"></div>
-            <div class="form-group"><label>客场负</label><input type="number" id="away-al" min="0" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>客场胜</label><input type="number" id="away-aw" min="0"></div>
+            <div class="form-group"><label>客场平</label><input type="number" id="away-ad" min="0"></div>
+            <div class="form-group"><label>客场负</label><input type="number" id="away-al" min="0"></div>
             <div class="section-title">人员 & 战意</div>
-            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="away-injuries" min="0" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="away-injuries" min="0"></div>
             <div class="form-group"><label>战意等级</label>
-                <select id="away-motivation" disabled style="background:#f3f4f6;">
+                <select id="away-motivation">
                     <option value="1">1 - 低</option>
                     <option value="2">2 - 中低</option>
-                    <option value="3">3 - 中</option>
+                    <option value="3" selected>3 - 中</option>
                     <option value="4">4 - 高</option>
                     <option value="5">5 - 极高</option>
                 </select>
             </div>
             <div class="section-title">身价因子</div>
-            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="away-value" min="0" step="10" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="away-value" min="0" step="10"></div>
             <div class="section-title">意外因素 (仅供参考)</div>
-            <div class="form-group"><label>备注</label><input type="text" id="away-unexpected" readonly style="background:#f3f4f6;"></div>
+            <div class="form-group"><label>备注</label><input type="text" id="away-unexpected"></div>
         </div>
     </div>
 
-    <!-- 按钮组（全部隐藏） -->
-    <div class="btn-group" style="display:none;">
+    <!-- 按钮组（全部显示） -->
+    <div class="btn-group">
         <button class="btn btn-success" id="fetchBtn">📡 抓取比赛</button>
         <button class="btn" id="calcBtn">📊 计算评分与预测</button>
         <button class="btn btn-secondary" id="resetBtn">🔄 重置</button>
@@ -134,10 +134,10 @@
             </div>
             <div class="judgment-row">
                 <label for="basic-judge">📋 基本面判断：</label>
-                <select id="basic-judge" disabled style="background:#f3f4f6;">
+                <select id="basic-judge">
                     <option value="home_advantage">主队占优</option>
                     <option value="away_advantage">客队占优</option>
-                    <option value="equal">两队实力相当</option>
+                    <option value="equal" selected>两队实力相当</option>
                     <option value="home_strong">主队占据较强优势</option>
                     <option value="away_strong">客队占据较强优势</option>
                     <option value="home_dominant">主队占据绝对优势</option>
@@ -148,7 +148,8 @@
             </div>
             <div id="unexpected-display" class="unexpected" style="display:none;"></div>
             <div class="save-row">
-                <span style="font-size:13px; color:#4b657a;">保存后可在历史记录中查看和复盘</span>
+                <button class="btn btn-primary" id="saveBtn">💾 保存预测</button>
+                <span style="font-size:13px; color:#4b657a; margin-left:10px;">保存后可在历史记录中查看和复盘</span>
             </div>
         </div>
     </div>
@@ -161,7 +162,7 @@
 <!-- Toast 提示 -->
 <div id="toast" class="toast"></div>
 
-<!-- 抓取模态框（保留，但只读模式不触发） -->
+<!-- 抓取模态框 -->
 <div id="matchModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -252,30 +253,7 @@
     const progressPercent = $('progressPercent');
     const sliders = document.querySelectorAll('.w-slider');
 
-    // ---------- 只读模式：禁用所有输入 ----------
-    function setReadOnlyMode() {
-        document.querySelectorAll('input, select').forEach(el => {
-            if (el.id !== 'match-date' && el.id !== 'match-time' && el.id !== 'league-name' &&
-                el.id !== 'home-name' && el.id !== 'away-name') {
-                el.disabled = true;
-            }
-        });
-        document.querySelectorAll('.btn, .btn-success, .btn-secondary').forEach(el => {
-            if (el.id !== 'modalClose') {
-                el.style.display = 'none';
-            }
-        });
-        fetchBtn.style.display = 'none';
-        calcBtn.style.display = 'none';
-        resetBtn.style.display = 'none';
-        saveBtn.style.display = 'none';
-        document.querySelectorAll('.w-slider').forEach(s => s.disabled = true);
-        // 基本判断下拉禁用
-        basicJudge.disabled = true;
-    }
-    setReadOnlyMode();
-
-    // ---------- 权重（保留但不启用） ----------
+    // ---------- 权重 ----------
     function getWeights() {
         const raw = {};
         sliders.forEach(s => raw[s.dataset.key] = parseFloat(s.value));
@@ -285,7 +263,15 @@
         return norm;
     }
 
-    // 评分函数（与原来一致）
+    // 更新权重显示
+    sliders.forEach(s => {
+        s.addEventListener('input', function() {
+            const val = this.value;
+            this.parentElement.querySelector('.weight-val').textContent = val;
+        });
+    });
+
+    // ---------- 评分函数 ----------
     function rankScore(rank, totalTeams=20) {
         if (totalTeams <= 1) return 100;
         return Math.max(0, 100 - (rank - 1) * (100 / (totalTeams - 1)));
@@ -417,16 +403,137 @@
         displayResult(hName, aName, homeData, awayData, result);
     }
 
-    // Toast
+    // ---------- Toast ----------
     let toastTimer;
-    function showToast(msg) {
+    function showToast(msg, isError=false) {
         toast.textContent = msg;
+        toast.style.background = isError ? '#dc2626' : '#1f3a5f';
         toast.classList.add('show');
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    // ---------- 加载数据 ----------
+    // ---------- 保存功能 ----------
+    function savePrediction() {
+        const hName = homeName.value.trim() || '主队';
+        const aName = awayName.value.trim() || '客队';
+        const homeData = readTeamData('home');
+        const awayData = readTeamData('away');
+        const result = predictMatch(homeData, awayData);
+
+        const payload = {
+            date: matchDate.value || '',
+            time: matchTime.value || '',
+            league: leagueName.value || '',
+            home_team: hName,
+            away_team: aName,
+            home_rank: homeData.rank,
+            home_scored: homeData.goalsScored,
+            home_conceded: homeData.goalsConceded,
+            home_recent: homeData.recentPoints,
+            home_wins: homeData.homeWins || 0,
+            home_draws: homeData.homeDraws || 0,
+            home_losses: homeData.homeLosses || 0,
+            home_injuries: homeData.keyInjuries,
+            home_motivation: homeData.motivation,
+            home_value: homeData.teamValue,
+            home_unexpected: homeData.unexpected,
+            away_rank: awayData.rank,
+            away_scored: awayData.goalsScored,
+            away_conceded: awayData.goalsConceded,
+            away_recent: awayData.recentPoints,
+            away_wins: awayData.awayWins || 0,
+            away_draws: awayData.awayDraws || 0,
+            away_losses: awayData.awayLosses || 0,
+            away_injuries: awayData.keyInjuries,
+            away_motivation: awayData.motivation,
+            away_value: awayData.teamValue,
+            away_unexpected: awayData.unexpected,
+            home_score: result.homeScore,
+            away_score: result.awayScore,
+            home_prob: result.homeProb,
+            draw_prob: result.drawProb,
+            away_prob: result.awayProb,
+            judgment: basicJudge.value
+        };
+
+        fetch('/api/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                showToast('✅ 预测保存成功！ID: ' + res.id);
+                // 更新URL参数以便刷新后仍显示该记录
+                const url = new URL(window.location);
+                url.searchParams.set('id', res.id);
+                window.history.replaceState({}, '', url);
+            } else {
+                showToast('❌ 保存失败: ' + (res.error || '未知错误'), true);
+            }
+        })
+        .catch(err => showToast('❌ 请求出错: ' + err.message, true));
+    }
+
+    // ---------- 重置 ----------
+    function resetForm() {
+        document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]').forEach(inp => inp.value = '');
+        document.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
+        resultArea.style.display = 'none';
+        // 重置权重滑块到默认
+        const defaults = { strength:30, form:25, home_away:15, personnel:10, motivation:10, value:10 };
+        sliders.forEach(s => {
+            s.value = defaults[s.dataset.key] || 30;
+            s.parentElement.querySelector('.weight-val').textContent = s.value;
+        });
+        showToast('已重置');
+    }
+
+    // ---------- 抓取比赛（占位，需实现后端） ----------
+    function fetchMatches() {
+        modal.style.display = 'flex';
+        // 模拟抓取进度，实际应调用后端
+        loaderArea.style.display = 'block';
+        tableContainer.style.display = 'none';
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 10;
+            if (progress > 100) progress = 100;
+            progressFill.style.width = progress + '%';
+            progressPercent.textContent = progress + '%';
+            if (progress === 100) {
+                clearInterval(interval);
+                setTimeout(() => {
+                    loaderArea.style.display = 'none';
+                    tableContainer.style.display = 'block';
+                    // 填充示例数据
+                    matchListBody.innerHTML = `
+                        <tr><td>2026-09-06</td><td>19:30</td><td>Premier League</td><td>Arsenal</td><td>Chelsea</td><td>2-1</td></tr>
+                        <tr><td>2026-09-06</td><td>20:00</td><td>La Liga</td><td>Barcelona</td><td>Real Madrid</td><td>1-1</td></tr>
+                    `;
+                }, 300);
+            }
+        }, 300);
+    }
+
+    // ---------- 填充选中比赛 ----------
+    matchListBody.addEventListener('click', function(e) {
+        const row = e.target.closest('tr');
+        if (!row) return;
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 5) return;
+        matchDate.value = cells[0].textContent.trim();
+        matchTime.value = cells[1].textContent.trim();
+        leagueName.value = cells[2].textContent.trim();
+        homeName.value = cells[3].textContent.trim();
+        awayName.value = cells[4].textContent.trim();
+        modal.style.display = 'none';
+        showToast('已填充比赛信息，请补充统计数据并点击计算');
+    });
+
+    // ---------- 加载已有数据 ----------
     function fillMatchData(m) {
         homeName.value = m.home_team;
         awayName.value = m.away_team;
@@ -506,76 +613,13 @@
         .then(data => {
             if (data.data && data.data.length > 0) {
                 fillMatchData(data.data[0]);
-            } else {
-                // 无数据，显示空状态
-                showToast('暂无历史记录');
             }
         })
-        .catch(() => {
-            showToast('加载失败');
-        });
+        .catch(() => {});
     }
 
-    // 从 URL 参数填充（保留，但仅用于读取展示）
+    // ---------- URL参数处理 ----------
     function fillFromUrlParams() {
-        const params = new URLSearchParams(window.location.search);
-        const date = params.get('date');
-        const time = params.get('time');
-        const league = params.get('league');
-        const home = params.get('home');
-        const away = params.get('away');
-
-        // 先查数据库是否有匹配记录
-        if (date && home && away) {
-            fetch('/api/match/find?date=' + encodeURIComponent(date) + '&home_team=' + encodeURIComponent(home) + '&away_team=' + encodeURIComponent(away))
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.id) {
-                    fillMatchData(data);
-                } else {
-                    // 无记录，仅填充基本信息
-                    const matchDateInput = document.getElementById('match-date');
-                    const matchTimeInput = document.getElementById('match-time');
-                    const leagueNameInput = document.getElementById('league-name');
-                    const homeNameInput = document.getElementById('home-name');
-                    const awayNameInput = document.getElementById('away-name');
-                    if (date && matchDateInput) matchDateInput.value = date;
-                    if (time && matchTimeInput) matchTimeInput.value = time;
-                    if (league && leagueNameInput) leagueNameInput.value = league;
-                    if (home && homeNameInput) homeNameInput.value = home;
-                    if (away && awayNameInput) awayNameInput.value = away;
-                    // 清空统计数据（但不可编辑）
-                    document.querySelectorAll('input[type="number"]').forEach(inp => inp.value = '');
-                    // 尝试计算（但已禁用按钮，仅显示）
-                    setTimeout(() => { if (typeof compute === 'function') compute(); }, 200);
-                }
-            })
-            .catch(() => {
-                // 出错时仅填充基本信息
-                const matchDateInput = document.getElementById('match-date');
-                const matchTimeInput = document.getElementById('match-time');
-                const leagueNameInput = document.getElementById('league-name');
-                const homeNameInput = document.getElementById('home-name');
-                const awayNameInput = document.getElementById('away-name');
-                if (date && matchDateInput) matchDateInput.value = date;
-                if (time && matchTimeInput) matchTimeInput.value = time;
-                if (league && leagueNameInput) leagueNameInput.value = league;
-                if (home && homeNameInput) homeNameInput.value = home;
-                if (away && awayNameInput) awayNameInput.value = away;
-                setTimeout(() => { if (typeof compute === 'function') compute(); }, 200);
-            });
-        } else {
-            // 没有完整信息，只填充有的部分
-            if (home) homeName.value = home;
-            if (away) awayName.value = away;
-            if (league) leagueName.value = league;
-            if (date) matchDate.value = date;
-            if (time) matchTime.value = time;
-        }
-    }
-
-    // ---------- 页面加载 ----------
-    window.addEventListener('load', function() {
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         const date = params.get('date');
@@ -584,35 +628,50 @@
         const home = params.get('home');
         const away = params.get('away');
 
-        // 1. id 优先
         if (id) {
             loadMatchById(id);
             return;
         }
-
-        // 2. 有完整日期+主客队，尝试查询
         if (date && home && away) {
-            fillFromUrlParams();
-            return;
-        }
-
-        // 3. 仅主客队（无日期）
-        if (home && away) {
-            homeName.value = home;
-            awayName.value = away;
+            fetch('/api/match/find?date=' + encodeURIComponent(date) + '&home_team=' + encodeURIComponent(home) + '&away_team=' + encodeURIComponent(away))
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.id) {
+                    fillMatchData(data);
+                } else {
+                    // 仅填充基本信息
+                    matchDate.value = date;
+                    matchTime.value = time || '';
+                    leagueName.value = league || '';
+                    homeName.value = home;
+                    awayName.value = away;
+                    setTimeout(compute, 200);
+                }
+            })
+            .catch(() => {});
+        } else {
+            if (home) homeName.value = home;
+            if (away) awayName.value = away;
             if (league) leagueName.value = league;
             if (date) matchDate.value = date;
             if (time) matchTime.value = time;
-            // 清空统计数据（但不可编辑）
-            document.querySelectorAll('input[type="number"]').forEach(inp => inp.value = '');
-            setTimeout(() => { if (typeof compute === 'function') compute(); }, 200);
-            return;
+            loadLatestMatch();
         }
+    }
 
-        // 4. 无参数，加载最近一条
-        loadLatestMatch();
+    // ---------- 事件绑定 ----------
+    calcBtn.addEventListener('click', compute);
+    resetBtn.addEventListener('click', resetForm);
+    fetchBtn.addEventListener('click', fetchMatches);
+    saveBtn.addEventListener('click', savePrediction);
+
+    modalClose.addEventListener('click', function() { modal.style.display = 'none'; });
+    window.addEventListener('click', function(e) {
+        if (e.target === modal) modal.style.display = 'none';
     });
 
+    // 页面初始化
+    window.addEventListener('load', fillFromUrlParams);
 })();
 </script>
 </body>
