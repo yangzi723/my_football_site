@@ -36,6 +36,22 @@ def fixtures():
 def odds():
     return render_template('odds.html')
 
+@app.route('/red_list')
+def red_list():
+    return render_template('red_list.html')
+
+@app.route('/black_list')
+def black_list():
+    return render_template('black_list.html')
+
+@app.route('/draw_list')
+def draw_list():
+    return render_template('draw_list.html')
+
+@app.route('/admin_edit')
+def admin_edit():
+    return render_template('admin_index.html')
+
 # ---------- API：保存预测记录 ----------
 @app.route('/api/save', methods=['POST'])
 def api_save():
@@ -313,6 +329,7 @@ def api_add_fixture():
         return jsonify({'success': True, 'id': fid})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 @app.route('/api/match/find', methods=['GET'])
 def api_find_match():
     date = request.args.get('date')
@@ -331,6 +348,7 @@ def api_find_match():
             return jsonify(dict(row))
         else:
             return jsonify(None), 200  # 返回 null
+
 # ---------- odds API ----------
 @app.route('/api/odds/save', methods=['POST'])
 def api_odds_save():
@@ -355,129 +373,7 @@ def api_odds_save():
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-# ----------  stats API ----------
-@app.route('/red_list')
-def red_list():
-    return render_template('red_list.html')
-@app.route('/black_list')
-def black_list():
-    return render_template('black_list.html')
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-# ---------- 用户管理函数 ----------
-def get_all_users():
-    with closing(get_db()) as conn:
-        cur = conn.execute('SELECT * FROM users ORDER BY id')
-        return cur.fetchall()
-
-def update_user_password(user_id, new_password_hash):
-    with closing(get_db()) as conn:
-        conn.execute('UPDATE users SET password_hash = ? WHERE id = ?', (new_password_hash, user_id))
-        conn.commit()
-
-def delete_user_by_id(user_id):
-    with closing(get_db()) as conn:
-        conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
-        conn.commit()
-
-def update_user_admin(user_id, is_admin):
-    with closing(get_db()) as conn:
-        conn.execute('UPDATE users SET is_admin = ? WHERE id = ?', (1 if is_admin else 0, user_id))
-        conn.commit()
-# ---------- 管理员专用：用户管理 ----------
-from functools import wraps
-from flask import flash
-
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
-            return redirect('/login')
-        return f(*args, **kwargs)
-    return decorated_function
-
-@app.route('/admin/users', methods=['GET', 'POST'])
-@admin_required
-def admin_users():
-    from database import get_all_users, create_user, delete_user_by_id, update_user_password, update_user_admin
-    from werkzeug.security import generate_password_hash
-    from auth import User
-
-    if request.method == 'POST':
-        action = request.form.get('action')
-        
-        if action == 'add':
-            username = request.form.get('username', '').strip()
-            password = request.form.get('password', '').strip()
-            is_admin = 1 if request.form.get('is_admin') == 'on' else 0
-            if username and password:
-                if User.get_by_username(username):
-                    flash('用户名已存在', 'danger')
-                else:
-                    hashed = generate_password_hash(password)
-                    create_user(username, hashed, is_admin)
-                    flash('用户添加成功', 'success')
-            else:
-                flash('用户名和密码不能为空', 'danger')
-            return redirect('/admin/users')
-
-        elif action == 'delete':
-            user_id = request.form.get('user_id')
-            if user_id and user_id.isdigit():
-                user_id = int(user_id)
-                if user_id == current_user.id:
-                    flash('不能删除自己的账号', 'danger')
-                else:
-                    delete_user_by_id(user_id)
-                    flash('用户已删除', 'success')
-            return redirect('/admin/users')
-
-        elif action == 'change_password':
-            user_id = request.form.get('user_id')
-            new_password = request.form.get('new_password', '').strip()
-            if user_id and user_id.isdigit() and new_password:
-                user_id = int(user_id)
-                hashed = generate_password_hash(new_password)
-                update_user_password(user_id, hashed)
-                flash('密码修改成功', 'success')
-            else:
-                flash('新密码不能为空', 'danger')
-            return redirect('/admin/users')
-
-        elif action == 'toggle_admin':
-            user_id = request.form.get('user_id')
-            if user_id and user_id.isdigit():
-                user_id = int(user_id)
-                if user_id == current_user.id:
-                    flash('不能修改自己的管理员权限', 'danger')
-                else:
-                    user = get_user_by_id(user_id)
-                    if user:
-                        new_admin = 0 if user['is_admin'] else 1
-                        update_user_admin(user_id, new_admin)
-                        flash('用户权限已更新', 'success')
-            return redirect('/admin/users')
-
-    # GET 请求
-    users = get_all_users()
-    return render_template('admin/users.html', users=users)
-@app.route('/admin_edit')
-def admin_edit():
-    return render_template('admin_index.html')
-=======
-=======
->>>>>>> b5227aebf2c25ef23f838720cd886eecd135c73a
-@app.route('/draw_list')
-def draw_list():
-    return render_template('draw_list.html')
-    
-    
-<<<<<<< HEAD
->>>>>>> feature/admin-dashboard
-=======
->>>>>>> b5227aebf2c25ef23f838720cd886eecd135c73a
 if __name__ == '__main__':
     print("🚀 启动 Flask 服务器...")
     app.run(debug=True, host='127.0.0.1', port=5000)
