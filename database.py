@@ -10,6 +10,7 @@ def get_db():
 
 def init_db():
     with closing(get_db()) as conn:
+        # 创建 matches 表（如果不存在）
         conn.execute('''
             CREATE TABLE IF NOT EXISTS matches (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,29 +51,38 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+
+        # 获取现有列名
         cur = conn.execute("PRAGMA table_info(matches)")
         existing_cols = [row[1] for row in cur.fetchall()]
+
+        # 添加 date, time, league（如果缺失）
         for col in ['date', 'time', 'league']:
             if col not in existing_cols:
                 conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
-        
-        # ===== 新增：添加赔率相关字段 =====
+
+        # 添加赔率相关字段
         odds_cols = ['pos1', 'pos2', 'asian_odds', 'range', 'initial_prediction', 'initial_analysis', 'final_analysis']
         for col in odds_cols:
             if col not in existing_cols:
                 conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
-        # ===== 新增结束 =====
 
-        # ===== 新增：添加 ai_result 字段 =====
+        # 添加 ai_result 列
         if 'ai_result' not in existing_cols:
             conn.execute('ALTER TABLE matches ADD COLUMN ai_result TEXT')
-        # ===== 新增结束 =====
+
+        # 添加 review 列
+        if 'review' not in existing_cols:
+            conn.execute('ALTER TABLE matches ADD COLUMN review TEXT')
 
         conn.commit()
+
+    # 初始化其他表
     init_fixtures_table()
     init_odds_table()
     init_user_table()
 
+# ---------- matches 表操作 ----------
 def save_match(data):
     with closing(get_db()) as conn:
         cur = conn.cursor()
@@ -157,7 +167,8 @@ def update_match_full(match_id, data):
     data.setdefault('initial_prediction', '')
     data.setdefault('initial_analysis', '')
     data.setdefault('final_analysis', '')
-    data.setdefault('ai_result', '')   # ← 确保 ai_result 有默认值
+    data.setdefault('ai_result', '')
+    data.setdefault('review', '')   # review 字段默认值
 
     with closing(get_db()) as conn:
         conn.execute('''
@@ -203,7 +214,8 @@ def update_match_full(match_id, data):
                 initial_analysis = :initial_analysis,
                 final_analysis = :final_analysis,
                 initial_prediction = :initial_prediction,
-                ai_result = :ai_result
+                ai_result = :ai_result,
+                review = :review
             WHERE id = :id
         ''', {**data, 'id': match_id})
         conn.commit()
@@ -412,27 +424,6 @@ def get_all_users():
     with closing(get_db()) as conn:
         cur = conn.execute('SELECT * FROM users ORDER BY id')
         return cur.fetchall()
-
-# 重复函数定义（修复重复），保留一个
-def get_all_users():
-    with closing(get_db()) as conn:
-        cur = conn.execute('SELECT * FROM users ORDER BY id')
-        return cur.fetchall()
-
-def update_user_password(user_id, new_password_hash):
-    with closing(get_db()) as conn:
-        conn.execute('UPDATE users SET password_hash = ? WHERE id = ?', (new_password_hash, user_id))
-        conn.commit()
-
-def delete_user_by_id(user_id):
-    with closing(get_db()) as conn:
-        conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
-        conn.commit()
-
-def update_user_admin(user_id, is_admin):
-    with closing(get_db()) as conn:
-        conn.execute('UPDATE users SET is_admin = ? WHERE id = ?', (1 if is_admin else 0, user_id))
-        conn.commit()
 
 if __name__ == '__main__':
     init_db()
