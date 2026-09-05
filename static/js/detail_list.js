@@ -2,8 +2,7 @@
 (function() {
     "use strict";
 
-    // 页面加载时传入 resultType: '红', '黑', '走盘'
-    const resultType = window.RESULT_TYPE || '';  // 由页面变量定义
+    const resultType = window.RESULT_TYPE || '';
 
     const judgmentMap = {
         'home_advantage': '主队占优',
@@ -21,7 +20,6 @@
     let currentLimit = 20;
     let totalItems = 0;
 
-    // DOM 引用
     const loading = document.getElementById('loading');
     const tableWrap = document.getElementById('tableWrap');
     const tbody = document.getElementById('detailBody');
@@ -36,9 +34,9 @@
 
     // ---------- 保存复盘 ----------
     function saveReview(id, value) {
-        const input = document.querySelector(`.review-input[data-id="${id}"]`);
+        const textarea = document.querySelector(`.review-input[data-id="${id}"]`);
         const tag = document.getElementById(`review-tag-${id}`);
-        if (input) input.classList.add('saving');
+        if (textarea) textarea.classList.add('saving');
         if (tag) tag.classList.remove('show');
 
         fetch(`/api/match/${id}`)
@@ -61,17 +59,19 @@
             .then(result => {
                 if (result.success) {
                     if (tag) tag.classList.add('show');
-                    if (input) input.defaultValue = value;
+                    if (textarea) textarea.defaultValue = value;
+                    // 更新 title
+                    if (textarea) textarea.title = value;
                 } else {
                     throw new Error(result.error || '未知错误');
                 }
             })
             .catch(err => {
                 alert('保存复盘失败: ' + err.message);
-                if (input) input.value = input.defaultValue || '';
+                if (textarea) textarea.value = textarea.defaultValue || '';
             })
             .finally(() => {
-                if (input) input.classList.remove('saving');
+                if (textarea) textarea.classList.remove('saving');
             });
     }
 
@@ -94,7 +94,6 @@
                 if (totalItems === 0) {
                     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:30px;">暂无${resultType}单记录</td></tr>`;
                     pagination.style.display = 'none';
-                    if (selectAll) selectAll.checked = false;
                     return;
                 }
                 renderPage();
@@ -136,7 +135,7 @@
                     <td>${judgmentDisplay}</td>
                     <td style="color:${color};font-weight:600;">${resultType}</td>
                     <td>
-                        <input class="review-input" data-id="${m.id}" value="${review}" placeholder="输入复盘..." />
+                        <textarea class="review-input" data-id="${m.id}" placeholder="输入复盘..." title="${review}">${review}</textarea>
                         <span class="save-tag" id="review-tag-${m.id}">✓</span>
                     </td>
                 </tr>
@@ -145,23 +144,32 @@
         tbody.innerHTML = html;
         totalCount.textContent = totalItems;
 
-        // 绑定复盘输入事件
-        tbody.querySelectorAll('.review-input').forEach(inp => {
-            inp.addEventListener('blur', function() {
+        // 绑定复盘输入事件（textarea 特有）
+        tbody.querySelectorAll('.review-input').forEach(el => {
+            // 输入时自动更新 title，以便悬停显示最新内容
+            el.addEventListener('input', function() {
+                this.title = this.value;
+            });
+
+            el.addEventListener('blur', function() {
                 const id = this.dataset.id;
                 const value = this.value.trim();
                 const oldVal = this.defaultValue || '';
                 if (value === oldVal) return;
                 saveReview(id, value);
             });
-            inp.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
-                if (e.key === 'Escape') { this.blur(); }
+
+            el.addEventListener('keydown', function(e) {
+                // Enter 键失焦（Shift+Enter 允许换行，不触发）
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    this.blur();
+                }
+                if (e.key === 'Escape') {
+                    this.blur();
+                }
             });
         });
-
-        // 更新全选状态（当页面数据变化时，全选复选框应取消选中）
-        if (selectAll) selectAll.checked = false;
     }
 
     // ---------- 分页 ----------
@@ -261,11 +269,10 @@
         // 删除按钮
         deleteBtn.addEventListener('click', deleteSelected);
 
-        // 全选功能
+        // 全选
         if (selectAll) {
             selectAll.addEventListener('change', function() {
-                const checked = this.checked;
-                document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
+                document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = this.checked);
             });
         }
 
