@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>统计</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
         body {
             font-family: 'Segoe UI', Roboto, Arial, sans-serif;
             background: #f0f4f8;
@@ -17,7 +21,7 @@
             margin: 0 auto;
             background: white;
             border-radius: 20px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
             padding: 30px 35px;
         }
         .top-nav {
@@ -39,8 +43,12 @@
             background: #1a3a6b;
             color: white;
         }
-        .top-nav a:hover { background: #d1d9e6; }
-        h1 { margin-bottom: 20px; }
+        .top-nav a:hover {
+            background: #d1d9e6;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -53,6 +61,11 @@
             border-radius: 14px;
             text-align: center;
             border: 1px solid #e2e8f0;
+            transition: transform 0.1s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            cursor: pointer;
         }
         .stat-card .number {
             font-size: 32px;
@@ -63,30 +76,62 @@
             font-size: 14px;
             color: #4b657a;
         }
+        .stat-card.clickable:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
         .stat-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
+            font-size: 14px;
         }
         .stat-table th {
             background: #1f3a5f;
             color: white;
-            padding: 10px;
+            padding: 10px 8px;
             text-align: left;
+            white-space: nowrap;
         }
         .stat-table td {
-            padding: 8px 10px;
+            padding: 8px 8px;
             border-bottom: 1px solid #e2e8f0;
         }
-        .stat-table tr:hover { background: #f8fafc; }
-        h2 { margin-top: 30px; font-size: 20px; }
+        .stat-table tr:hover {
+            background: #f8fafc;
+        }
+        .stat-table .col-id {
+            min-width: 60px;
+        }
+        .stat-table .col-team {
+            min-width: 120px;
+        }
+        .stat-table .col-league {
+            min-width: 80px;
+        }
+        .stat-table .col-odds {
+            min-width: 70px;
+        }
+        .stat-table .col-analysis {
+            min-width: 120px;
+        }
+        .stat-table .col-judgment {
+            min-width: 100px;
+        }
+        h2 {
+            margin-top: 30px;
+            font-size: 20px;
+        }
         .bar-container {
             display: flex;
             align-items: center;
             gap: 10px;
             margin: 4px 0;
         }
-        .bar-label { width: 100px; font-size: 14px; }
+        .bar-label {
+            width: 100px;
+            font-size: 14px;
+        }
         .bar-track {
             flex: 1;
             height: 20px;
@@ -100,73 +145,47 @@
             border-radius: 10px;
             transition: width 0.3s;
         }
-        .bar-fill.red { background: #dc2626; }
-        .bar-fill.black { background: #1f2937; }
-        .bar-fill.draw { background: #d97706; }
-        .bar-value { width: 60px; text-align: right; font-size: 14px; }
+        .bar-fill.red {
+            background: #dc2626;
+        }
+        .bar-fill.black {
+            background: #1f2937;
+        }
+        .bar-fill.draw {
+            background: #d97706;
+        }
+        .bar-value {
+            width: 60px;
+            text-align: right;
+            font-size: 14px;
+        }
+        @media (max-width: 700px) {
+            .container { padding: 16px; }
+            .stat-table { font-size: 12px; }
+            .stat-table th, .stat-table td { padding: 6px 4px; }
+            .stat-table .col-id, .stat-table .col-team,
+            .stat-table .col-league, .stat-table .col-odds,
+            .stat-table .col-analysis, .stat-table .col-judgment {
+                min-width: auto;
+            }
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    {% include '_navbar.html' %}
-
-    <h1>📈 数据统计</h1>
-    <div id="statsLoading" style="padding:20px; text-align:center;">加载中...</div>
-    <div id="statsContent" style="display:none;">
-        <!-- 总览 -->
-        <div class="stats-grid" id="overviewCards"></div>
-
-        <!-- 结果分布 -->
-        <h2>📊 结果分布</h2>
-        <div id="resultDistribution"></div>
-
-        <!-- 基本面判断 vs 结果 -->
-        <h2>📋 各基本面判断下的结果统计</h2>
-        <div id="judgmentStats"></div>
+    <div class="container">
+        {% include '_navbar.html' %}
+        <h1>📈 数据统计</h1>
+        <div id="statsLoading" style="padding:20px; text-align:center;">加载中...</div>
+        <div id="statsContent" style="display:none;">
+            <div class="stats-grid" id="overviewCards"></div>
+            <h2>📊 结果分布</h2>
+            <div id="resultDistribution"></div>
+            <h2>📋 各基本面判断下的结果统计</h2>
+            <div id="judgmentStats"></div>
+        </div>
     </div>
-</div>
 
-<script>
-function loadStats() {
-    fetch('/api/stats')
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById('statsLoading').style.display = 'none';
-        document.getElementById('statsContent').style.display = 'block';
-
-        // 总览卡片
-        const overview = document.getElementById('overviewCards');
-        const total = data.total || 0;
-        const resultCounts = data.result_counts || [];
-        const red = resultCounts.find(r => r.result === '红')?.cnt || 0;
-        const black = resultCounts.find(r => r.result === '黑')?.cnt || 0;
-        const draw = resultCounts.find(r => r.result === '走盘')?.cnt || 0;
-        const unset = total - red - black - draw;
-        overview.innerHTML = `
-            <div class="stat-card"><div class="number">${total}</div><div class="label">总场次</div></div>
-            <div class="stat-card"><div class="number" style="color:#dc2626;">${red}</div><div class="label">红 (命中)</div></div>
-            <div class="stat-card"><div class="number" style="color:#1f2937;">${black}</div><div class="label">黑 (未中)</div></div>
-            <div class="stat-card"><div class="number" style="color:#d97706;">${draw}</div><div class="label">走盘</div></div>
-            <div class="stat-card"><div class="number" style="color:#6b7280;">${unset}</div><div class="label">未定</div></div>
-        `;
-
-        // 结果分布条形图
-        const distDiv = document.getElementById('resultDistribution');
-        const maxVal = Math.max(red, black, draw, 1);
-        distDiv.innerHTML = `
-            <div class="bar-container"><div class="bar-label">红</div><div class="bar-track"><div class="bar-fill red" style="width:${(red/maxVal)*100}%;"></div></div><div class="bar-value">${red}</div></div>
-            <div class="bar-container"><div class="bar-label">黑</div><div class="bar-track"><div class="bar-fill black" style="width:${(black/maxVal)*100}%;"></div></div><div class="bar-value">${black}</div></div>
-            <div class="bar-container"><div class="bar-label">走盘</div><div class="bar-track"><div class="bar-fill draw" style="width:${(draw/maxVal)*100}%;"></div></div><div class="bar-value">${draw}</div></div>
-        `;
-
-        // 基本面判断统计
-        const jStats = data.judgment_stats || [];
-        const jDiv = document.getElementById('judgmentStats');
-        if (jStats.length === 0) {
-            jDiv.innerHTML = '<p style="color:#6b7280;">暂无数据</p>';
-            return;
-        }
-        // 映射判断中文
+    <script>
         const judgmentMap = {
             'home_advantage': '主队占优',
             'away_advantage': '客队占优',
@@ -177,25 +196,150 @@ function loadStats() {
             'away_dominant': '客队绝对优势',
             'both_weak': '两队菜鸡'
         };
-        let html = `<table class="stat-table"><thead><tr><th>基本面判断</th><th>总场次</th><th>红</th><th>黑</th><th>走盘</th><th>胜率 (红/总)</th></tr></thead><tbody>`;
-        jStats.forEach(item => {
-            const label = judgmentMap[item.judgment] || item.judgment;
-            const totalJ = item.total || 0;
-            const redJ = item.red || 0;
-            const blackJ = item.black || 0;
-            const drawJ = item.draw || 0;
-            const rate = totalJ > 0 ? ((redJ / totalJ) * 100).toFixed(1) : '0.0';
-            html += `<tr><td>${label}</td><td>${totalJ}</td><td style="color:#dc2626;">${redJ}</td><td style="color:#1f2937;">${blackJ}</td><td style="color:#d97706;">${drawJ}</td><td>${rate}%</td></tr>`;
-        });
-        html += `</tbody></table>`;
-        jDiv.innerHTML = html;
-    })
-    .catch(err => {
-        document.getElementById('statsLoading').textContent = '❌ 加载失败: ' + err;
-    });
-}
 
-window.addEventListener('load', loadStats);
-</script>
+        function loadStats() {
+            Promise.all([
+                fetch('/api/stats').then(r => r.json()),
+                fetch('/api/history?limit=5000').then(r => r.json())
+            ])
+            .then(([statsData, histData]) => {
+                document.getElementById('statsLoading').style.display = 'none';
+                document.getElementById('statsContent').style.display = 'block';
+
+                const total = statsData.total || 0;
+                const resultCounts = statsData.result_counts || [];
+                const red = resultCounts.find(r => r.result === '红')?.cnt || 0;
+                const black = resultCounts.find(r => r.result === '黑')?.cnt || 0;
+                const draw = resultCounts.find(r => r.result === '走盘')?.cnt || 0;
+                const unset = total - red - black - draw;
+                const overview = document.getElementById('overviewCards');
+                overview.innerHTML = `
+                    <div class="stat-card"><div class="number">${total}</div><div class="label">总场次</div></div>
+                    <div class="stat-card clickable" onclick="window.location.href='/red_list'">
+                        <div class="number" style="color:#dc2626;">${red}</div>
+                        <div class="label">红 (命中) 点击查看</div>
+                    </div>
+                    <div class="stat-card clickable" onclick="window.location.href='/black_list'">
+                        <div class="number" style="color:#1f2937;">${black}</div>
+                        <div class="label">黑 (未中) 点击查看</div>
+                    </div>
+                    <div class="stat-card clickable" onclick="window.location.href='/draw_list'">
+                        <div class="number" style="color:#d97706;">${draw}</div>
+                        <div class="label">走盘 点击查看</div>
+                    </div>
+                    <div class="stat-card"><div class="number" style="color:#6b7280;">${unset}</div><div class="label">未定</div></div>
+                `;
+
+                const distDiv = document.getElementById('resultDistribution');
+                const maxVal = Math.max(red, black, draw, 1);
+                distDiv.innerHTML = `
+                    <div class="bar-container"><div class="bar-label">红</div><div class="bar-track"><div class="bar-fill red" style="width:${(red/maxVal)*100}%;"></div></div><div class="bar-value">${red}</div></div>
+                    <div class="bar-container"><div class="bar-label">黑</div><div class="bar-track"><div class="bar-fill black" style="width:${(black/maxVal)*100}%;"></div></div><div class="bar-value">${black}</div></div>
+                    <div class="bar-container"><div class="bar-label">走盘</div><div class="bar-track"><div class="bar-fill draw" style="width:${(draw/maxVal)*100}%;"></div></div><div class="bar-value">${draw}</div></div>
+                `;
+
+                const matches = histData.data || [];
+                const latestMap = {};
+                matches.forEach(m => {
+                    const key = m.judgment;
+                    if (!key) return;
+                    if (!latestMap[key] || m.id > latestMap[key].id) {
+                        latestMap[key] = {
+                            id: m.id,
+                            league: m.league || '',
+                            initial_odds: m.pos2 || '',
+                            initial_analysis: m.initial_analysis || '',
+                            final_analysis: m.final_analysis || '',
+                            home_team: m.home_team || '',
+                            away_team: m.away_team || ''
+                        };
+                    }
+                });
+
+                const jStats = statsData.judgment_stats || [];
+                if (jStats.length === 0) {
+                    document.getElementById('judgmentStats').innerHTML = '<p style="color:#6b7280;">暂无数据</p>';
+                    return;
+                }
+
+                const enriched = jStats.map(item => {
+                    const key = item.judgment;
+                    const latest = latestMap[key] || {};
+                    return {
+                        judgment: item.judgment,
+                        total: item.total || 0,
+                        red: item.red || 0,
+                        black: item.black || 0,
+                        draw: item.draw || 0,
+                        id: (item.id !== undefined && item.id !== null && item.id !== '') ? item.id : latest.id || '-',
+                        league: (item.league && item.league !== '-') ? item.league : (latest.league || '-'),
+                        initial_odds: (item.initial_odds && item.initial_odds !== '-') ? item.initial_odds : (latest.initial_odds || '-'),
+                        initial_analysis: (item.initial_analysis && item.initial_analysis !== '-') ? item.initial_analysis : (latest.initial_analysis || '-'),
+                        final_analysis: (item.final_analysis && item.final_analysis !== '-') ? item.final_analysis : (latest.final_analysis || '-'),
+                        home_team: latest.home_team || '?',
+                        away_team: latest.away_team || '?'
+                    };
+                });
+
+                renderJudgmentTable(enriched);
+            })
+            .catch(err => {
+                document.getElementById('statsLoading').textContent = '❌ 加载失败: ' + err;
+                console.error(err);
+            });
+        }
+
+        function renderJudgmentTable(items) {
+            let html = `
+                <table class="stat-table">
+                    <thead>
+                        <tr>
+                            <th class="col-id">ID</th>
+                            <th class="col-team">主队 VS 客队</th>
+                            <th class="col-league">联赛</th>
+                            <th class="col-odds">初02</th>
+                            <th class="col-analysis">初盘分析</th>
+                            <th class="col-analysis">终盘分析</th>
+                            <th class="col-judgment">基本面判断</th>
+                            <th>总场次</th>
+                            <th>红</th>
+                            <th>黑</th>
+                            <th>走盘</th>
+                            <th>胜率 (红/总)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            items.forEach(item => {
+                const label = judgmentMap[item.judgment] || item.judgment;
+                const totalJ = item.total;
+                const redJ = item.red;
+                const blackJ = item.black;
+                const drawJ = item.draw;
+                const rate = totalJ > 0 ? ((redJ / totalJ) * 100).toFixed(1) : '0.0';
+                const teamDisplay = `${item.home_team} <span style="font-weight:600;color:#3b7cff;">VS</span> ${item.away_team}`;
+                html += `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${teamDisplay}</td>
+                        <td>${item.league}</td>
+                        <td>${item.initial_odds}</td>
+                        <td>${item.initial_analysis}</td>
+                        <td>${item.final_analysis}</td>
+                        <td>${label}</td>
+                        <td>${totalJ}</td>
+                        <td style="color:#dc2626;">${redJ}</td>
+                        <td style="color:#1f2937;">${blackJ}</td>
+                        <td style="color:#d97706;">${drawJ}</td>
+                        <td>${rate}%</td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table>`;
+            document.getElementById('judgmentStats').innerHTML = html;
+        }
+
+        window.addEventListener('load', loadStats);
+    </script>
 </body>
 </html>
