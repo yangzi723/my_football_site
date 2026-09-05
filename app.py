@@ -160,9 +160,41 @@ def api_update_match(match_id):
         return jsonify({'error': '请求体不是JSON'}), 400
     if 'home_team' not in data or 'away_team' not in data:
         return jsonify({'error': '缺少 home_team 或 away_team'}), 400
+
+    # 为可能缺失的字段设置默认值，避免SQL绑定错误
     data.setdefault('date', '')
     data.setdefault('time', '')
     data.setdefault('league', '')
+    data.setdefault('home_unexpected', '')
+    data.setdefault('away_unexpected', '')
+    data.setdefault('result', '')
+    data.setdefault('judgment', 'equal')
+    data.setdefault('pos1', '')
+    data.setdefault('pos2', '')
+    data.setdefault('asian_odds', '')
+    data.setdefault('range', '')
+    data.setdefault('initial_prediction', '')
+    data.setdefault('initial_analysis', '')
+    data.setdefault('final_analysis', '')
+    # ===== 新增：ai_result 默认值 =====
+    data.setdefault('ai_result', '')
+
+    # 数值类型确保为数字（可选，但建议）
+    numeric_fields = ['home_rank', 'home_scored', 'home_conceded', 'home_recent',
+                      'home_wins', 'home_draws', 'home_losses', 'home_injuries',
+                      'home_motivation', 'home_value', 'away_rank', 'away_scored',
+                      'away_conceded', 'away_recent', 'away_wins', 'away_draws',
+                      'away_losses', 'away_injuries', 'away_motivation', 'away_value',
+                      'home_score', 'away_score', 'home_prob', 'draw_prob', 'away_prob']
+    for field in numeric_fields:
+        if field in data and data[field] is not None:
+            try:
+                data[field] = float(data[field]) if 'prob' in field or 'value' in field else int(data[field])
+            except (ValueError, TypeError):
+                data[field] = 0
+        else:
+            data[field] = 0
+
     try:
         update_match_full(match_id, data)
         return jsonify({'success': True})

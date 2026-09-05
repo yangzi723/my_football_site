@@ -1,186 +1,7 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>预测/复盘</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <style>
-        /* ========== 全部样式保留（与原版一致） ========== */
-        .action-btn { padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; margin-right: 4px; }
-        .edit-btn { background: #3b7cff; color: white; }
-        .edit-btn:hover { background: #2563eb; }
-        .delete-btn { background: #dc2626; color: white; }
-        .delete-btn:hover { background: #b91c1c; }
-        .predict-btn { background: #0f973d; color: white; }
-        .predict-btn:hover { background: #0b7a30; }
-        .import-btn { background: #8b5cf6; color: white; }
-        .import-btn:hover { background: #7c3aed; }
-        .add-btn { background: #d97706; color: white; }
-        .add-btn:hover { background: #b45309; }
-        .batch-delete-btn { background: #dc2626; color: white; }
-        .batch-delete-btn:hover { background: #b91c1c; }
-        .filter-row { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
-        .filter-row input, .filter-row button { padding: 8px 14px; border-radius: 8px; border: 1px solid #cdd8e6; font-size: 14px; }
-        .filter-row button { background: #1a3a6b; color: white; border: none; cursor: pointer; }
-        .filter-row button:hover { background: #0f2a4a; }
-        .team-link { color: #1a3a6b; text-decoration: none; font-weight: 500; cursor: pointer; }
-        .team-link:hover { text-decoration: underline; color: #3b7cff; }
-        .section-divider { margin: 30px 0 20px; border-top: 2px solid #e2e8f0; padding-top: 20px; }
-        .section-title { font-size: 20px; font-weight: 600; color: #1f3a5f; margin: 0; }
+(function() {
+    "use strict";
 
-        .modal-edit { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-edit-content { background: white; border-radius: 16px; max-width: 950px; width: 95%; max-height: 90vh; padding: 20px 25px; overflow-y: auto; }
-        .modal-edit-content .form-group { margin-bottom: 8px; display: flex; align-items: center; }
-        .modal-edit-content .form-group label { width: 120px; font-weight: 500; font-size: 13px; color: #2d3f55; }
-        .modal-edit-content .form-group input, .modal-edit-content .form-group select { flex: 1; padding: 6px 10px; border: 1px solid #cdd8e6; border-radius: 6px; font-size: 13px; }
-        .modal-edit-content .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        @media (max-width: 600px) { .modal-edit-content .two-col { grid-template-columns: 1fr; } }
-        .modal-edit-content .section-title { font-weight: 600; color: #1f3a5f; margin: 10px 0 5px 0; font-size: 14px; border-left: 4px solid #3b7cff; padding-left: 10px; }
-        .modal-edit-content .btn-group { margin-top: 15px; display: flex; gap: 10px; }
-
-        .modal-select { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1001; justify-content: center; align-items: center; }
-        .modal-select-content { background: white; border-radius: 16px; max-width: 1100px; width: 95%; max-height: 85vh; padding: 20px 25px; overflow-y: auto; display: flex; flex-direction: column; }
-        .modal-select-content .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .modal-select-content .modal-header h3 { margin: 0; }
-        .modal-select-content .close-btn { font-size: 28px; cursor: pointer; color: #4b657a; }
-        .modal-select-content .close-btn:hover { color: #1e2a3a; }
-        .modal-select-content .filter-row { margin-bottom: 15px; }
-        .modal-select-content .table-wrap { overflow-x: auto; flex: 1; }
-        .modal-select-content table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        .modal-select-content th { background: #1f3a5f; color: white; padding: 8px; text-align: left; }
-        .modal-select-content td { padding: 6px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-        .modal-select-content tr:hover { background: #f8fafc; }
-        .modal-select-content .footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 12px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; gap: 10px; }
-        .modal-select-content .footer-actions .left { display: flex; align-items: center; gap: 12px; }
-        .modal-select-content .footer-actions .left label { font-size: 14px; cursor: pointer; }
-        .modal-select-content .footer-actions .right { display: flex; gap: 10px; }
-        .pagination { display: flex; gap: 6px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
-        .pagination button, .pagination .page-num { padding: 6px 12px; border-radius: 6px; border: 1px solid #cdd8e6; background: white; cursor: pointer; font-size: 14px; min-width: 36px; text-align: center; }
-        .pagination button:hover:not(:disabled), .pagination .page-num:hover { background: #e2e8f0; }
-        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .pagination .page-num.active { background: #1a3a6b; color: white; border-color: #1a3a6b; }
-        .pagination .page-num.active:hover { background: #0f2a4a; }
-        .pagination .ellipsis { padding: 6px 8px; color: #6b7280; }
-        .status-badge { padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; display: inline-block; }
-        .status-started { background: #d1fae5; color: #065f46; }
-        .status-pending { background: #fef3c7; color: #92400e; }
-        .score-group { display: flex; align-items: center; gap: 4px; }
-        .score-input { width: 40px; padding: 4px 6px; border: 1px solid #cdd8e6; border-radius: 4px; text-align: center; font-size: 14px; }
-        .vs-large { font-weight: 800; font-size: 1.2em; color: #3b7cff; margin: 0 8px; text-shadow: 0 0 6px rgba(59,124,255,0.25); }
-        .score-vs { display: inline-block; min-width: 40px; text-align: center; font-weight: 600; }
-        .toast { position: fixed; top: 20px; right: 20px; background: #1f3a5f; color: white; padding: 12px 24px; border-radius: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); z-index: 9999; display: none; font-size: 14px; }
-        .toast.show { display: block; }
-        .result-dialog-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
-        .result-dialog { background: white; border-radius: 20px; max-width: 500px; width: 90%; padding: 30px 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: dialogPop 0.3s ease; text-align: center; }
-        @keyframes dialogPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        .result-dialog .icon { font-size: 48px; margin-bottom: 10px; }
-        .result-dialog .title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-        .result-dialog .summary { font-size: 16px; color: #4b657a; margin-bottom: 12px; }
-        .result-dialog .details { text-align: left; background: #f8fafc; border-radius: 8px; padding: 12px 16px; margin: 12px 0; max-height: 150px; overflow-y: auto; font-size: 14px; }
-        .result-dialog .details .success-item { color: #0f973d; }
-        .result-dialog .details .fail-item { color: #dc2626; }
-        .result-dialog .btn-close-dialog { background: #1a3a6b; color: white; border: none; padding: 10px 32px; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-        .result-dialog .btn-close-dialog:hover { background: #0f2a4a; }
-
-        .checkbox-cell { text-align: center; vertical-align: middle; }
-        .checkbox-cell input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
-        .select-all-checkbox { width: 16px; height: 16px; cursor: pointer; vertical-align: middle; }
-        .select-all-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: normal; font-size: 12px; }
-        .select-all-label input { margin: 0; }
-
-        /* 表格样式增强（确保原版美观） */
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { background: #1f3a5f; color: white; padding: 8px; text-align: left; white-space: nowrap; }
-        td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-        tr:hover { background: #f8fafc; }
-        .action-btn { font-size: 12px; padding: 3px 8px; }
-    </style>
-</head>
-<body>
-<div class="container">
-    {% include '_navbar.html' %}
-
-    <h1>📋 历史预测与赛事</h1>
-
-    <div class="section-divider">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
-            <h2 class="section-title">📊 预测记录</h2>
-            <div style="display:flex; gap:8px; align-items:center;">
-                <button class="action-btn add-btn" id="addMatchBtn" style="padding:6px 14px; font-size:13px;">➕ 手动添加</button>
-                <button class="action-btn import-btn" id="importFixturesBtn" style="padding:6px 14px; font-size:13px;">📥 批量导入</button>
-                <button class="action-btn batch-delete-btn" id="batchDeleteBtn" style="padding:6px 14px; font-size:13px;">🗑️ 批量删除</button>
-            </div>
-        </div>
-        <div class="filter-row">
-            <label>日期筛选：</label>
-            <input type="date" id="filter-date">
-            <button id="filterBtn">筛选</button>
-            <button id="clearFilterBtn">清除筛选</button>
-        </div>
-        <div id="loading" style="padding:20px; text-align:center;">加载中...</div>
-        <div id="tableWrap" style="display:none; overflow-x:auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:70px;">
-                            <label class="select-all-label">
-                                <input type="checkbox" id="selectAllCheckbox" class="select-all-checkbox">
-                                <span>全选</span>
-                            </label>
-                        </th>
-                        <th>ID</th>
-                        <th>日期</th>
-                        <th>时间</th>
-                        <th>联赛</th>
-                        <th>主队 VS 客队</th>
-                        <th>基本面评分</th>
-                        <th>基本面判断</th>
-                        <th>初测</th>
-                        <th>AI结果</th>
-                        <th>结果</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="historyBody"></tbody>
-            </table>
-        </div>
-        <div class="pagination" id="pagination" style="display:none;">
-            <button id="prevPageBtn" disabled>上一页</button>
-            <span id="pageNumbers"></span>
-            <button id="nextPageBtn" disabled>下一页</button>
-            <select id="perPageSelect" style="margin-left:10px;padding:4px 8px;border-radius:6px;border:1px solid #cdd8e6;">
-                <option value="10">10条/页</option>
-                <option value="20" selected>20条/页</option>
-                <option value="50">50条/页</option>
-                <option value="100">100条/页</option>
-            </select>
-            <span style="font-size:13px; color:#4b657a; margin-left:8px;">共 <span id="totalCount">0</span> 条</span>
-        </div>
-    </div>
-
-    <!-- 编辑模态框 -->
-    <div id="editModal" class="modal-edit">
-        <div class="modal-edit-content">
-            <h3 id="editTitle">📝 预测/复盘</h3>
-            <div id="editFormContainer"></div>
-            <div class="btn-group">
-                <button class="btn" id="saveEditBtn">💾 保存修改</button>
-                <button class="btn btn-secondary" id="cancelEditBtn">取消</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 批量导入模态框（占位） -->
-    <div id="fixtureSelectModal" class="modal-select"></div>
-    <!-- 导入结果对话框 -->
-    <div id="resultDialogOverlay" class="result-dialog-overlay">...</div>
-
-    <!-- Toast -->
-    <div id="toast" class="toast"></div>
-
-    <script>
-    (function() {
+    document.addEventListener('DOMContentLoaded', function() {
         // ---------- DOM 引用 ----------
         const tbody = document.getElementById('historyBody');
         const loading = document.getElementById('loading');
@@ -321,7 +142,7 @@
                     </tr>`;
                 });
                 tbody.innerHTML = html;
-                bindSelects();
+                // 委托事件已绑定，无需额外绑定
                 updatePagination();
             })
             .catch(err => {
@@ -371,20 +192,8 @@
             pagination.style.display = 'flex';
         }
 
-        // ========== 下拉框事件绑定（使用事件委托优化） ==========
-        function bindSelects() {
-            // 结果下拉（委托到 tbody）
-            // 由于 change 不冒泡，但我们可以直接在绑定时添加监听，因为元素每次重新生成
-            // 为避免重复绑定，使用一次性委托监听，但需要确保新元素能响应。最佳实践是在绑定时用事件委托到容器
-            // 这里采用在 tbody 上监听 change，通过 target 判断
-            // 但为避免绑定多次，我们移除之前监听，但为了简单，我们采用在文档加载后一次性绑定到 tbody
-            // 但 tbody 内容会变，所以我们使用事件委托，只需绑定一次。
-            // 由于我们每次重新设置 innerHTML，所以我们需要重新绑定？实际上事件委托不需要重新绑定，因为事件冒泡，只要监听父元素即可。
-            // 但为了兼容，我们只在第一次加载时绑定，后续无需再绑。
-            // 但为了确保，我们使用一个标志防止重复绑定。
-        }
-
-        // 使用委托监听（在文档加载时绑定一次）
+        // ========== 事件委托（一次绑定，永久有效） ==========
+        // 监听 change 事件（下拉框）
         document.addEventListener('change', function(e) {
             const target = e.target;
             // 结果下拉
@@ -433,38 +242,37 @@
             }
         });
 
-        // 按钮事件（编辑、删除）也使用委托
+        // 监听 click 事件（按钮、复选框）
         document.addEventListener('click', function(e) {
             const target = e.target.closest('button');
-            if (!target) return;
-
-            // 编辑按钮
-            if (target.classList.contains('edit-btn')) {
-                const id = target.dataset.id;
-                if (id) openEditModal(id);
-                return;
-            }
-            // 删除按钮
-            if (target.classList.contains('delete-btn')) {
-                const id = target.dataset.id;
-                if (confirm('确定删除该预测记录吗？')) {
-                    apiRequest('/api/match/' + id, { method: 'DELETE' })
-                        .then(res => {
-                            if (res.success) loadHistory();
-                            else alert('删除失败: ' + (res.error || '未知错误'));
-                        });
+            if (target) {
+                // 编辑按钮
+                if (target.classList.contains('edit-btn')) {
+                    const id = target.dataset.id;
+                    if (id) openEditModal(id);
+                    return;
                 }
-                return;
+                // 删除按钮
+                if (target.classList.contains('delete-btn')) {
+                    const id = target.dataset.id;
+                    if (confirm('确定删除该预测记录吗？')) {
+                        apiRequest('/api/match/' + id, { method: 'DELETE' })
+                            .then(res => {
+                                if (res.success) loadHistory();
+                                else alert('删除失败: ' + (res.error || '未知错误'));
+                            });
+                    }
+                    return;
+                }
             }
-            // 全选复选框
-            if (target.id === 'selectAllCheckbox' || target.closest('#selectAllCheckbox')) {
-                // 实际上 checkbox 的 change 事件更合适，但 click 也可以
-                // 我们使用 change 事件单独处理
+            // 全选复选框（处理点击 label 或 checkbox）
+            if (e.target.id === 'selectAllCheckbox' || e.target.closest('#selectAllCheckbox')) {
+                // 使用 change 事件单独处理，这里忽略
                 return;
             }
         });
 
-        // 全选复选框用 change 事件
+        // 全选复选框 change
         selectAllCheckbox.addEventListener('change', function() {
             const checked = this.checked;
             document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
@@ -521,7 +329,7 @@
             loadHistory();
         });
 
-        // ========== 编辑模态框（数据驱动） ==========
+        // ========== 编辑模态框 ==========
         const editFields = {
             home: [
                 { id:'home-name', label:'球队名称', type:'text', key:'home_team' },
@@ -582,12 +390,10 @@
             });
             html += `</div></div>`;
 
-            // 日期、时间、联赛
             html += `<div class="form-group"><label>日期</label><input type="date" id="edit-date" value="${data.date||''}"></div>`;
             html += `<div class="form-group"><label>时间</label><input type="text" id="edit-time" value="${data.time||''}" placeholder="如 19:30"></div>`;
             html += `<div class="form-group"><label>联赛</label><input type="text" id="edit-league" value="${data.league||''}"></div>`;
 
-            // 预测结果
             html += `<div class="section-title">📊 预测结果</div>`;
             html += `<div class="form-group"><label>主队得分</label><input type="number" step="1" id="edit-home-score" value="${Math.round(data.home_score||0)}"></div>`;
             html += `<div class="form-group"><label>客队得分</label><input type="number" step="1" id="edit-away-score" value="${Math.round(data.away_score||0)}"></div>`;
@@ -724,7 +530,5 @@
 
         // ========== 初始化 ==========
         loadHistory();
-    })();
-    </script>
-</body>
-</html>
+    });
+})();

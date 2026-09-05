@@ -62,16 +62,11 @@ def init_db():
             if col not in existing_cols:
                 conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
         # ===== 新增结束 =====
-
-        # ===== 新增：添加 ai_result 字段 =====
-        if 'ai_result' not in existing_cols:
-            conn.execute('ALTER TABLE matches ADD COLUMN ai_result TEXT')
-        # ===== 新增结束 =====
-
+        
         conn.commit()
     init_fixtures_table()
     init_odds_table()
-    init_user_table()
+    init_user_table()  # 新增这一行
 
 def save_match(data):
     with closing(get_db()) as conn:
@@ -157,7 +152,7 @@ def update_match_full(match_id, data):
     data.setdefault('initial_prediction', '')
     data.setdefault('initial_analysis', '')
     data.setdefault('final_analysis', '')
-    data.setdefault('ai_result', '')   # ← 确保 ai_result 有默认值
+    data.setdefault('ai_result', '')   # ← 新增
 
     with closing(get_db()) as conn:
         conn.execute('''
@@ -203,7 +198,7 @@ def update_match_full(match_id, data):
                 initial_analysis = :initial_analysis,
                 final_analysis = :final_analysis,
                 initial_prediction = :initial_prediction,
-                ai_result = :ai_result
+                ai_result = :ai_result   -- ← 注意这里有逗号！前面 initial_prediction 后面必须有逗号
             WHERE id = :id
         ''', {**data, 'id': match_id})
         conn.commit()
@@ -284,6 +279,7 @@ def get_all_fixtures(date_filter=None, limit=20, offset=0):
         if date_filter:
             sql += ' WHERE date = ?'
             params.append(date_filter)
+        # 排序：日期倒序，同一日期内时间升序
         sql += ' ORDER BY date DESC, time LIMIT ? OFFSET ?'
         params.extend([limit, offset])
         cur.execute(sql, params)
@@ -359,7 +355,6 @@ def save_odds(data):
         ''', data)
         conn.commit()
         return cur.lastrowid
-
 # ---------- 用户表 ----------
 def init_user_table():
     with closing(get_db()) as conn:
@@ -412,8 +407,7 @@ def get_all_users():
     with closing(get_db()) as conn:
         cur = conn.execute('SELECT * FROM users ORDER BY id')
         return cur.fetchall()
-
-# 重复函数定义（修复重复），保留一个
+# ---------- 用户管理函数 ----------
 def get_all_users():
     with closing(get_db()) as conn:
         cur = conn.execute('SELECT * FROM users ORDER BY id')
