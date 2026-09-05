@@ -129,7 +129,10 @@
                         <th>联赛</th>
                         <th>主队 VS 客队</th>
                         <th>基本面评分</th>
-						<th>基本面判断</th>
+                        <th>基本面判断</th>
+                        <!-- 新增两列 -->
+                        <th>初测</th>
+                        <th>AI结果</th>
                         <th>结果</th>
                         <th>操作</th>
                     </tr>
@@ -224,6 +227,23 @@
             'both_weak': '两队菜鸡'
         };
 
+        // ===== 新增：解析初测显示 =====
+        function getPredictionDisplay(initialPrediction) {
+            if (!initialPrediction) return '—';
+            if (typeof initialPrediction === 'string') {
+                try {
+                    const parsed = JSON.parse(initialPrediction);
+                    if (Array.isArray(parsed)) {
+                        return parsed.join('、') || '—';
+                    }
+                    return initialPrediction;
+                } catch (e) {
+                    return initialPrediction;
+                }
+            }
+            return initialPrediction;
+        }
+
         let toastTimer;
         function showToast(msg) {
             toast.textContent = msg;
@@ -258,7 +278,7 @@
 
                 allMatches = matches;
                 if (matches.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
                     pagination.style.display = 'none';
                     return;
                 }
@@ -275,6 +295,11 @@
                     const awayScore = Math.round(parseFloat(m.away_score) || 0);
                     const scoreDisplay = `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
 
+                    // 初测显示
+                    const predDisplay = getPredictionDisplay(m.initial_prediction);
+                    // AI结果（目前尚无字段，预留）
+                    const aiResult = m.ai_result || '—';
+
                     html += `<tr>
                         <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
                         <td>${m.id}</td>
@@ -284,6 +309,9 @@
                         <td><a href="/?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/?id=${m.id}" class="team-link">${m.away_team}</a></td>
                         <td>${scoreDisplay}</td>
                         <td>${judgmentDisplay}</td>
+                        <!-- 新增两列 -->
+                        <td>${predDisplay}</td>
+                        <td>${aiResult}</td>
                         <td>
                             <select class="result-select" data-id="${m.id}">
                                 <option value="">未定</option>
