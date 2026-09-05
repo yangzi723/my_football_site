@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>红单明细</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f0f4f8;
+            color: #1e2a3a;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+            padding: 30px 35px;
+        }
+        .top-nav {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            background: #f1f5f9;
+            padding: 10px 18px;
+            border-radius: 30px;
+        }
+        .top-nav a {
+            text-decoration: none;
+            color: #1f3a5f;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 16px;
+        }
+        .top-nav a.active { background: #1a3a6b; color: white; }
+        .top-nav a:hover { background: #d1d9e6; }
+        h1 { margin-bottom: 20px; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #1a3a6b;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .detail-table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .detail-table th,
+        .detail-table td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #e2e8f0;
+            word-break: break-word;
+            white-space: normal;
+        }
+        .detail-table th {
+            background: #1f3a5f;
+            color: white;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .detail-table tr:hover { background: #f8fafc; }
+
+        .detail-table th:nth-child(1) { width: 60px; }
+        .detail-table th:nth-child(2) { width: 90px; }
+        .detail-table th:nth-child(3) { width: 150px; }
+        .detail-table th:nth-child(4) { width: 80px; }
+        .detail-table th:nth-child(5) { width: 80px; }
+        .detail-table th:nth-child(6) { width: 80px; }
+        .detail-table th:nth-child(7) { width: 110px; }
+        .detail-table th:nth-child(8) { width: 60px; }
+        .detail-table th:nth-child(9) { width: 160px; }
+
+        .loading-text { padding: 30px; text-align: center; color: #6b7280; }
+        .pagination {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .pagination button, .pagination .page-num {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #cdd8e6;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            min-width: 36px;
+            text-align: center;
+        }
+        .pagination button:hover:not(:disabled), .pagination .page-num:hover { background: #e2e8f0; }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination .page-num.active { background: #1a3a6b; color: white; border-color: #1a3a6b; }
+        .pagination .ellipsis { padding: 6px 8px; color: #6b7280; }
+
+        .review-input {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid #cdd8e6;
+            border-radius: 4px;
+            font-size: 13px;
+            background: #fafbfc;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .review-input:focus {
+            outline: none;
+            border-color: #3b7cff;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(59,124,255,0.15);
+        }
+        .review-input.saving { opacity: 0.6; background: #f0f4ff; }
+        .save-tag {
+            font-size: 11px;
+            color: #4b7a3b;
+            margin-left: 4px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .save-tag.show { opacity: 1; }
+
+        @media (max-width: 700px) {
+            .container { padding: 16px; }
+            .detail-table { font-size: 12px; table-layout: auto; }
+            .detail-table th, .detail-table td { padding: 4px 3px; }
+            .detail-table th:nth-child(n) { width: auto; }
+            .review-input { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% include '_navbar.html' %}
+        <a href="/stats" class="back-link">⬅ 返回统计页</a>
+        <h1>🔴 红单明细</h1>
+        <div id="loading" class="loading-text">加载中...</div>
+        <div id="tableWrap" style="display:none;">
+            <table class="detail-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>联赛</th>
+                        <th>主队 VS 客队</th>
+                        <th>初01</th>
+                        <th>初02</th>
+                        <th>基本面评分</th>
+                        <th>基本面判断</th>
+                        <th>结果</th>
+                        <th>复盘</th>
+                    </tr>
+                </thead>
+                <tbody id="redBody"></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination" style="display:none;">
+            <button id="prevPageBtn" disabled>上一页</button>
+            <span id="pageNumbers"></span>
+            <button id="nextPageBtn" disabled>下一页</button>
+            <select id="perPageSelect" style="margin-left:10px;padding:4px 8px;border-radius:6px;border:1px solid #cdd8e6;">
+                <option value="10">10条/页</option>
+                <option value="20" selected>20条/页</option>
+                <option value="50">50条/页</option>
+                <option value="100">100条/页</option>
+            </select>
+            <span style="font-size:13px; color:#4b657a; margin-left:8px;">共 <span id="totalCount">0</span> 条</span>
+        </div>
+    </div>
+
+    <script>
+        const judgmentMap = {
+            'home_advantage': '主队占优',
+            'away_advantage': '客队占优',
+            'equal': '两队实力相当',
+            'home_strong': '主队较强优势',
+            'away_strong': '客队较强优势',
+            'home_dominant': '主队绝对优势',
+            'away_dominant': '客队绝对优势',
+            'both_weak': '两队菜鸡'
+        };
+
+        let allMatches = [];
+        let currentOffset = 0;
+        let currentLimit = 20;
+        let totalItems = 0;
+
+        function saveReview(id, value) {
+            const input = document.querySelector(`.review-input[data-id="${id}"]`);
+            const tag = document.getElementById(`review-tag-${id}`);
+            if (input) input.classList.add('saving');
+            if (tag) tag.classList.remove('show');
+
+            fetch(`/api/match/${id}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('获取数据失败');
+                    return res.json();
+                })
+                .then(data => {
+                    data.review = value;
+                    return fetch(`/api/match/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                })
+                .then(res => {
+                    if (!res.ok) return res.json().then(err => { throw new Error(err.error || '保存失败'); });
+                    return res.json();
+                })
+                .then(result => {
+                    if (result.success) {
+                        if (tag) tag.classList.add('show');
+                        if (input) input.defaultValue = value;
+                    } else {
+                        throw new Error(result.error || '未知错误');
+                    }
+                })
+                .catch(err => {
+                    alert('保存复盘失败: ' + err.message);
+                    if (input) input.value = input.defaultValue || '';
+                })
+                .finally(() => {
+                    if (input) input.classList.remove('saving');
+                });
+        }
+
+        function loadList() {
+            const loading = document.getElementById('loading');
+            const tableWrap = document.getElementById('tableWrap');
+            loading.style.display = 'block';
+            tableWrap.style.display = 'none';
+
+            fetch('/api/history?limit=5000')
+                .then(res => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    const matches = data.data || [];
+                    allMatches = matches.filter(m => m.result === '红');
+                    totalItems = allMatches.length;
+                    loading.style.display = 'none';
+                    tableWrap.style.display = 'block';
+                    if (totalItems === 0) {
+                        document.getElementById('redBody').innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;">暂无红单记录</td></tr>';
+                        document.getElementById('pagination').style.display = 'none';
+                        return;
+                    }
+                    renderPage();
+                    updatePagination();
+                })
+                .catch(err => {
+                    loading.textContent = '❌ 加载失败: ' + err.message;
+                    console.error(err);
+                });
+        }
+
+        function renderPage() {
+            const start = currentOffset;
+            const end = Math.min(start + currentLimit, totalItems);
+            const pageItems = allMatches.slice(start, end);
+            const tbody = document.getElementById('redBody');
+            let html = '';
+            pageItems.forEach(m => {
+                const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '—';
+                const pos1 = m.pos1 || '—';
+                const pos2 = m.pos2 || '—';
+                const homeTeam = m.home_team || '?';
+                const awayTeam = m.away_team || '?';
+                const league = m.league || '—';
+                const homeScore = Math.round(parseFloat(m.home_score) || 0);
+                const awayScore = Math.round(parseFloat(m.away_score) || 0);
+                const scoreDisplay = `${homeScore} VS ${awayScore}`;
+                const review = m.review || '';
+                html += `
+                    <tr>
+                        <td>${m.id}</td>
+                        <td>${league}</td>
+                        <td>${homeTeam} <span style="font-weight:600;color:#3b7cff;">VS</span> ${awayTeam}</td>
+                        <td>${pos1}</td>
+                        <td>${pos2}</td>
+                        <td>${scoreDisplay}</td>
+                        <td>${judgmentDisplay}</td>
+                        <td style="color:#dc2626;font-weight:600;">红</td>
+                        <td>
+                            <input class="review-input" data-id="${m.id}" value="${review}" placeholder="输入复盘..." />
+                            <span class="save-tag" id="review-tag-${m.id}">✓</span>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = html;
+            document.getElementById('totalCount').textContent = totalItems;
+
+            tbody.querySelectorAll('.review-input').forEach(inp => {
+                inp.addEventListener('blur', function() {
+                    const id = this.dataset.id;
+                    const value = this.value.trim();
+                    const oldVal = this.defaultValue || '';
+                    if (value === oldVal) return;
+                    saveReview(id, value);
+                });
+                inp.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
+                    if (e.key === 'Escape') { this.blur(); }
+                });
+            });
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(totalItems / currentLimit) || 1;
+            const currentPage = Math.floor(currentOffset / currentLimit) + 1;
+            const pagination = document.getElementById('pagination');
+            const pageNumbers = document.getElementById('pageNumbers');
+            const prevBtn = document.getElementById('prevPageBtn');
+            const nextBtn = document.getElementById('nextPageBtn');
+
+            let html = '';
+            const maxVisible = 7;
+            let startPage = 1, endPage = totalPages;
+            if (totalPages > maxVisible) {
+                const half = Math.floor(maxVisible / 2);
+                if (currentPage <= half + 1) endPage = maxVisible;
+                else if (currentPage >= totalPages - half) startPage = totalPages - maxVisible + 1;
+                else { startPage = currentPage - half; endPage = currentPage + half; }
+            }
+            if (startPage > 1) {
+                html += `<span class="page-num" data-page="1">1</span>`;
+                if (startPage > 2) html += `<span class="ellipsis">…</span>`;
+            }
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<span class="page-num ${i===currentPage?'active':''}" data-page="${i}">${i}</span>`;
+            }
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="ellipsis">…</span>`;
+                html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
+            }
+            pageNumbers.innerHTML = html;
+            document.querySelectorAll('.page-num').forEach(el => {
+                el.addEventListener('click', function() {
+                    const page = parseInt(this.dataset.page);
+                    if (page >= 1 && page <= totalPages) {
+                        currentOffset = (page - 1) * currentLimit;
+                        renderPage();
+                        updatePagination();
+                    }
+                });
+            });
+            prevBtn.disabled = currentOffset === 0;
+            nextBtn.disabled = currentOffset + currentLimit >= totalItems;
+            pagination.style.display = 'flex';
+        }
+
+        document.getElementById('prevPageBtn').addEventListener('click', function() {
+            if (currentOffset > 0) {
+                currentOffset = Math.max(0, currentOffset - currentLimit);
+                renderPage();
+                updatePagination();
+            }
+        });
+        document.getElementById('nextPageBtn').addEventListener('click', function() {
+            if (currentOffset + currentLimit < totalItems) {
+                currentOffset = Math.min(totalItems - currentLimit, currentOffset + currentLimit);
+                renderPage();
+                updatePagination();
+            }
+        });
+        document.getElementById('perPageSelect').addEventListener('change', function() {
+            currentLimit = parseInt(this.value);
+            currentOffset = 0;
+            renderPage();
+            updatePagination();
+        });
+
+        window.addEventListener('load', loadList);
+    </script>
+</body>
+</html>
