@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .user-container {
+            max-width: 1000px;
+            margin: 20px auto;
+            background: white;
+            padding: 20px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .user-container h1 { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .user-container h1 small { font-size: 14px; font-weight: normal; color: #4b657a; }
+        .btn-sm { padding: 4px 10px; font-size: 13px; border-radius: 6px; border: none; cursor: pointer; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-primary { background: #1a3a6b; color: white; }
+        .btn-primary:hover { background: #0f2a4a; }
+        .btn-success { background: #0f973d; color: white; }
+        .btn-success:hover { background: #0b7a30; }
+        .btn-warning { background: #d97706; color: white; }
+        .btn-warning:hover { background: #b45309; }
+        .table-wrap { overflow-x: auto; margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: #f1f5f9; padding: 8px 10px; text-align: left; border-bottom: 2px solid #dce3ec; }
+        td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+        .badge-admin { background: #3b7cff; color: white; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+        .badge-user { background: #e2e8f0; color: #1f2937; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; border-radius: 16px; max-width: 400px; width: 95%; padding: 25px 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal-content h3 { margin-top: 0; }
+        .modal-content .form-group { margin-bottom: 12px; }
+        .modal-content .form-group label { display: block; font-weight: 500; margin-bottom: 3px; }
+        .modal-content .form-group input { width: 100%; padding: 6px 10px; border: 1px solid #cdd8e6; border-radius: 6px; }
+        .modal-content .btn-group { display: flex; gap: 10px; margin-top: 15px; }
+        .modal-content .btn-group .btn { flex: 1; }
+        .flash-messages { margin: 10px 0; }
+        .flash { padding: 8px 14px; border-radius: 6px; margin-bottom: 6px; }
+        .flash-success { background: #d1fae5; color: #065f46; }
+        .flash-danger { background: #fee2e2; color: #991b1b; }
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .add-user-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .add-user-form .form-group { margin: 0; flex: 1 1 150px; }
+        .add-user-form .form-group label { font-size: 13px; color: #4b657a; display: block; }
+        .add-user-form .form-group input { width: 100%; padding: 6px 10px; border: 1px solid #cdd8e6; border-radius: 6px; }
+        .add-user-form .form-group.checkbox { flex: 0 1 auto; display: flex; align-items: center; gap: 6px; }
+        .add-user-form .form-group.checkbox label { margin: 0; }
+        .add-user-form .btn { padding: 6px 16px; align-self: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% include '_navbar.html' %}
+
+        <div class="user-container">
+            <h1>
+                👥 用户管理
+                <small>共 {{ users|length }} 个用户</small>
+            </h1>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for category, message in messages %}
+                            <div class="flash flash-{{ category }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="add-user-form">
+                <input type="hidden" name="action" value="add">
+                <div class="form-group">
+                    <label>用户名 *</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>密码 *</label>
+                    <input type="password" name="password" required>
+                </div>
+                <div class="form-group checkbox">
+                    <label>
+                        <input type="checkbox" name="is_admin"> 管理员
+                    </label>
+                </div>
+                <button type="submit" class="btn btn-success">➕ 添加用户</button>
+            </form>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>角色</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td><strong>{{ user.username }}</strong></td>
+                            <td>
+                                {% if user.is_admin %}
+                                    <span class="badge-admin">管理员</span>
+                                {% else %}
+                                    <span class="badge-user">普通用户</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.created_at[:16] if user.created_at else '—' }}</td>
+                            <td class="actions">
+                                <button class="btn-sm btn-primary" onclick="openChangePwdModal({{ user.id }}, '{{ user.username }}')">🔑 改密码</button>
+                                {% if user.id != current_user.id %}
+                                    <form method="POST" style="display:inline;">
+                                        <input type="hidden" name="action" value="toggle_admin">
+                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                        <button type="submit" class="btn-sm btn-warning">
+                                            {% if user.is_admin %}降为普通{% else %}设为管理员{% endif %}
+                                        </button>
+                                    </form>
+                                    <form method="POST" style="display:inline;" onsubmit="return confirm('确定要删除用户 {{ user.username }} 吗？');">
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="user_id" value="{{ user.id }}">
+                                        <button type="submit" class="btn-sm btn-danger">🗑️ 删除</button>
+                                    </form>
+                                {% else %}
+                                    <span style="color:#6b7280; font-size:13px;">(当前账号)</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改密码模态框 -->
+    <div id="changePwdModal" class="modal">
+        <div class="modal-content">
+            <h3>🔑 修改密码</h3>
+            <form method="POST">
+                <input type="hidden" name="action" value="change_password">
+                <input type="hidden" name="user_id" id="pwd_user_id">
+                <div class="form-group">
+                    <label>用户</label>
+                    <input type="text" id="pwd_username" readonly style="background:#f3f4f6;">
+                </div>
+                <div class="form-group">
+                    <label>新密码</label>
+                    <input type="password" name="new_password" id="pwd_new_password" required>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">💾 确认修改</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeChangePwdModal()">取消</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openChangePwdModal(userId, username) {
+            document.getElementById('pwd_user_id').value = userId;
+            document.getElementById('pwd_username').value = username;
+            document.getElementById('pwd_new_password').value = '';
+            document.getElementById('changePwdModal').style.display = 'flex';
+        }
+        function closeChangePwdModal() {
+            document.getElementById('changePwdModal').style.display = 'none';
+        }
+        window.addEventListener('click', function(e) {
+            if (e.target === document.getElementById('changePwdModal')) {
+                closeChangePwdModal();
+            }
+        });
+    </script>
+</body>
+</html>

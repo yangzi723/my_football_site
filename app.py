@@ -1,4 +1,6 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, flash, url_for
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from functools import wraps
 from database import (
     init_db, save_match, get_all_matches, get_match_by_id,
     update_match_result, get_statistics, delete_match, update_match_full,
@@ -6,38 +8,95 @@ from database import (
     get_fixture_by_id, update_fixture, delete_fixture, add_fixture,
     save_odds, count_fixtures, get_all_matches_count, get_db
 )
+from auth import User
 from datetime import datetime
 import traceback
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key-here-change-in-production'  # 请修改
 
-# 初始化数据库
+# ---------- Flask-Login 配置 ----------
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = '请先登录'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.get(int(user_id))
+
+# ---------- 初始化数据库 ----------
 init_db()
 
-# ---------- 页面路由 ----------
+# ---------- 创建默认管理员（首次运行） ----------
+with app.app_context():
+    admin_user = User.get_by_username('admin')
+    if not admin_user:
+        User.create('admin', 'admin123', is_admin=1)
+        print('✅ 默认管理员账号已创建: admin / admin123')
 
+# ---------- 登录/登出 ----------
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect('/')
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        user = User.get_by_username(username)
+        if user and user.check_password(password):
+            login_user(user)
+            next_page = request.args.get('next')
+            return redirect(next_page or '/')
+        return render_template('login.html', error='用户名或密码错误')
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect('/')
+
+# ---------- 页面路由 ----------
 @app.route('/')
+@app.route('/index')
 def index():
-    return render_template('index.html')
+    return render_template('index.html')  # 只读展示页
 
 @app.route('/history')
+@login_required
 def history():
     return render_template('history.html')
 
 @app.route('/stats')
+@login_required
 def stats():
     return render_template('stats.html')
 
 @app.route('/fixtures')
+@login_required
 def fixtures():
     return render_template('fixtures.html')
 
 @app.route('/odds')
+@login_required
 def odds():
     return render_template('odds.html')
 
-# ---------- API：保存预测记录 ----------
+@app.route('/admin/index')
+@login_required
+def admin_index():
+    if not current_user.is_admin:
+        flash('权限不足', 'danger')
+        return redirect('/')
+    return render_template('admin_index.html')
+
+
+
+# ---------- API ----------
 @app.route('/api/save', methods=['POST'])
+@login_required
 def api_save():
     try:
         data = request.get_json()
@@ -85,7 +144,6 @@ def api_save():
             'judgment': data.get('judgment', 'equal')
         }
 
-        # 删除可能存在的重复记录
         with get_db() as conn:
             conn.execute(
                 'DELETE FROM matches WHERE date = ? AND home_team = ? AND away_team = ?',
@@ -100,8 +158,8 @@ def api_save():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-# ---------- API：历史记录 ----------
 @app.route('/api/history')
+@login_required
 def api_history():
     date_filter = request.args.get('date')
     limit = request.args.get('limit', 20, type=int)
@@ -120,6 +178,7 @@ def api_history():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/match/<int:match_id>', methods=['GET'])
+@login_required
 def api_get_match(match_id):
     match = get_match_by_id(match_id)
     if not match:
@@ -127,6 +186,7 @@ def api_get_match(match_id):
     return jsonify(dict(match))
 
 @app.route('/api/match/<int:match_id>/result', methods=['PUT'])
+@login_required
 def api_update_result(match_id):
     data = request.get_json()
     if not data:
@@ -138,6 +198,7 @@ def api_update_result(match_id):
     return jsonify({'success': True})
 
 @app.route('/api/match/<int:match_id>', methods=['PUT'])
+@login_required
 def api_update_match(match_id):
     data = request.get_json()
     if data is None:
@@ -155,6 +216,7 @@ def api_update_match(match_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/match/<int:match_id>', methods=['DELETE'])
+@login_required
 def api_delete_match(match_id):
     try:
         delete_match(match_id)
@@ -163,6 +225,7 @@ def api_delete_match(match_id):
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/stats')
+@login_required
 def api_stats():
     try:
         stats = get_statistics()
@@ -175,6 +238,7 @@ def api_stats():
 
 # ---------- fixtures API ----------
 @app.route('/api/fetch_matches', methods=['GET'])
+@login_required
 def api_fetch_matches():
     date_str = request.args.get('date')
     if not date_str:
@@ -252,6 +316,7 @@ def api_fetch_matches():
         return jsonify({'error': f'抓取失败: {str(e)}'}), 500
 
 @app.route('/api/fixtures')
+@login_required
 def api_get_fixtures():
     date_filter = request.args.get('date')
     limit = request.args.get('limit', 20, type=int)
@@ -270,6 +335,7 @@ def api_get_fixtures():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/fixtures/<int:fid>', methods=['GET', 'PUT', 'DELETE'])
+@login_required
 def api_fixture_detail(fid):
     if request.method == 'GET':
         f = get_fixture_by_id(fid)
@@ -300,6 +366,7 @@ def api_fixture_detail(fid):
             return jsonify({'error': str(e)}), 500
 
 @app.route('/api/fixtures', methods=['POST'])
+@login_required
 def api_add_fixture():
     data = request.get_json()
     if not data:
@@ -313,7 +380,9 @@ def api_add_fixture():
         return jsonify({'success': True, 'id': fid})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 @app.route('/api/match/find', methods=['GET'])
+@login_required
 def api_find_match():
     date = request.args.get('date')
     home_team = request.args.get('home_team')
@@ -330,9 +399,10 @@ def api_find_match():
         if row:
             return jsonify(dict(row))
         else:
-            return jsonify(None), 200  # 返回 null
-# ---------- odds API ----------
+            return jsonify(None), 200
+
 @app.route('/api/odds/save', methods=['POST'])
+@login_required
 def api_odds_save():
     try:
         data = request.get_json()
@@ -355,6 +425,105 @@ def api_odds_save():
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+# ---------- 用户管理函数 ----------
+def get_all_users():
+    with closing(get_db()) as conn:
+        cur = conn.execute('SELECT * FROM users ORDER BY id')
+        return cur.fetchall()
+
+def update_user_password(user_id, new_password_hash):
+    with closing(get_db()) as conn:
+        conn.execute('UPDATE users SET password_hash = ? WHERE id = ?', (new_password_hash, user_id))
+        conn.commit()
+
+def delete_user_by_id(user_id):
+    with closing(get_db()) as conn:
+        conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        conn.commit()
+
+def update_user_admin(user_id, is_admin):
+    with closing(get_db()) as conn:
+        conn.execute('UPDATE users SET is_admin = ? WHERE id = ?', (1 if is_admin else 0, user_id))
+        conn.commit()
+# ---------- 管理员专用：用户管理 ----------
+from functools import wraps
+from flask import flash
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_admin:
+            return redirect('/login')
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/admin/users', methods=['GET', 'POST'])
+@admin_required
+def admin_users():
+    from database import get_all_users, create_user, delete_user_by_id, update_user_password, update_user_admin
+    from werkzeug.security import generate_password_hash
+    from auth import User
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'add':
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '').strip()
+            is_admin = 1 if request.form.get('is_admin') == 'on' else 0
+            if username and password:
+                if User.get_by_username(username):
+                    flash('用户名已存在', 'danger')
+                else:
+                    hashed = generate_password_hash(password)
+                    create_user(username, hashed, is_admin)
+                    flash('用户添加成功', 'success')
+            else:
+                flash('用户名和密码不能为空', 'danger')
+            return redirect('/admin/users')
+
+        elif action == 'delete':
+            user_id = request.form.get('user_id')
+            if user_id and user_id.isdigit():
+                user_id = int(user_id)
+                if user_id == current_user.id:
+                    flash('不能删除自己的账号', 'danger')
+                else:
+                    delete_user_by_id(user_id)
+                    flash('用户已删除', 'success')
+            return redirect('/admin/users')
+
+        elif action == 'change_password':
+            user_id = request.form.get('user_id')
+            new_password = request.form.get('new_password', '').strip()
+            if user_id and user_id.isdigit() and new_password:
+                user_id = int(user_id)
+                hashed = generate_password_hash(new_password)
+                update_user_password(user_id, hashed)
+                flash('密码修改成功', 'success')
+            else:
+                flash('新密码不能为空', 'danger')
+            return redirect('/admin/users')
+
+        elif action == 'toggle_admin':
+            user_id = request.form.get('user_id')
+            if user_id and user_id.isdigit():
+                user_id = int(user_id)
+                if user_id == current_user.id:
+                    flash('不能修改自己的管理员权限', 'danger')
+                else:
+                    user = get_user_by_id(user_id)
+                    if user:
+                        new_admin = 0 if user['is_admin'] else 1
+                        update_user_admin(user_id, new_admin)
+                        flash('用户权限已更新', 'success')
+            return redirect('/admin/users')
+
+    # GET 请求
+    users = get_all_users()
+    return render_template('admin/users.html', users=users)
 
 if __name__ == '__main__':
     print("🚀 启动 Flask 服务器...")

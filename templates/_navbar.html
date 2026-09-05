@@ -1,8 +1,16 @@
 <div class="top-nav">
     <a href="/fixtures" {% if request.endpoint == 'fixtures' %}class="active"{% endif %}>📅 赛事列表</a>
-	<a href="/" {% if request.endpoint == 'index' %}class="active"{% endif %}>📊 基本面分析</a>
-    	<a href="/history" {% if request.endpoint == 'history' %}class="active"{% endif %}>📋 预测/复盘</a>
-	<a href="/odds" {% if request.endpoint == 'odds' %}class="active"{% endif %}>🎯 赔率预测</a>
-
-	<a href="/stats" {% if request.endpoint == 'stats' %}class="active"{% endif %}>📈 统计</a>
+    <a href="/" {% if request.endpoint == 'index' %}class="active"{% endif %}>📊 基本面分析</a>
+    <a href="/odds" {% if request.endpoint == 'odds' %}class="active"{% endif %}>🎯 赔率预测</a>
+    <a href="/history" {% if request.endpoint == 'history' %}class="active"{% endif %}>📋 预测/复盘</a>
+    <a href="/stats" {% if request.endpoint == 'stats' %}class="active"{% endif %}>📈 统计</a>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+        <a href="/admin/index" {% if request.endpoint == 'admin_index' %}class="active"{% endif %}>✏️ 后台编辑</a>
+        <a href="/admin/users" {% if request.endpoint == 'admin_users' %}class="active"{% endif %}>👥 用户管理</a>
+    {% endif %}
+    {% if current_user.is_authenticated %}
+        <a href="/logout" style="color:#dc2626;">🚪 退出</a>
+    {% else %}
+        <a href="/login">🔐 登录</a>
+    {% endif %}
 </div>

@@ -66,6 +66,7 @@ def init_db():
         conn.commit()
     init_fixtures_table()
     init_odds_table()
+    init_user_table()  # 新增这一行
 
 def save_match(data):
     with closing(get_db()) as conn:
@@ -352,6 +353,78 @@ def save_odds(data):
         ''', data)
         conn.commit()
         return cur.lastrowid
+# ---------- 用户表 ----------
+def init_user_table():
+    with closing(get_db()) as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                is_admin INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+
+def get_user_by_username(username):
+    with closing(get_db()) as conn:
+        cur = conn.execute('SELECT * FROM users WHERE username = ?', (username,))
+        return cur.fetchone()
+
+def get_user_by_id(user_id):
+    with closing(get_db()) as conn:
+        cur = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        return cur.fetchone()
+
+def create_user(username, password_hash, is_admin=0):
+    with closing(get_db()) as conn:
+        cur = conn.execute(
+            'INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)',
+            (username, password_hash, is_admin)
+        )
+        conn.commit()
+        return cur.lastrowid
+
+def delete_user_by_id(user_id):
+    with closing(get_db()) as conn:
+        conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        conn.commit()
+
+def update_user_password(user_id, new_password_hash):
+    with closing(get_db()) as conn:
+        conn.execute('UPDATE users SET password_hash = ? WHERE id = ?', (new_password_hash, user_id))
+        conn.commit()
+
+def update_user_admin(user_id, is_admin):
+    with closing(get_db()) as conn:
+        conn.execute('UPDATE users SET is_admin = ? WHERE id = ?', (1 if is_admin else 0, user_id))
+        conn.commit()
+
+def get_all_users():
+    with closing(get_db()) as conn:
+        cur = conn.execute('SELECT * FROM users ORDER BY id')
+        return cur.fetchall()
+# ---------- 用户管理函数 ----------
+def get_all_users():
+    with closing(get_db()) as conn:
+        cur = conn.execute('SELECT * FROM users ORDER BY id')
+        return cur.fetchall()
+
+def update_user_password(user_id, new_password_hash):
+    with closing(get_db()) as conn:
+        conn.execute('UPDATE users SET password_hash = ? WHERE id = ?', (new_password_hash, user_id))
+        conn.commit()
+
+def delete_user_by_id(user_id):
+    with closing(get_db()) as conn:
+        conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        conn.commit()
+
+def update_user_admin(user_id, is_admin):
+    with closing(get_db()) as conn:
+        conn.execute('UPDATE users SET is_admin = ? WHERE id = ?', (1 if is_admin else 0, user_id))
+        conn.commit()
 
 if __name__ == '__main__':
     init_db()
