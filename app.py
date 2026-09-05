@@ -524,7 +524,9 @@ def admin_users():
     # GET 请求
     users = get_all_users()
     return render_template('admin/users.html', users=users)
-
+@app.route('/admin_edit')
+def admin_edit():
+    return render_template('admin_index.html')
 if __name__ == '__main__':
     print("🚀 启动 Flask 服务器...")
     app.run(debug=True, host='127.0.0.1', port=5000)
