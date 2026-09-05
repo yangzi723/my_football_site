@@ -1,0 +1,8 @@
+<div class="top-nav">
+    <a href="/fixtures" {% if request.endpoint == 'fixtures' %}class="active"{% endif %}>📅 赛事列表</a>
+	<a href="/" {% if request.endpoint == 'index' %}class="active"{% endif %}>📊 基本面分析</a>
+    	<a href="/history" {% if request.endpoint == 'history' %}class="active"{% endif %}>📋 预测/复盘</a>
+	<a href="/odds" {% if request.endpoint == 'odds' %}class="active"{% endif %}>🎯 赔率预测</a>
+
+	<a href="/stats" {% if request.endpoint == 'stats' %}class="active"{% endif %}>📈 统计</a>
+</div>
