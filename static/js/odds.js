@@ -332,7 +332,7 @@
             .finally(() => { input.classList.remove('saving'); });
     }
 
-    // ---------- 打开赔率分析模态框 ----------
+    // ---------- 打开赔率分析模态框（已增加基本面评分显示） ----------
     function openAnalysisModal(id) {
         fetch('/api/match/' + id)
             .then(res => {
@@ -353,6 +353,14 @@
                 const finalAnalysisVal = data.final_analysis || '';
                 const predArray = getInitialPredictionArray(data);
 
+                // 读取基本面评分数据
+                const homeScore = Math.round(parseFloat(data.home_score) || 0);
+                const awayScore = Math.round(parseFloat(data.away_score) || 0);
+                const homeProb = (parseFloat(data.home_prob) || 0) * 100;
+                const drawProb = (parseFloat(data.draw_prob) || 0) * 100;
+                const awayProb = (parseFloat(data.away_prob) || 0) * 100;
+
+                // 保存旧值
                 analysisModal.dataset.oldPos1 = pos1Val;
                 analysisModal.dataset.oldPos2 = pos2Val;
                 analysisModal.dataset.oldAsian = asianVal;
@@ -363,6 +371,7 @@
 
                 const options = ['胜', '平', '负', '上盘', '下盘', '大球', '小球'];
 
+                // 构建自定义下拉组件 HTML
                 let dropdownHtml = `
                     <div class="custom-dropdown" id="pred-dropdown-${id}">
                         <button class="dropdown-trigger" id="pred-trigger-${id}" type="button">
@@ -380,7 +389,18 @@
                     </div>
                 `;
 
+                // ★ 在信息区域顶部加入基本面评分
                 let infoHtml = `
+                    <div style="background:#f0f6ff; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
+                        <div style="font-weight:600; font-size:14px; color:#1a3a6b; margin-bottom:8px;">📊 基本面评分</div>
+                        <div style="display:flex; flex-wrap:wrap; gap:12px 20px;">
+                            <div><span style="color:#4b657a;">主队得分</span> <strong>${homeScore}</strong></div>
+                            <div><span style="color:#4b657a;">客队得分</span> <strong>${awayScore}</strong></div>
+                            <div><span style="color:#4b657a;">主胜概率</span> <strong>${homeProb.toFixed(1)}%</strong></div>
+                            <div><span style="color:#4b657a;">平局概率</span> <strong>${drawProb.toFixed(1)}%</strong></div>
+                            <div><span style="color:#4b657a;">客胜概率</span> <strong>${awayProb.toFixed(1)}%</strong></div>
+                        </div>
+                    </div>
                     <div class="info-row"><span class="info-label">ID</span><span class="info-value">${data.id}</span></div>
                     <div class="info-row"><span class="info-label">联赛</span><span class="info-value">${data.league || '—'}</span></div>
                     <div class="info-row"><span class="info-label">基本面判断</span><span class="info-value">${judgmentDisplay}</span></div>
