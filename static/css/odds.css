@@ -1,4 +1,4 @@
-/* ========== 直接复用 history.css 的全部样式（字体统一为13px） ========== */
+/* ========== 直接复用 history.css 的全部样式 ========== */
 .action-btn { padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; margin-right: 4px; }
 .edit-btn { background: #3b7cff; color: white; }
 .edit-btn:hover { background: #2563eb; }
@@ -22,22 +22,15 @@
 .section-title { font-size: 20px; font-weight: 600; color: #1f3a5f; margin: 0; }
 
 .modal-edit { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-.modal-edit-content { font-size:13px; background: white; border-radius: 16px; max-width: 950px; width: 45%; max-height: 90vh; padding: 20px 25px; overflow-y: auto; }
+.modal-edit-content { background: white; border-radius: 16px; max-width: 950px; width: 95%; max-height: 90vh; padding: 20px 25px; overflow-y: auto; font-size: 13px; }
 .modal-edit-content .form-group { margin-bottom: 8px; display: flex; align-items: center; }
 .modal-edit-content .form-group label { width: 120px; font-weight: 500; font-size: 13px; color: #2d3f55; }
 .modal-edit-content .form-group input, .modal-edit-content .form-group select { 
-    flex: 1; 
-    padding: 6px 10px; 
-    border: 1px solid #cdd8e6; 
-    border-radius: 6px; 
-    font-size: 13px; 
-    background: white; 
+    flex: 1; padding: 6px 10px; border: 1px solid #cdd8e6; border-radius: 6px; font-size: 13px; background: white; 
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 .modal-edit-content .form-group input:focus, .modal-edit-content .form-group select:focus {
-    outline: none;
-    border-color: #3b7cff;
-    box-shadow: 0 0 0 3px rgba(59,124,255,0.15);
+    outline: none; border-color: #3b7cff; box-shadow: 0 0 0 3px rgba(59,124,255,0.15);
 }
 .modal-edit-content .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 @media (max-width: 600px) { .modal-edit-content .two-col { grid-template-columns: 1fr; } }
@@ -56,33 +49,33 @@
 .modal-select-content th { background: #1f3a5f; color: white; padding: 8px; text-align: left; }
 .modal-select-content td { padding: 6px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
 .modal-select-content tr:hover { background: #f8fafc; }
-.modal-select-content .footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 12px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; gap: 10px; }
-.modal-select-content .footer-actions .left { display: flex; align-items: center; gap: 12px; }
+.modal-select-content .footer-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 13px; border-top: 1px solid #e2e8f0; flex-wrap: wrap; gap: 10px; }
+.modal-select-content .footer-actions .left { display: flex; align-items: center; gap: 13px; }
 .modal-select-content .footer-actions .left label { font-size: 14px; cursor: pointer; }
 .modal-select-content .footer-actions .right { display: flex; gap: 10px; }
 .pagination { display: flex; gap: 6px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
-.pagination button, .pagination .page-num { padding: 6px 12px; border-radius: 6px; border: 1px solid #cdd8e6; background: white; cursor: pointer; font-size: 14px; min-width: 36px; text-align: center; }
+.pagination button, .pagination .page-num { padding: 6px 13px; border-radius: 6px; border: 1px solid #cdd8e6; background: white; cursor: pointer; font-size: 14px; min-width: 36px; text-align: center; }
 .pagination button:hover:not(:disabled), .pagination .page-num:hover { background: #e2e8f0; }
 .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
 .pagination .page-num.active { background: #1a3a6b; color: white; border-color: #1a3a6b; }
 .pagination .page-num.active:hover { background: #0f2a4a; }
 .pagination .ellipsis { padding: 6px 8px; color: #6b7280; }
-.status-badge { padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; display: inline-block; }
+.status-badge { padding: 2px 10px; border-radius: 13px; font-size: 13px; font-weight: 500; display: inline-block; }
 .status-started { background: #d1fae5; color: #065f46; }
 .status-pending { background: #fef3c7; color: #92400e; }
 .score-group { display: flex; align-items: center; gap: 4px; }
 .score-input { width: 40px; padding: 4px 6px; border: 1px solid #cdd8e6; border-radius: 4px; text-align: center; font-size: 14px; }
-.vs-large { font-weight: 800; font-size: 1.2em; color: #3b7cff; margin: 0 8px; text-shadow: 0 0 6px rgba(59,124,255,0.25); }
-.score-vs { display: inline-block; min-width: 40px; text-align: center; font-weight: 600; }
-.toast { position: fixed; top: 20px; right: 20px; background: #1f3a5f; color: white; padding: 12px 24px; border-radius: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); z-index: 9999; display: none; font-size: 14px; }
+.vs-large { font-weight: 700; font-size: 13px; color: #3b7cff; margin: 0 4px; }
+.score-vs { font-weight: 600; min-width: 24px; display: inline-block; text-align: center; font-size: 13px; }
+.toast { position: fixed; top: 20px; right: 20px; background: #1f3a5f; color: white; padding: 13px 24px; border-radius: 30px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); z-index: 9999; display: none; font-size: 14px; }
 .toast.show { display: block; }
 .result-dialog-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
 .result-dialog { background: white; border-radius: 20px; max-width: 500px; width: 90%; padding: 30px 35px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: dialogPop 0.3s ease; text-align: center; }
 @keyframes dialogPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .result-dialog .icon { font-size: 48px; margin-bottom: 10px; }
 .result-dialog .title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-.result-dialog .summary { font-size: 16px; color: #4b657a; margin-bottom: 12px; }
-.result-dialog .details { text-align: left; background: #f8fafc; border-radius: 8px; padding: 12px 16px; margin: 12px 0; max-height: 150px; overflow-y: auto; font-size: 14px; }
+.result-dialog .summary { font-size: 16px; color: #4b657a; margin-bottom: 13px; }
+.result-dialog .details { text-align: left; background: #f8fafc; border-radius: 8px; padding: 13px 16px; margin: 13px 0; max-height: 150px; overflow-y: auto; font-size: 14px; }
 .result-dialog .details .success-item { color: #0f973d; }
 .result-dialog .details .fail-item { color: #dc2626; }
 .result-dialog .btn-close-dialog { background: #1a3a6b; color: white; border: none; padding: 10px 32px; border-radius: 30px; font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; }
@@ -91,27 +84,48 @@
 .checkbox-cell { text-align: center; vertical-align: middle; }
 .checkbox-cell input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 .select-all-checkbox { width: 16px; height: 16px; cursor: pointer; vertical-align: middle; }
-.select-all-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: normal; font-size: 12px; }
+.select-all-label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-weight: normal; font-size: 13px; }
 .select-all-label input { margin: 0; }
+.odds-analysis-btn { background: #3b7cff; color: white; }
+.odds-analysis-btn:hover { background: #2563eb; }
 
-/* 表格样式增强 */
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th { background: #1f3a5f; color: white; padding: 8px; text-align: left; white-space: nowrap; }
-td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-tr:hover { background: #f8fafc; }
-.action-btn { font-size: 12px; padding: 3px 8px; }
+/* ========== 修正表格样式：使用 ID 选择器 #tableWrap ========== */
+#tableWrap { overflow-x: auto; }
+#tableWrap table { width: 100%; border-collapse: collapse; font-size: 14px; }
+#tableWrap table th {
+    background: #1f3a5f !important;
+    color: white !important;
+    padding: 8px !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    font-weight: 600 !important;
+    border: none !important;
+}
+#tableWrap td { 
+    padding: 6px 8px; 
+    border-bottom: 1px solid #e2e8f0; 
+    vertical-align: middle; 
+}
+#tableWrap tr:hover td { background: #f8fafc; }
+#tableWrap tr:last-child td { border-bottom: none; }
 
-/* ========== odds.html 特有样式（字体统一为 13px） ========== */
-/* 内联编辑 */
+/* ========== odds 特有样式（与 history 风格融合） ========== */
+/* 初01/初02 文本域 */
 .inline-edit {
     width: 62px;
-    padding: 2px 4px;
+    min-height: 34px;
+    padding: 4px 6px;
     border: 1px solid #cdd8e6;
     border-radius: 4px;
-    text-align: center;
     font-size: 13px;
+    font-family: inherit;
     background: white;
+    resize: vertical;
+    text-align: left;
+    vertical-align: top;
+    line-height: 1.4;
     transition: border-color 0.2s, box-shadow 0.2s;
+    overflow: auto;
 }
 .inline-edit:hover { border-color: #9bb7d4; }
 .inline-edit:focus {
@@ -151,7 +165,7 @@ tr:hover { background: #f8fafc; }
     font-weight: 400;
 }
 
-/* 模态框内分析输入框 - 统一 13px */
+/* 模态框内分析输入框 */
 .analysis-input {
     flex: 1;
     padding: 6px 10px;
@@ -169,7 +183,7 @@ tr:hover { background: #f8fafc; }
 }
 .analysis-input.saving { opacity: 0.6; background: #f0f4ff; }
 
-/* 模态框内信息行 - 统一 13px */
+/* 模态框信息行 */
 .modal-edit-content .info-row {
     display: flex;
     padding: 6px 0;
@@ -181,15 +195,15 @@ tr:hover { background: #f8fafc; }
     font-weight: 500;
     color: #4b657a;
     flex-shrink: 0;
-    font-size: 13px;   /* 统一 */
+    font-size: 13px;
 }
 .modal-edit-content .info-value {
     flex: 1;
     color: #1f2937;
-    font-size: 13px;   /* 统一 */
+    font-size: 13px;
 }
 
-/* 自定义下拉 - 统一 13px */
+/* 自定义下拉组件（初测） */
 .custom-dropdown {
     position: relative;
     flex: 1;
@@ -197,11 +211,11 @@ tr:hover { background: #f8fafc; }
 }
 .dropdown-trigger {
     width: 100%;
-    padding: 6px 32px 6px 12px;
+    padding: 6px 32px 6px 13px;
     border: 1px solid #cdd8e6;
     border-radius: 6px;
     background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
-    background-size: 12px;
+    background-size: 13px;
     font-size: 13px;
     color: #1f2937;
     cursor: pointer;
@@ -276,13 +290,13 @@ tr:hover { background: #f8fafc; }
     background: #e2e8f0;
     color: #1a3a6b;
 }
-.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 13px rgba(0,0,0,0.08); }
 .btn-primary { background: #1a3a6b; color: white; }
 .btn-primary:hover { background: #0f2a4a; }
 .btn-secondary { background: #e2e8f0; color: #1a3a6b; }
 .btn-secondary:hover { background: #cbd5e1; }
 
-/* 结果下拉 */
+/* 结果下拉框 */
 .result-select {
     padding: 2px 6px;
     border-radius: 4px;
@@ -291,13 +305,6 @@ tr:hover { background: #f8fafc; }
     background: white;
     cursor: pointer;
 }
-
-/* 表格容器 - 与 history 一致 */
-.table-wrap { overflow-x: auto; }
-.table-wrap table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.table-wrap th { background: #1f3a5f; color: white; padding: 8px; text-align: left; white-space: nowrap; }
-.table-wrap td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-.table-wrap tr:hover { background: #f8fafc; }
 
 /* 只读文本 */
 .readonly-text {
@@ -310,20 +317,10 @@ tr:hover { background: #f8fafc; }
     color: #1f2937;
     font-size: 13px;
 }
-/* 模态框内两列布局 */
-.modal-two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px 20px;
-    margin-top: 8px;
-}
-.modal-two-col .col-left,
-.modal-two-col .col-right {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-.modal-two-col .form-group,
-.modal-two-col .info-row {
-    margin-bottom: 0 !important;
-}
+
+/* 页面标题等 */
+body { background: #f5f7fb; }
+.container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+h1 { font-size: 26px; font-weight: 700; color: #1e293b; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+h1::after { content: ''; flex: 1; height: 2px; background: linear-gradient(to right, #e2e8f0, transparent); }
+#loading { color: #475569; font-size: 14px; }F

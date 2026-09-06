@@ -76,7 +76,7 @@ h1::after {
     border: 1px solid #edf2f7;
 }
 .filter-row label {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     color: #334155;
 }
@@ -85,7 +85,7 @@ h1::after {
     padding: 6px 14px;
     border-radius: 8px;
     border: 1px solid #d1d9e6;
-    font-size: 13px;
+    font-size: 12px;
     background: white;
     transition: border 0.2s, box-shadow 0.2s;
 }
@@ -132,7 +132,7 @@ h1::after {
 .table-wrap td {
     padding: 8px 10px;
     border-bottom: 1px solid #f1f5f9;
-    vertical-align: middle;
+    vertical-align: top;      /* 让多行文本域顶部对齐 */
     font-size: 12px;
     color: #1e293b;
 }
@@ -141,9 +141,9 @@ h1::after {
 
 .vs-large {
     font-weight: 700;
+    font-size: 12px;
     color: #8b5cf6;
     margin: 0 4px;
-    font-size: 13px;
 }
 .score-vs {
     font-weight: 600;
@@ -153,22 +153,28 @@ h1::after {
     font-size: 12px;
 }
 
-/* ---------- 内联编辑 ---------- */
+/* ---------- 初01/初02 文本域 ---------- */
 .inline-edit {
-    width: 56px;
-    padding: 2px 4px;
+    width: 62px;
+    min-height: 34px;
+    padding: 4px 6px;
     border: 1px solid #d1d9e6;
-    border-radius: 6px;
-    text-align: center;
+    border-radius: 4px;
     font-size: 12px;
-    background: #fafbfc;
-    transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+    font-family: inherit;
+    background: white;
+    resize: vertical;
+    text-align: left;
+    vertical-align: top;
+    line-height: 1.4;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    overflow: hidden;
+	height: auto
 }
-.inline-edit:hover { border-color: #a0b3cc; background: white; }
+.inline-edit:hover { border-color: #a0b3cc; }
 .inline-edit:focus {
     outline: none;
     border-color: #8b5cf6;
-    background: white;
     box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
 }
 .inline-edit.saving {
@@ -224,7 +230,7 @@ h1::after {
     cursor: pointer;
 }
 
-/* ---------- 标签 ---------- */
+/* ---------- 保存标记 ---------- */
 .save-tag {
     font-size: 11px;
     color: #22c55e;
@@ -242,7 +248,7 @@ h1::after {
     gap: 6px;
     margin-top: 20px;
     padding: 8px 0;
-    font-size: 13px;
+    font-size: 12px;
 }
 .pagination button,
 .pagination .page-num {
@@ -251,7 +257,7 @@ h1::after {
     border: 1px solid #d1d9e6;
     background: white;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
     min-width: 34px;
     text-align: center;
     transition: all 0.15s;
@@ -279,10 +285,10 @@ h1::after {
     padding: 4px 8px;
     border-radius: 8px;
     border: 1px solid #d1d9e6;
-    font-size: 13px;
+    font-size: 12px;
 }
 .pagination span {
-    font-size: 13px;
+    font-size: 12px;
     color: #475569;
 }
 
@@ -311,6 +317,7 @@ h1::after {
     overflow-y: auto;
     box-shadow: 0 24px 60px rgba(0,0,0,0.15);
     border: 1px solid rgba(255,255,255,0.1);
+    font-size: 12px;
 }
 .modal-edit-content h3 {
     font-size: 20px;
@@ -325,24 +332,26 @@ h1::after {
     display: flex;
     padding: 6px 0;
     border-bottom: 1px solid #f1f5f9;
-    font-size: 13px;
+    font-size: 12px;
 }
 .modal-edit-content .info-label {
     width: 120px;
     font-weight: 500;
     color: #475569;
     flex-shrink: 0;
+    font-size: 12px;
 }
 .modal-edit-content .info-value {
     flex: 1;
     color: #0f172a;
+    font-size: 12px;
 }
 .modal-edit-content .form-group {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 8px;
-    font-size: 13px;
+    font-size: 12px;
     flex-wrap: wrap;
 }
 .modal-edit-content .form-group label {
@@ -350,6 +359,7 @@ h1::after {
     font-weight: 500;
     color: #475569;
     flex-shrink: 0;
+    font-size: 12px;
 }
 .modal-edit-content .form-group input,
 .modal-edit-content .form-group select {
@@ -357,7 +367,7 @@ h1::after {
     padding: 6px 12px;
     border: 1px solid #d1d9e6;
     border-radius: 8px;
-    font-size: 13px;
+    font-size: 12px;
     background: white;
     transition: border 0.2s, box-shadow 0.2s;
     min-width: 100px;
@@ -381,7 +391,7 @@ h1::after {
     border-radius: 30px;
     border: none;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 12px;
     cursor: pointer;
     transition: all 0.15s;
     background: #e2e8f0;
@@ -415,7 +425,7 @@ h1::after {
     border-radius: 8px;
     background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 12px center;
     background-size: 12px;
-    font-size: 13px;
+    font-size: 12px;
     color: #0f172a;
     cursor: pointer;
     text-align: left;
@@ -453,7 +463,7 @@ h1::after {
     align-items: center;
     gap: 8px;
     padding: 6px 16px;
-    font-size: 13px;
+    font-size: 12px;
     cursor: pointer;
     transition: background 0.1s;
     color: #0f172a;
@@ -522,30 +532,28 @@ h1::after {
 }
 .readonly-text {
     display: inline-block;
-    padding: 2px 8px;
-    background: #f1f5f9;
-    border-radius: 6px;
-    font-size: 12px;
-    color: #1e293b;
-    min-width: 28px;
+    padding: 4px 8px;
+    background: #f8fafc;
+    border-radius: 4px;
+    min-width: 30px;
     text-align: center;
+    color: #1f2937;
+    font-size: 12px;
 }
 .analysis-input {
     flex: 1;
-    padding: 4px 10px;
-    border: none;
+    padding: 6px 10px;
+    border: 1px solid #d1d9e6;
     border-radius: 6px;
-    font-size: 13px;
-    background: #f1f5f9;
-    color: #0f172a;
-    transition: background 0.2s, box-shadow 0.2s;
+    font-size: 12px;
+    background: white;
+    transition: border 0.2s, box-shadow 0.2s;
     min-width: 80px;
 }
-.analysis-input:hover { background: #e2e8f0; }
 .analysis-input:focus {
     outline: none;
-    background: white;
-    box-shadow: 0 0 0 2px rgba(139,92,246,0.2);
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139,92,246,0.12);
 }
 .analysis-input.saving { opacity: 0.6; background: #f0f4ff; }
 
