@@ -16,7 +16,7 @@ init_db()
 
 # ---------- 页面路由 ----------
 
-@app.route('/')
+@app.route('/index')
 def index():
     return render_template('index.html')
 
@@ -48,9 +48,7 @@ def black_list():
 def draw_list():
     return render_template('draw_list.html')
 
-@app.route('/admin_edit')
-def admin_edit():
-    return render_template('admin_index.html')
+
 
 # ---------- API：保存预测记录 ----------
 @app.route('/api/save', methods=['POST'])
