@@ -41,6 +41,15 @@
             'home_dominant':'主队绝对优势', 'away_dominant':'客队绝对优势', 'both_weak':'两队菜鸡'
         };
 
+        // ========== 工具函数 ==========
+        function debounce(fn, delay) {
+            let timer;
+            return function(...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
         function getPredictionDisplay(val) {
             if (!val) return '—';
             if (typeof val === 'string') {
@@ -67,6 +76,47 @@
                 ...options,
                 headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }
             }).then(res => res.json());
+        }
+
+        // ========== 表单数据收集（复用） ==========
+        function collectEditFormData() {
+            const getVal = (id) => document.getElementById(id).value;
+            return {
+                date: getVal('edit-date'),
+                time: getVal('edit-time'),
+                league: getVal('edit-league'),
+                home_team: getVal('edit-home-name'),
+                away_team: getVal('edit-away-name'),
+                home_rank: parseInt(getVal('edit-home-rank')) || 0,
+                home_scored: parseInt(getVal('edit-home-scored')) || 0,
+                home_conceded: parseInt(getVal('edit-home-conceded')) || 0,
+                home_recent: parseInt(getVal('edit-home-recent')) || 0,
+                home_wins: parseInt(getVal('edit-home-wins')) || 0,
+                home_draws: parseInt(getVal('edit-home-draws')) || 0,
+                home_losses: parseInt(getVal('edit-home-losses')) || 0,
+                home_injuries: parseInt(getVal('edit-home-injuries')) || 0,
+                home_motivation: parseInt(getVal('edit-home-motivation')) || 3,
+                home_value: parseFloat(getVal('edit-home-value')) || 0,
+                away_rank: parseInt(getVal('edit-away-rank')) || 0,
+                away_scored: parseInt(getVal('edit-away-scored')) || 0,
+                away_conceded: parseInt(getVal('edit-away-conceded')) || 0,
+                away_recent: parseInt(getVal('edit-away-recent')) || 0,
+                away_wins: parseInt(getVal('edit-away-wins')) || 0,
+                away_draws: parseInt(getVal('edit-away-draws')) || 0,
+                away_losses: parseInt(getVal('edit-away-losses')) || 0,
+                away_injuries: parseInt(getVal('edit-away-injuries')) || 0,
+                away_motivation: parseInt(getVal('edit-away-motivation')) || 3,
+                away_value: parseFloat(getVal('edit-away-value')) || 0,
+                home_unexpected: getVal('edit-home-unexpected') || '',
+                away_unexpected: getVal('edit-away-unexpected') || '',
+                home_score: parseInt(getVal('edit-home-score')) || 0,
+                away_score: parseInt(getVal('edit-away-score')) || 0,
+                home_prob: parseFloat(getVal('edit-home-prob')) || 0,
+                draw_prob: parseFloat(getVal('edit-draw-prob')) || 0,
+                away_prob: parseFloat(getVal('edit-away-prob')) || 0,
+                judgment: getVal('edit-judgment'),
+                result: getVal('edit-result') || null
+            };
         }
 
         // ========== 加载 & 渲染 ==========
@@ -142,7 +192,6 @@
                     </tr>`;
                 });
                 tbody.innerHTML = html;
-                // 委托事件已绑定，无需额外绑定
                 updatePagination();
             })
             .catch(err => {
@@ -192,11 +241,9 @@
             pagination.style.display = 'flex';
         }
 
-        // ========== 事件委托（一次绑定，永久有效） ==========
-        // 监听 change 事件（下拉框）
+        // ========== 事件委托（下拉框、按钮） ==========
         document.addEventListener('change', function(e) {
             const target = e.target;
-            // 结果下拉
             if (target.classList.contains('result-select')) {
                 const id = target.dataset.id;
                 const val = target.value;
@@ -209,13 +256,11 @@
                 });
                 return;
             }
-            // AI结果下拉
             if (target.classList.contains('ai-result-select')) {
                 const id = target.dataset.id;
                 const val = target.value;
                 const oldVal = target.dataset.oldVal !== undefined ? target.dataset.oldVal : target.value;
                 target.dataset.oldVal = oldVal;
-                // 获取完整数据
                 fetch('/api/match/' + id)
                     .then(res => res.json())
                     .then(data => {
@@ -242,17 +287,14 @@
             }
         });
 
-        // 监听 click 事件（按钮、复选框）
         document.addEventListener('click', function(e) {
             const target = e.target.closest('button');
             if (target) {
-                // 编辑按钮
                 if (target.classList.contains('edit-btn')) {
                     const id = target.dataset.id;
                     if (id) openEditModal(id);
                     return;
                 }
-                // 删除按钮
                 if (target.classList.contains('delete-btn')) {
                     const id = target.dataset.id;
                     if (confirm('确定删除该预测记录吗？')) {
@@ -265,20 +307,13 @@
                     return;
                 }
             }
-            // 全选复选框（处理点击 label 或 checkbox）
-            if (e.target.id === 'selectAllCheckbox' || e.target.closest('#selectAllCheckbox')) {
-                // 使用 change 事件单独处理，这里忽略
-                return;
-            }
         });
 
-        // 全选复选框 change
         selectAllCheckbox.addEventListener('change', function() {
             const checked = this.checked;
             document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
         });
 
-        // 批量删除
         batchDeleteBtn.addEventListener('click', function() {
             const selected = document.querySelectorAll('.row-checkbox:checked');
             if (!selected.length) { showToast('请至少选择一条记录'); return; }
@@ -301,7 +336,6 @@
             });
         });
 
-        // 筛选
         filterBtn.addEventListener('click', function() {
             currentDateFilter = filterDate.value;
             currentOffset = 0;
@@ -314,7 +348,6 @@
             loadHistory();
         });
 
-        // 分页按钮
         prevPageBtn.addEventListener('click', function() {
             currentOffset = Math.max(0, currentOffset - currentLimit);
             loadHistory();
@@ -422,6 +455,35 @@
             html += `</select></div>`;
 
             editFormContainer.innerHTML = html;
+
+            // ---------- 绑定自动保存（防抖） ----------
+            const id = saveEditBtn.dataset.id;
+            if (id) {
+                const autoSave = debounce(function() {
+                    const formData = collectEditFormData();
+                    apiRequest('/api/match/' + id, {
+                        method: 'PUT',
+                        body: JSON.stringify(formData)
+                    })
+                    .then(res => {
+                        if (res.success) {
+                            showToast('✅ 自动保存成功');
+                            loadHistory();        // 刷新表格数据，保持模态框开启
+                        } else {
+                            showToast('❌ 自动保存失败: ' + (res.error || '未知错误'), true);
+                        }
+                    })
+                    .catch(err => {
+                        showToast('❌ 自动保存请求出错: ' + err.message, true);
+                    });
+                }, 600); // 延迟600ms
+
+                const inputs = editFormContainer.querySelectorAll('input, select');
+                inputs.forEach(el => {
+                    el.addEventListener('input', autoSave);
+                    el.addEventListener('change', autoSave);
+                });
+            }
         }
 
         function openEditModal(id) {
@@ -430,55 +492,22 @@
                 .then(data => {
                     if (data.error) { alert(data.error); return; }
                     editTitle.textContent = `📝 预测/复盘 - ${data.home_team} vs ${data.away_team}`;
+                    saveEditBtn.dataset.id = id;   // 先设置 id
                     buildEditForm(data);
                     editModal.style.display = 'flex';
-                    saveEditBtn.dataset.id = id;
                 });
         }
 
+        // 保存修改按钮（手动触发）
         saveEditBtn.addEventListener('click', function() {
             const id = this.dataset.id;
-            const getVal = (id) => document.getElementById(id).value;
-            const data = {
-                date: getVal('edit-date'),
-                time: getVal('edit-time'),
-                league: getVal('edit-league'),
-                home_team: getVal('edit-home-name'),
-                away_team: getVal('edit-away-name'),
-                home_rank: parseInt(getVal('edit-home-rank')) || 0,
-                home_scored: parseInt(getVal('edit-home-scored')) || 0,
-                home_conceded: parseInt(getVal('edit-home-conceded')) || 0,
-                home_recent: parseInt(getVal('edit-home-recent')) || 0,
-                home_wins: parseInt(getVal('edit-home-wins')) || 0,
-                home_draws: parseInt(getVal('edit-home-draws')) || 0,
-                home_losses: parseInt(getVal('edit-home-losses')) || 0,
-                home_injuries: parseInt(getVal('edit-home-injuries')) || 0,
-                home_motivation: parseInt(getVal('edit-home-motivation')) || 3,
-                home_value: parseFloat(getVal('edit-home-value')) || 0,
-                away_rank: parseInt(getVal('edit-away-rank')) || 0,
-                away_scored: parseInt(getVal('edit-away-scored')) || 0,
-                away_conceded: parseInt(getVal('edit-away-conceded')) || 0,
-                away_recent: parseInt(getVal('edit-away-recent')) || 0,
-                away_wins: parseInt(getVal('edit-away-wins')) || 0,
-                away_draws: parseInt(getVal('edit-away-draws')) || 0,
-                away_losses: parseInt(getVal('edit-away-losses')) || 0,
-                away_injuries: parseInt(getVal('edit-away-injuries')) || 0,
-                away_motivation: parseInt(getVal('edit-away-motivation')) || 3,
-                away_value: parseFloat(getVal('edit-away-value')) || 0,
-                home_unexpected: getVal('edit-home-unexpected') || '',
-                away_unexpected: getVal('edit-away-unexpected') || '',
-                home_score: parseInt(getVal('edit-home-score')) || 0,
-                away_score: parseInt(getVal('edit-away-score')) || 0,
-                home_prob: parseFloat(getVal('edit-home-prob')) || 0,
-                draw_prob: parseFloat(getVal('edit-draw-prob')) || 0,
-                away_prob: parseFloat(getVal('edit-away-prob')) || 0,
-                judgment: getVal('edit-judgment'),
-                result: getVal('edit-result') || null
-            };
+            if (!id) return;
+            const formData = collectEditFormData();
             apiRequest('/api/match/' + id, {
                 method: 'PUT',
-                body: JSON.stringify(data)
-            }).then(res => {
+                body: JSON.stringify(formData)
+            })
+            .then(res => {
                 if (res.success) {
                     editModal.style.display = 'none';
                     loadHistory();
