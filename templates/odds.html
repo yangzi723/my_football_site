@@ -36,6 +36,95 @@
         .modal-edit-content .info-label { width: 120px; font-weight: 500; font-size: 14px; color: #4b657a; }
         .modal-edit-content .info-value { flex: 1; color: #1f2937; }
 
+        /* 初测 - 自定义下拉组件 */
+        .custom-dropdown {
+            position: relative;
+            flex: 1;
+            min-width: 180px;
+        }
+        .dropdown-trigger {
+            width: 100%;
+            padding: 6px 30px 6px 12px;
+            border: 1px solid #cdd8e6;
+            border-radius: 6px;
+            background: #fafbfc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+            background-size: 12px;
+            font-size: 13px;
+            color: #1f2937;
+            cursor: pointer;
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+        }
+        .dropdown-trigger:hover {
+            border-color: #9bb7d4;
+        }
+        .dropdown-trigger:focus {
+            outline: none;
+            border-color: #3b7cff;
+            box-shadow: 0 0 0 3px rgba(59, 124, 255, 0.15);
+        }
+        .dropdown-trigger .placeholder {
+            color: #9aa8b9;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #d1d9e6;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            padding: 6px 0;
+            z-index: 1001;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .dropdown-menu.open {
+            display: block;
+        }
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.15s;
+            color: #1f2937;
+        }
+        .dropdown-item:hover {
+            background: #f0f6ff;
+        }
+        .dropdown-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #3b7cff;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin: 0;
+        }
+        .dropdown-item .label-text {
+            flex: 1;
+        }
+        .dropdown-item .check-mark {
+            color: #3b7cff;
+            font-weight: 700;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .dropdown-item.selected .check-mark {
+            opacity: 1;
+        }
+        .dropdown-item.selected {
+            background: #f0f6ff;
+        }
+
         .pagination { display: flex; gap: 6px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
         .pagination button,
         .pagination .page-num { padding: 6px 12px; border-radius: 6px; border: 1px solid #cdd8e6; background: white; cursor: pointer; font-size: 14px; min-width: 36px; text-align: center; }
@@ -542,10 +631,24 @@
                         analysisModal.dataset.oldPred = JSON.stringify(predArray);
 
                         const options = ['胜', '平', '负', '上盘', '下盘', '大球', '小球'];
-                        let optionsHtml = options.map(opt => {
-                            const selected = predArray.includes(opt) ? 'selected' : '';
-                            return `<option value="${opt}" ${selected}>${opt}</option>`;
-                        }).join('');
+
+                        // 构建自定义下拉组件 HTML
+                        let dropdownHtml = `
+                            <div class="custom-dropdown" id="pred-dropdown-${id}">
+                                <button class="dropdown-trigger" id="pred-trigger-${id}" type="button">
+                                    <span class="selected-text">${predArray.length > 0 ? predArray.join('、') : '请选择'}</span>
+                                </button>
+                                <div class="dropdown-menu" id="pred-menu-${id}">
+                                    ${options.map(opt => `
+                                        <label class="dropdown-item ${predArray.includes(opt) ? 'selected' : ''}" data-value="${opt}">
+                                            <input type="checkbox" value="${opt}" ${predArray.includes(opt) ? 'checked' : ''}>
+                                            <span class="label-text">${opt}</span>
+                                            <span class="check-mark">✓</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
 
                         let infoHtml = `
                             <div class="info-row"><span class="info-label">ID</span><span class="info-value">${data.id}</span></div>
@@ -559,35 +662,72 @@
                             <div class="form-group"><span class="info-label" style="width:120px;">初02</span><input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2"><span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span></div>
                             <div class="form-group">
                                 <span class="info-label" style="width:120px;">初测</span>
-                                <select id="analysis-initial_prediction" class="analysis-input" multiple style="min-height:80px; background:#f0f6ff; border:none; border-radius:4px; padding:4px 8px; font-size:13px; color:#1a3a6b; cursor:pointer;">
-                                    ${optionsHtml}
-                                </select>
+                                ${dropdownHtml}
                                 <span class="save-tag" id="analysis-saveTag-initial_prediction-${data.id}">✓</span>
                             </div>
                         `;
                         analysisInfoContainer.innerHTML = infoHtml;
                         analysisModal.style.display = 'flex';
 
-                        // ===== 新增：点击即可切换多选，无需Ctrl =====
-                        const predSelect = document.getElementById('analysis-initial_prediction');
-                        if (predSelect) {
-                            predSelect.addEventListener('mousedown', function(e) {
-                                const option = e.target;
-                                if (option.tagName === 'OPTION') {
-                                    e.preventDefault();
-                                    option.selected = !option.selected;
-                                    // 触发 change 事件以便清除保存标记
-                                    const event = new Event('change', { bubbles: true });
-                                    this.dispatchEvent(event);
+                        // ---------- 绑定自定义下拉组件交互 ----------
+                        const trigger = document.getElementById(`pred-trigger-${id}`);
+                        const menu = document.getElementById(`pred-menu-${id}`);
+                        const dropdown = document.getElementById(`pred-dropdown-${id}`);
+
+                        function updateTriggerText() {
+                            if (!trigger || !menu) return;
+                            const checked = menu.querySelectorAll('.dropdown-item input[type="checkbox"]:checked');
+                            const labels = Array.from(checked).map(cb => cb.value);
+                            const textSpan = trigger.querySelector('.selected-text');
+                            if (textSpan) {
+                                textSpan.textContent = labels.length > 0 ? labels.join('、') : '请选择';
+                                textSpan.classList.toggle('placeholder', labels.length === 0);
+                            }
+                        }
+
+                        if (trigger && menu) {
+                            // 点击触发器切换下拉菜单
+                            trigger.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                menu.classList.toggle('open');
+                            });
+
+                            // 点击选项切换选中状态
+                            menu.querySelectorAll('.dropdown-item').forEach(item => {
+                                const checkbox = item.querySelector('input[type="checkbox"]');
+                                item.addEventListener('click', function(e) {
+                                    if (e.target.tagName !== 'INPUT') {
+                                        checkbox.checked = !checkbox.checked;
+                                    }
+                                    item.classList.toggle('selected', checkbox.checked);
+                                    updateTriggerText();
+                                    // 清除保存标记
+                                    const tag = document.getElementById(`analysis-saveTag-initial_prediction-${id}`);
+                                    if (tag) tag.classList.remove('show');
+                                });
+                                checkbox.addEventListener('change', function() {
+                                    item.classList.toggle('selected', this.checked);
+                                    updateTriggerText();
+                                    const tag = document.getElementById(`analysis-saveTag-initial_prediction-${id}`);
+                                    if (tag) tag.classList.remove('show');
+                                });
+                                // 初始化选中样式
+                                if (checkbox.checked) item.classList.add('selected');
+                            });
+
+                            // 点击外部关闭下拉菜单
+                            document.addEventListener('click', function closeDropdown(e) {
+                                if (dropdown && !dropdown.contains(e.target)) {
+                                    menu.classList.remove('open');
                                 }
                             });
                         }
 
-                        // 绑定输入框事件
-                        document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-initial_prediction').forEach(el => {
+                        // 绑定其他输入框事件（清除保存标记）
+                        document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis').forEach(el => {
                             el.addEventListener('input', function() {
                                 const id = this.dataset.id;
-                                const field = this.dataset.field || 'initial_prediction';
+                                const field = this.dataset.field;
                                 const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                                 if (tag) tag.classList.remove('show');
                             });
@@ -617,7 +757,6 @@
                 const rangeInput = document.getElementById('analysis-range');
                 const initialAnalysisInput = document.getElementById('analysis-initial_analysis');
                 const finalAnalysisInput = document.getElementById('analysis-final_analysis');
-                const initialPredictionSelect = document.getElementById('analysis-initial_prediction');
 
                 const pos1Val = pos1Input ? pos1Input.value.trim() : '';
                 const pos2Val = pos2Input ? pos2Input.value.trim() : '';
@@ -626,11 +765,12 @@
                 const initialAnalysisVal = initialAnalysisInput ? initialAnalysisInput.value.trim() : '';
                 const finalAnalysisVal = finalAnalysisInput ? finalAnalysisInput.value.trim() : '';
 
+                // 从自定义下拉组件读取选中的值
+                const menu = document.getElementById(`pred-menu-${id}`);
                 let selectedOptions = [];
-                if (initialPredictionSelect) {
-                    for (let option of initialPredictionSelect.options) {
-                        if (option.selected) selectedOptions.push(option.value);
-                    }
+                if (menu) {
+                    const checkedBoxes = menu.querySelectorAll('.dropdown-item input[type="checkbox"]:checked');
+                    selectedOptions = Array.from(checkedBoxes).map(cb => cb.value);
                 }
                 const initialPredictionVal = JSON.stringify(selectedOptions);
 
@@ -694,9 +834,24 @@
                         const oldPred = analysisModal.dataset.oldPred || '[]';
                         try {
                             const oldArr = JSON.parse(oldPred);
-                            if (initialPredictionSelect) {
-                                for (let option of initialPredictionSelect.options) {
-                                    option.selected = oldArr.includes(option.value);
+                            const menu = document.getElementById(`pred-menu-${id}`);
+                            if (menu) {
+                                menu.querySelectorAll('.dropdown-item').forEach(item => {
+                                    const cb = item.querySelector('input[type="checkbox"]');
+                                    if (cb) {
+                                        cb.checked = oldArr.includes(cb.value);
+                                        item.classList.toggle('selected', cb.checked);
+                                    }
+                                });
+                                const trigger = document.getElementById(`pred-trigger-${id}`);
+                                if (trigger) {
+                                    const checked = menu.querySelectorAll('.dropdown-item input[type="checkbox"]:checked');
+                                    const labels = Array.from(checked).map(cb => cb.value);
+                                    const textSpan = trigger.querySelector('.selected-text');
+                                    if (textSpan) {
+                                        textSpan.textContent = labels.length > 0 ? labels.join('、') : '请选择';
+                                        textSpan.classList.toggle('placeholder', labels.length === 0);
+                                    }
                                 }
                             }
                         } catch (e) {}
