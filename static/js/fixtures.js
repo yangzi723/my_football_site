@@ -173,11 +173,33 @@
         });
 
         document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                window.location.href = '/odds';
-            });
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const tr = this.closest('tr');
+        // 检查该行的“已分析”复选框是否勾选
+        const checkbox = tr.querySelector('.analyzed-checkbox');
+        if (!checkbox || !checkbox.checked) {
+            alert('请先勾选“已分析”再查看赔率分析');
+            return;
+        }
+        // 获取赛事信息
+        const date = tr.querySelector('td:nth-child(2)').textContent.trim();
+        const time = tr.querySelector('td:nth-child(3)').textContent.trim();
+        const league = tr.querySelector('td:nth-child(4)').textContent.trim();
+        const homeAwayText = tr.querySelector('td:nth-child(5)').textContent.trim();
+        const vsIndex = homeAwayText.indexOf('VS');
+        let home = homeAwayText.substring(0, vsIndex).trim();
+        let away = homeAwayText.substring(vsIndex + 2).trim();
+        const params = new URLSearchParams({
+            date: date,
+            time: time,
+            league: league,
+            home: home,
+            away: away
         });
+        window.location.href = '/odds?' + params.toString();
+    });
+});
 
         document.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {

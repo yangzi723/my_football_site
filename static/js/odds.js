@@ -264,7 +264,7 @@
                 const field = this.dataset.field;
                 const tag = document.getElementById(`saveTag-${field}-${id}`);
                 if (tag) tag.classList.remove('show');
-                // 实时更新 title 为当前值（换行符会被替换为空格，但仍然是有效提示）
+                // 实时更新 title 为当前值
                 this.title = this.value || '—';
             });
         });
@@ -680,5 +680,84 @@
         alert('请使用“赔率分析”按钮进行编辑。');
     });
 
-    loadHistory('', 20, 0);
+    // ---------- 页面初始化：根据 URL 参数决定是否过滤 ----------
+    const urlParams = new URLSearchParams(window.location.search);
+    const filterDateParam = urlParams.get('date');
+    const filterHome = urlParams.get('home');
+    const filterAway = urlParams.get('away');
+
+    if (filterDateParam && filterHome && filterAway) {
+        // 有过滤参数，只加载匹配的预测记录
+        loading.style.display = 'block';
+        tableWrap.style.display = 'none';
+        fetch(`/api/match/find?date=${encodeURIComponent(filterDateParam)}&home_team=${encodeURIComponent(filterHome)}&away_team=${encodeURIComponent(filterAway)}`)
+            .then(res => res.json())
+            .then(data => {
+                loading.style.display = 'none';
+                tableWrap.style.display = 'block';
+                if (data && data.id) {
+                    // 匹配成功，显示该条记录
+                    const m = data;
+                    const result = m.result || '未定';
+                    let resultHtml = result;
+                    if (result === '红') resultHtml = `<span style="color:#dc2626;font-weight:600;">红</span>`;
+                    else if (result === '黑') resultHtml = `<span style="color:#1f2937;font-weight:600;">黑</span>`;
+                    else if (result === '走盘') resultHtml = `<span style="color:#d97706;font-weight:600;">走盘</span>`;
+                    const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
+                    const homeScore = Math.round(parseFloat(m.home_score) || 0);
+                    const awayScore = Math.round(parseFloat(m.away_score) || 0);
+                    const scoreDisplay = `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
+                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
+                    const isEmptyPred = !m.initial_prediction || m.initial_prediction === '[]' || m.initial_prediction === '""' || m.initial_prediction === 'null';
+                    const pos1Val = m.pos1 || '';
+                    const pos2Val = m.pos2 || '';
+
+                    const rowHtml = `<tr>
+                        <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
+                        <td>${m.id}</td>
+                        <td>${m.date || ''}</td>
+                        <td>${m.time || ''}</td>
+                        <td>${m.league || ''}</td>
+                        <td><a href="/?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/?id=${m.id}" class="team-link">${m.away_team}</a></td>
+                        <td>${scoreDisplay}</td>
+                        <td>${judgmentDisplay}</td>
+                        <td><textarea class="inline-edit inline-pos1" data-id="${m.id}" data-field="pos1" placeholder="—" title="${pos1Val || '—'}" rows="1">${pos1Val}</textarea><span class="save-tag" id="saveTag-pos1-${m.id}">✓</span></td>
+                        <td><textarea class="inline-edit inline-pos2" data-id="${m.id}" data-field="pos2" placeholder="—" title="${pos2Val || '—'}" rows="1">${pos2Val}</textarea><span class="save-tag" id="saveTag-pos2-${m.id}">✓</span></td>
+                        <td style="text-align:center;"><span class="prediction-clickable ${isEmptyPred ? 'empty' : ''}" style="cursor:default; text-decoration:none;">${predDisplay || '—'}</span></td>
+                        <td>
+                            <select class="result-select" data-id="${m.id}">
+                                <option value="">未定</option>
+                                <option value="红" ${result==='红'?'selected':''}>红</option>
+                                <option value="黑" ${result==='黑'?'selected':''}>黑</option>
+                                <option value="走盘" ${result==='走盘'?'selected':''}>走盘</option>
+                            </select>
+                        </td>
+                        <td>
+                            <button class="action-btn odds-analysis-btn" data-id="${m.id}">📊 赔率分析</button>
+                            <button class="action-btn delete-btn" data-id="${m.id}">🗑️ 删除</button>
+                        </td>
+                    </tr>`;
+                    tbody.innerHTML = rowHtml;
+                    pagination.style.display = 'none';
+                    bindEvents();
+                } else {
+                    // ★ 修改：无记录时，显示提示和“去创建预测”按钮
+                    const params = new URLSearchParams(window.location.search);
+                    const createUrl = `/index?date=${encodeURIComponent(params.get('date'))}&home=${encodeURIComponent(params.get('home'))}&away=${encodeURIComponent(params.get('away'))}`;
+                    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">
+                        该赛事暂无预测记录。
+                        <br><br>
+                        <a href="${createUrl}" class="btn btn-primary" style="display:inline-block;padding:8px 20px;background:#1a3a6b;color:white;border-radius:30px;text-decoration:none;">📝 去创建预测</a>
+                    </td></tr>`;
+                    pagination.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                loading.textContent = '❌ 加载失败: ' + err.message;
+                console.error('加载失败:', err);
+            });
+    } else {
+        // 无过滤参数，正常加载所有记录
+        loadHistory('', 20, 0);
+    }
 })();
