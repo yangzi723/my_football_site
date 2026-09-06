@@ -3,6 +3,7 @@
     const loading = document.getElementById('loading');
     const tableWrap = document.getElementById('tableWrap');
     const filterDate = document.getElementById('filter-date');
+    const filterLeague = document.getElementById('filter-league');
     const filterBtn = document.getElementById('filterBtn');
     const clearFilterBtn = document.getElementById('clearFilterBtn');
 
@@ -30,7 +31,7 @@
     const totalCountSpan = document.getElementById('totalCount');
     const toast = document.getElementById('toast');
 
-    let currentOffset = 0, currentLimit = 20, currentDateFilter = '', totalItems = 0;
+    let currentOffset = 0, currentLimit = 20, currentDateFilter = '', currentLeagueFilter = '', totalItems = 0;
 
     const judgmentMap = {
         'home_advantage': '主队占优',
@@ -102,9 +103,34 @@
             });
     }
 
-    // ---------- 加载历史 ----------
-    function loadHistory(date, limit, offset) {
+    // ---------- 更新联赛下拉框 ----------
+    function updateLeagueSelect(matches) {
+        const select = document.getElementById('filter-league');
+        if (!select) return;
+        const currentValue = select.value;
+        // 保留第一个空选项
+        select.innerHTML = '<option value="">全部联赛</option>';
+        const leagues = new Set();
+        matches.forEach(m => {
+            if (m.league) leagues.add(m.league);
+        });
+        // 排序后添加
+        Array.from(leagues).sort().forEach(league => {
+            const opt = document.createElement('option');
+            opt.value = league;
+            opt.textContent = league;
+            select.appendChild(opt);
+        });
+        // 恢复之前选中的值（如果仍存在）
+        if (currentValue && leagues.has(currentValue)) {
+            select.value = currentValue;
+        }
+    }
+
+    // ---------- 加载历史（支持日期和联赛筛选） ----------
+    function loadHistory(date, league, limit, offset) {
         if (date === undefined) date = currentDateFilter;
+        if (league === undefined) league = currentLeagueFilter;
         if (limit === undefined) limit = currentLimit;
         if (offset === undefined) offset = currentOffset;
 
@@ -112,6 +138,7 @@
         tableWrap.style.display = 'none';
         let url = `/api/history?limit=${limit}&offset=${offset}`;
         if (date) url += '&date=' + date;
+        if (league) url += '&league=' + encodeURIComponent(league);
 
         fetch(url)
             .then(res => {
@@ -125,6 +152,10 @@
                 totalItems = data.total || 0;
                 currentLimit = data.limit || limit;
                 currentOffset = data.offset || offset;
+
+                // 更新联赛下拉框（仅在无筛选时全部更新，或每次加载都更新）
+                // 这里选择总是更新，确保下拉框始终显示当前结果中的联赛
+                updateLeagueSelect(matches);
 
                 if (matches.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
@@ -199,7 +230,7 @@
                 })
                 .then(res => res.json())
                 .then(res => {
-                    if (res.success) loadHistory(currentDateFilter, currentLimit, currentOffset);
+                    if (res.success) loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                     else alert('更新失败: ' + (res.error || '未知错误'));
                 });
             });
@@ -212,7 +243,7 @@
                     fetch('/api/match/' + id, { method: 'DELETE' })
                         .then(res => res.json())
                         .then(res => {
-                            if (res.success) loadHistory(currentDateFilter, currentLimit, currentOffset);
+                            if (res.success) loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                             else alert('删除失败: ' + (res.error || '未知错误'));
                         });
                 }
@@ -237,14 +268,14 @@
                         res.success ? successCount++ : failCount++;
                         if (successCount + failCount === ids.length) {
                             showToast(`批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`);
-                            loadHistory(currentDateFilter, currentLimit, currentOffset);
+                            loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                         }
                     })
                     .catch(() => {
                         failCount++;
                         if (successCount + failCount === ids.length) {
                             showToast(`批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`);
-                            loadHistory(currentDateFilter, currentLimit, currentOffset);
+                            loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                         }
                     });
             });
@@ -253,7 +284,7 @@
         document.querySelectorAll('.inline-pos1, .inline-pos2').forEach(inp => {
             inp.addEventListener('blur', function() { handleInlineSave(this); });
             inp.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {   // Shift+Enter 换行，单独 Enter 保存
+                if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     this.blur();
                 }
@@ -264,7 +295,6 @@
                 const field = this.dataset.field;
                 const tag = document.getElementById(`saveTag-${field}-${id}`);
                 if (tag) tag.classList.remove('show');
-                // 实时更新 title 为当前值
                 this.title = this.value || '—';
             });
         });
@@ -326,7 +356,6 @@
                 const finalAnalysisVal = data.final_analysis || '';
                 const predArray = getInitialPredictionArray(data);
 
-                // 保存旧值
                 analysisModal.dataset.oldPos1 = pos1Val;
                 analysisModal.dataset.oldPos2 = pos2Val;
                 analysisModal.dataset.oldAsian = asianVal;
@@ -337,7 +366,6 @@
 
                 const options = ['胜', '平', '负', '上盘', '下盘', '大球', '小球'];
 
-                // 构建自定义下拉组件 HTML
                 let dropdownHtml = `
                     <div class="custom-dropdown" id="pred-dropdown-${id}">
                         <button class="dropdown-trigger" id="pred-trigger-${id}" type="button">
@@ -374,7 +402,6 @@
                 analysisInfoContainer.innerHTML = infoHtml;
                 analysisModal.style.display = 'flex';
 
-                // ---------- 绑定自定义下拉组件交互 ----------
                 const trigger = document.getElementById(`pred-trigger-${id}`);
                 const menu = document.getElementById(`pred-menu-${id}`);
                 const dropdown = document.getElementById(`pred-dropdown-${id}`);
@@ -391,13 +418,11 @@
                 }
 
                 if (trigger && menu) {
-                    // 点击触发器切换下拉菜单
                     trigger.addEventListener('click', function(e) {
                         e.stopPropagation();
                         menu.classList.toggle('open');
                     });
 
-                    // 点击选项切换选中状态
                     menu.querySelectorAll('.dropdown-item').forEach(item => {
                         const checkbox = item.querySelector('input[type="checkbox"]');
                         item.addEventListener('click', function(e) {
@@ -406,7 +431,6 @@
                             }
                             item.classList.toggle('selected', checkbox.checked);
                             updateTriggerText();
-                            // 清除保存标记
                             const tag = document.getElementById(`analysis-saveTag-initial_prediction-${id}`);
                             if (tag) tag.classList.remove('show');
                         });
@@ -416,11 +440,9 @@
                             const tag = document.getElementById(`analysis-saveTag-initial_prediction-${id}`);
                             if (tag) tag.classList.remove('show');
                         });
-                        // 初始化选中样式
                         if (checkbox.checked) item.classList.add('selected');
                     });
 
-                    // 点击外部关闭下拉菜单
                     document.addEventListener('click', function closeDropdown(e) {
                         if (dropdown && !dropdown.contains(e.target)) {
                             menu.classList.remove('open');
@@ -428,7 +450,6 @@
                     });
                 }
 
-                // 绑定其他输入框事件（清除保存标记）
                 document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis').forEach(el => {
                     el.addEventListener('input', function() {
                         const id = this.dataset.id;
@@ -470,7 +491,6 @@
         const initialAnalysisVal = initialAnalysisInput ? initialAnalysisInput.value.trim() : '';
         const finalAnalysisVal = finalAnalysisInput ? finalAnalysisInput.value.trim() : '';
 
-        // 从自定义下拉组件读取选中的值
         const menu = document.getElementById(`pred-menu-${id}`);
         let selectedOptions = [];
         if (menu) {
@@ -521,7 +541,7 @@
                         if (tag) tag.classList.add('show');
                     });
                     showToast('✅ 所有数据保存成功！');
-                    loadHistory(currentDateFilter, currentLimit, currentOffset);
+                    loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                 } else {
                     throw new Error(result.error || '未知错误');
                 }
@@ -529,7 +549,6 @@
             .catch(err => {
                 showToast('❌ 保存失败: ' + err.message);
                 console.error('保存错误:', err);
-                // 恢复旧值
                 const oldPos1 = analysisModal.dataset.oldPos1 || '';
                 const oldPos2 = analysisModal.dataset.oldPos2 || '';
                 const oldAsian = analysisModal.dataset.oldAsian || '';
@@ -615,7 +634,7 @@
         if (offset < 0) offset = 0;
         if (offset >= totalItems) offset = Math.max(0, totalItems - currentLimit);
         currentOffset = offset;
-        loadHistory(currentDateFilter, currentLimit, currentOffset);
+        loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
     }
 
     function addEmptyMatch() {
@@ -638,7 +657,7 @@
         .then(res => {
             if (res.success) {
                 showToast('✅ 空记录已创建，ID: ' + res.id);
-                loadHistory(currentDateFilter, currentLimit, currentOffset);
+                loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
             } else showToast('❌ 创建失败: ' + (res.error || '未知错误'));
         })
         .catch(err => showToast('❌ 请求出错: ' + err.message));
@@ -647,15 +666,20 @@
     // ---------- 全局事件绑定 ----------
     filterBtn.addEventListener('click', function() {
         currentDateFilter = filterDate.value;
+        currentLeagueFilter = filterLeague.value;
         currentOffset = 0;
-        loadHistory(currentDateFilter, currentLimit, 0);
+        loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, 0);
     });
+
     clearFilterBtn.addEventListener('click', function() {
         filterDate.value = '';
+        filterLeague.value = '';
         currentDateFilter = '';
+        currentLeagueFilter = '';
         currentOffset = 0;
-        loadHistory('', currentLimit, 0);
+        loadHistory('', '', currentLimit, 0);
     });
+
     addMatchBtn.addEventListener('click', addEmptyMatch);
 
     prevPageBtn.addEventListener('click', () => goToPage(currentOffset - currentLimit));
@@ -663,7 +687,7 @@
     perPageSelect.addEventListener('change', function() {
         currentLimit = parseInt(this.value);
         currentOffset = 0;
-        loadHistory(currentDateFilter, currentLimit, 0);
+        loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, 0);
     });
 
     closeAnalysisBtn.addEventListener('click', closeAnalysisModal);
@@ -687,7 +711,7 @@
     const filterAway = urlParams.get('away');
 
     if (filterDateParam && filterHome && filterAway) {
-        // 有过滤参数，只加载匹配的预测记录
+        // 从赛事列表跳转过来的，只显示该赛事
         loading.style.display = 'block';
         tableWrap.style.display = 'none';
         fetch(`/api/match/find?date=${encodeURIComponent(filterDateParam)}&home_team=${encodeURIComponent(filterHome)}&away_team=${encodeURIComponent(filterAway)}`)
@@ -696,7 +720,6 @@
                 loading.style.display = 'none';
                 tableWrap.style.display = 'block';
                 if (data && data.id) {
-                    // 匹配成功，显示该条记录
                     const m = data;
                     const result = m.result || '未定';
                     let resultHtml = result;
@@ -741,7 +764,6 @@
                     pagination.style.display = 'none';
                     bindEvents();
                 } else {
-                    // ★ 修改：无记录时，显示提示和“去创建预测”按钮
                     const params = new URLSearchParams(window.location.search);
                     const createUrl = `/index?date=${encodeURIComponent(params.get('date'))}&home=${encodeURIComponent(params.get('home'))}&away=${encodeURIComponent(params.get('away'))}`;
                     tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">
@@ -758,6 +780,6 @@
             });
     } else {
         // 无过滤参数，正常加载所有记录
-        loadHistory('', 20, 0);
+        loadHistory('', '', 20, 0);
     }
 })();

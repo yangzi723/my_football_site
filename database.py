@@ -117,31 +117,41 @@ def save_match(data):
         ''', data)
         conn.commit()
         return cur.lastrowid
-
-def get_all_matches(limit=100, offset=0, date_filter=None):
+def get_all_matches(limit=100, offset=0, date_filter=None, league_filter=None):
     with closing(get_db()) as conn:
         cur = conn.cursor()
         sql = 'SELECT * FROM matches'
+        conditions = []
         params = []
         if date_filter:
-            sql += ' WHERE date = ?'
+            conditions.append("date = ?")
             params.append(date_filter)
+        if league_filter:
+            conditions.append("league LIKE ?")
+            params.append('%' + league_filter + '%')
+        if conditions:
+            sql += ' WHERE ' + ' AND '.join(conditions)
         sql += ' ORDER BY date DESC, time ASC LIMIT ? OFFSET ?'
         params.extend([limit, offset])
         cur.execute(sql, params)
         return cur.fetchall()
 
-def get_all_matches_count(date_filter=None):
+def get_all_matches_count(date_filter=None, league_filter=None):
     with closing(get_db()) as conn:
         cur = conn.cursor()
         sql = 'SELECT COUNT(*) as total FROM matches'
+        conditions = []
         params = []
         if date_filter:
-            sql += ' WHERE date = ?'
+            conditions.append("date = ?")
             params.append(date_filter)
+        if league_filter:
+            conditions.append("league LIKE ?")
+            params.append('%' + league_filter + '%')
+        if conditions:
+            sql += ' WHERE ' + ' AND '.join(conditions)
         cur.execute(sql, params)
         return cur.fetchone()['total']
-
 def get_match_by_id(match_id):
     with closing(get_db()) as conn:
         cur = conn.cursor()

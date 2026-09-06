@@ -118,11 +118,12 @@ def api_save():
 @app.route('/api/history')
 def api_history():
     date_filter = request.args.get('date')
+    league_filter = request.args.get('league')
     limit = request.args.get('limit', 20, type=int)
     offset = request.args.get('offset', 0, type=int)
     try:
-        matches = get_all_matches(limit, offset, date_filter)
-        total = get_all_matches_count(date_filter)
+        matches = get_all_matches(limit, offset, date_filter, league_filter)
+        total = get_all_matches_count(date_filter, league_filter)
         return jsonify({
             'data': [dict(row) for row in matches],
             'total': total,

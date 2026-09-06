@@ -125,7 +125,7 @@
     vertical-align: top;
     line-height: 1.4;
     transition: border-color 0.2s, box-shadow 0.2s;
-    overflow: auto;
+    overflow: hidden;
 }
 .inline-edit:hover { border-color: #9bb7d4; }
 .inline-edit:focus {
