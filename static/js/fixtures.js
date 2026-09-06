@@ -3,6 +3,7 @@
     const loading = document.getElementById('loading');
     const tableWrap = document.getElementById('tableWrap');
     const filterDate = document.getElementById('filter-date');
+    const filterLeague = document.getElementById('filter-league');
     const filterBtn = document.getElementById('filterBtn');
     const clearFilterBtn = document.getElementById('clearFilterBtn');
     const addBtn = document.getElementById('addBtn');
@@ -35,6 +36,7 @@
     let currentOffset = 0;
     let currentLimit = 20;
     let currentDateFilter = '';
+    let currentLeagueFilter = '';
     let totalItems = 0;
 
     function showToast(msg) {
@@ -61,8 +63,31 @@
         } catch (e) { return false; }
     }
 
-    function loadFixtures(date, limit, offset) {
+    // ---------- 更新联赛下拉框 ----------
+    function updateLeagueSelect(fixtures) {
+        const select = document.getElementById('filter-league');
+        if (!select) return;
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">全部联赛</option>';
+        const leagues = new Set();
+        fixtures.forEach(f => {
+            if (f.league) leagues.add(f.league);
+        });
+        Array.from(leagues).sort().forEach(league => {
+            const opt = document.createElement('option');
+            opt.value = league;
+            opt.textContent = league;
+            select.appendChild(opt);
+        });
+        if (currentValue && leagues.has(currentValue)) {
+            select.value = currentValue;
+        }
+    }
+
+    // ---------- 加载赛事 ----------
+    function loadFixtures(date, league, limit, offset) {
         if (date === undefined) date = currentDateFilter;
+        if (league === undefined) league = currentLeagueFilter;
         if (limit === undefined) limit = currentLimit;
         if (offset === undefined) offset = currentOffset;
 
@@ -70,6 +95,7 @@
         tableWrap.style.display = 'none';
         let url = `/api/fixtures?limit=${limit}&offset=${offset}`;
         if (date) url += '&date=' + date;
+        if (league) url += '&league=' + encodeURIComponent(league);
 
         fetch(url)
         .then(res => {
@@ -87,6 +113,11 @@
             totalItems = data.total || 0;
             currentLimit = data.limit || limit;
             currentOffset = data.offset || offset;
+
+            // ★ 仅在无任何筛选时更新下拉框（保留全部联赛选项）
+            if (!date && !league) {
+                updateLeagueSelect(fixtures);
+            }
 
             if (fixtures.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;">暂无赛事记录</td></tr>';
@@ -130,7 +161,6 @@
                 </tr>`;
             });
             tbody.innerHTML = html;
-
             bindEvents();
             updatePagination();
         })
@@ -140,6 +170,7 @@
         });
     }
 
+    // ---------- 事件绑定 ----------
     function bindEvents() {
         document.querySelectorAll('.save-score-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -149,7 +180,6 @@
             });
         });
 
-        // 基本面分析 -> 跳转首页并携带数据
         document.querySelectorAll('.analysis-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -173,33 +203,31 @@
         });
 
         document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        const tr = this.closest('tr');
-        // 检查该行的“已分析”复选框是否勾选
-        const checkbox = tr.querySelector('.analyzed-checkbox');
-        if (!checkbox || !checkbox.checked) {
-            alert('请先勾选“已分析”再查看赔率分析');
-            return;
-        }
-        // 获取赛事信息
-        const date = tr.querySelector('td:nth-child(2)').textContent.trim();
-        const time = tr.querySelector('td:nth-child(3)').textContent.trim();
-        const league = tr.querySelector('td:nth-child(4)').textContent.trim();
-        const homeAwayText = tr.querySelector('td:nth-child(5)').textContent.trim();
-        const vsIndex = homeAwayText.indexOf('VS');
-        let home = homeAwayText.substring(0, vsIndex).trim();
-        let away = homeAwayText.substring(vsIndex + 2).trim();
-        const params = new URLSearchParams({
-            date: date,
-            time: time,
-            league: league,
-            home: home,
-            away: away
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const tr = this.closest('tr');
+                const checkbox = tr.querySelector('.analyzed-checkbox');
+                if (!checkbox || !checkbox.checked) {
+                    alert('请先勾选“已分析”再查看赔率分析');
+                    return;
+                }
+                const date = tr.querySelector('td:nth-child(2)').textContent.trim();
+                const time = tr.querySelector('td:nth-child(3)').textContent.trim();
+                const league = tr.querySelector('td:nth-child(4)').textContent.trim();
+                const homeAwayText = tr.querySelector('td:nth-child(5)').textContent.trim();
+                const vsIndex = homeAwayText.indexOf('VS');
+                let home = homeAwayText.substring(0, vsIndex).trim();
+                let away = homeAwayText.substring(vsIndex + 2).trim();
+                const params = new URLSearchParams({
+                    date: date,
+                    time: time,
+                    league: league,
+                    home: home,
+                    away: away
+                });
+                window.location.href = '/odds?' + params.toString();
+            });
         });
-        window.location.href = '/odds?' + params.toString();
-    });
-});
 
         document.querySelectorAll('.edit-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -217,7 +245,7 @@
                     fetch('/api/fixtures/' + id, { method: 'DELETE' })
                     .then(res => res.json())
                     .then(res => {
-                        if (res.success) loadFixtures(currentDateFilter, currentLimit, currentOffset);
+                        if (res.success) loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                         else alert('删除失败: ' + (res.error || '未知错误'));
                     });
                 }
@@ -236,7 +264,6 @@
             });
         });
 
-        // ★ 已分析复选框自动保存（不添加文字显示）
         document.querySelectorAll('.analyzed-checkbox').forEach(cb => {
             cb.addEventListener('change', function(e) {
                 e.stopPropagation();
@@ -253,7 +280,7 @@
                         showToast('✅ 已分析状态已更新');
                     } else {
                         showToast('❌ 更新失败: ' + (res.error || '未知错误'));
-                        this.checked = !this.checked; // 回滚
+                        this.checked = !this.checked;
                     }
                 })
                 .catch(err => {
@@ -280,7 +307,7 @@
         .then(res => {
             if (res.success) {
                 showToast('✅ 比分已更新');
-                loadFixtures(currentDateFilter, currentLimit, currentOffset);
+                loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
             } else {
                 showToast('❌ 更新失败: ' + (res.error || '未知错误'));
             }
@@ -346,7 +373,7 @@
         .then(res => {
             if (res.success) {
                 editModal.style.display = 'none';
-                loadFixtures(currentDateFilter, currentLimit, currentOffset);
+                loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                 alert(currentEditId ? '修改成功' : '添加成功');
             } else {
                 alert('操作失败: ' + (res.error || '未知错误'));
@@ -415,7 +442,7 @@
         if (offset < 0) offset = 0;
         if (offset >= totalItems) offset = Math.max(0, totalItems - currentLimit);
         currentOffset = offset;
-        loadFixtures(currentDateFilter, currentLimit, currentOffset);
+        loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
     }
 
     function fetchMatches() {
@@ -437,7 +464,7 @@
             } else {
                 alert(`✅ 抓取成功，共 ${data.length} 场比赛`);
                 currentOffset = 0;
-                loadFixtures(currentDateFilter, currentLimit, 0);
+                loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, 0);
             }
         })
         .catch(err => alert('❌ 请求出错: ' + err.message))
@@ -455,15 +482,20 @@
     // ---- 事件绑定 ----
     filterBtn.addEventListener('click', function() {
         currentDateFilter = filterDate.value;
+        currentLeagueFilter = filterLeague.value;
         currentOffset = 0;
-        loadFixtures(currentDateFilter, currentLimit, 0);
+        loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, 0);
     });
+
     clearFilterBtn.addEventListener('click', function() {
         filterDate.value = '';
+        filterLeague.value = '';
         currentDateFilter = '';
+        currentLeagueFilter = '';
         currentOffset = 0;
-        loadFixtures('', currentLimit, 0);
+        loadFixtures('', '', currentLimit, 0);
     });
+
     addBtn.addEventListener('click', function() { openEditModal(null); });
     cancelEditBtn.addEventListener('click', closeEditModal);
     window.addEventListener('click', function(e) {
@@ -480,11 +512,11 @@
     perPageSelect.addEventListener('change', function() {
         currentLimit = parseInt(this.value);
         currentOffset = 0;
-        loadFixtures(currentDateFilter, currentLimit, 0);
+        loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, 0);
     });
 
     fetchBtn.addEventListener('click', fetchMatches);
 
     setDefaultDate();
-    loadFixtures('', 20, 0);
+    loadFixtures('', '', 20, 0);
 })();

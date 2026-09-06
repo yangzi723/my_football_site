@@ -298,30 +298,47 @@ def get_fixtures_by_date(date):
         cur.execute('SELECT * FROM fixtures WHERE date = ? ORDER BY time', (date,))
         return cur.fetchall()
 
-def get_all_fixtures(date_filter=None, limit=20, offset=0):
+def get_all_fixtures(date_filter=None, league_filter=None, limit=20, offset=0):
     with closing(get_db()) as conn:
         cur = conn.cursor()
         sql = 'SELECT * FROM fixtures'
+        conditions = []
         params = []
         if date_filter:
-            sql += ' WHERE date = ?'
+            # 确保日期为字符串
+            date_filter = str(date_filter)
+            conditions.append("date = ?")
             params.append(date_filter)
+        if league_filter:
+            league_filter = str(league_filter).strip()
+            if league_filter:  # 非空
+                conditions.append("league LIKE ?")
+                params.append('%' + league_filter + '%')
+        if conditions:
+            sql += ' WHERE ' + ' AND '.join(conditions)
         sql += ' ORDER BY date DESC, time LIMIT ? OFFSET ?'
-        params.extend([limit, offset])
+        params.extend([int(limit), int(offset)])  # 确保为整数
         cur.execute(sql, params)
         return cur.fetchall()
-
-def count_fixtures(date_filter=None):
+def count_fixtures(date_filter=None, league_filter=None):
     with closing(get_db()) as conn:
         cur = conn.cursor()
         sql = 'SELECT COUNT(*) as total FROM fixtures'
+        conditions = []
         params = []
         if date_filter:
-            sql += ' WHERE date = ?'
+            date_filter = str(date_filter)
+            conditions.append("date = ?")
             params.append(date_filter)
+        if league_filter:
+            league_filter = str(league_filter).strip()
+            if league_filter:
+                conditions.append("league LIKE ?")
+                params.append('%' + league_filter + '%')
+        if conditions:
+            sql += ' WHERE ' + ' AND '.join(conditions)
         cur.execute(sql, params)
         return cur.fetchone()['total']
-
 def get_fixture_by_id(fid):
     with closing(get_db()) as conn:
         cur = conn.cursor()

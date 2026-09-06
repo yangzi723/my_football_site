@@ -108,20 +108,17 @@
         const select = document.getElementById('filter-league');
         if (!select) return;
         const currentValue = select.value;
-        // 保留第一个空选项
         select.innerHTML = '<option value="">全部联赛</option>';
         const leagues = new Set();
         matches.forEach(m => {
             if (m.league) leagues.add(m.league);
         });
-        // 排序后添加
         Array.from(leagues).sort().forEach(league => {
             const opt = document.createElement('option');
             opt.value = league;
             opt.textContent = league;
             select.appendChild(opt);
         });
-        // 恢复之前选中的值（如果仍存在）
         if (currentValue && leagues.has(currentValue)) {
             select.value = currentValue;
         }
@@ -153,9 +150,10 @@
                 currentLimit = data.limit || limit;
                 currentOffset = data.offset || offset;
 
-                // 更新联赛下拉框（仅在无筛选时全部更新，或每次加载都更新）
-                // 这里选择总是更新，确保下拉框始终显示当前结果中的联赛
-                updateLeagueSelect(matches);
+                // ★ 仅在无任何筛选时更新下拉框（保留全部联赛选项）
+                if (!date && !league) {
+                    updateLeagueSelect(matches);
+                }
 
                 if (matches.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
