@@ -7,6 +7,7 @@
         const loading = document.getElementById('loading');
         const tableWrap = document.getElementById('tableWrap');
         const filterDate = document.getElementById('filter-date');
+        const filterLeague = document.getElementById('filter-league'); // ★ 新增
         const filterBtn = document.getElementById('filterBtn');
         const clearFilterBtn = document.getElementById('clearFilterBtn');
 
@@ -33,6 +34,7 @@
         let currentOffset = 0;
         let currentLimit = 20;
         let currentDateFilter = '';
+        let currentLeagueFilter = ''; // ★ 新增
         let totalItems = 0;
 
         const judgmentMap = {
@@ -78,6 +80,27 @@
             }).then(res => res.json());
         }
 
+        // ---------- 更新联赛下拉框 ----------
+        function updateLeagueSelect(matches) {
+            const select = document.getElementById('filter-league');
+            if (!select) return;
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">全部联赛</option>';
+            const leagues = new Set();
+            matches.forEach(m => {
+                if (m.league) leagues.add(m.league);
+            });
+            Array.from(leagues).sort().forEach(league => {
+                const opt = document.createElement('option');
+                opt.value = league;
+                opt.textContent = league;
+                select.appendChild(opt);
+            });
+            if (currentValue && leagues.has(currentValue)) {
+                select.value = currentValue;
+            }
+        }
+
         // ========== 表单数据收集（复用） ==========
         function collectEditFormData() {
             const getVal = (id) => document.getElementById(id).value;
@@ -120,11 +143,17 @@
         }
 
         // ========== 加载 & 渲染 ==========
-        function loadHistory() {
+        function loadHistory(date, league, limit, offset) {
+            if (date === undefined) date = currentDateFilter;
+            if (league === undefined) league = currentLeagueFilter;
+            if (limit === undefined) limit = currentLimit;
+            if (offset === undefined) offset = currentOffset;
+
             loading.style.display = 'block';
             tableWrap.style.display = 'none';
-            let url = `/api/history?limit=${currentLimit}&offset=${currentOffset}`;
-            if (currentDateFilter) url += '&date=' + currentDateFilter;
+            let url = `/api/history?limit=${limit}&offset=${offset}`;
+            if (date) url += '&date=' + date;
+            if (league) url += '&league=' + encodeURIComponent(league);
 
             fetch(url)
             .then(res => {
@@ -136,8 +165,13 @@
                 tableWrap.style.display = 'block';
                 const matches = data.data || [];
                 totalItems = data.total || 0;
-                currentLimit = data.limit || currentLimit;
-                currentOffset = data.offset || currentOffset;
+                currentLimit = data.limit || limit;
+                currentOffset = data.offset || offset;
+
+                // ★ 仅在无任何筛选时更新下拉框（保留全部联赛选项）
+                if (!date && !league) {
+                    updateLeagueSelect(matches);
+                }
 
                 if (!matches.length) {
                     tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
@@ -338,12 +372,16 @@
 
         filterBtn.addEventListener('click', function() {
             currentDateFilter = filterDate.value;
+            currentLeagueFilter = filterLeague.value; // ★ 读取联赛
             currentOffset = 0;
             loadHistory();
         });
+
         clearFilterBtn.addEventListener('click', function() {
             filterDate.value = '';
+            filterLeague.value = ''; // ★ 清空联赛
             currentDateFilter = '';
+            currentLeagueFilter = ''; // ★ 清空联赛
             currentOffset = 0;
             loadHistory();
         });
