@@ -150,7 +150,6 @@
                 currentLimit = data.limit || limit;
                 currentOffset = data.offset || offset;
 
-                // ★ 仅在无任何筛选时更新下拉框（保留全部联赛选项）
                 if (!date && !league) {
                     updateLeagueSelect(matches);
                 }
@@ -185,7 +184,7 @@
                             <td>${m.date || ''}</td>
                             <td>${m.time || ''}</td>
                             <td>${m.league || ''}</td>
-                            <td><a href="/?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/?id=${m.id}" class="team-link">${m.away_team}</a></td>
+                            <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
                             <td>${scoreDisplay}</td>
                             <td>${judgmentDisplay}</td>
                             <td><textarea class="inline-edit inline-pos1" data-id="${m.id}" data-field="pos1" placeholder="—" title="${pos1Val || '—'}" rows="1">${pos1Val}</textarea><span class="save-tag" id="saveTag-pos1-${m.id}">✓</span></td>
@@ -739,7 +738,7 @@
                         <td>${m.date || ''}</td>
                         <td>${m.time || ''}</td>
                         <td>${m.league || ''}</td>
-                        <td><a href="/?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/?id=${m.id}" class="team-link">${m.away_team}</a></td>
+                        <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
                         <td>${scoreDisplay}</td>
                         <td>${judgmentDisplay}</td>
                         <td><textarea class="inline-edit inline-pos1" data-id="${m.id}" data-field="pos1" placeholder="—" title="${pos1Val || '—'}" rows="1">${pos1Val}</textarea><span class="save-tag" id="saveTag-pos1-${m.id}">✓</span></td>
