@@ -316,6 +316,7 @@ def api_get_fixtures():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/fixtures/<int:fid>', methods=['GET', 'PUT', 'DELETE'])
 def api_fixture_detail(fid):
     if request.method == 'GET':
@@ -331,7 +332,8 @@ def api_fixture_detail(fid):
         if not existing:
             return jsonify({'error': '赛事不存在'}), 404
         existing_dict = dict(existing)
-        for key in ['date', 'time', 'league', 'home_team', 'away_team', 'score']:
+        # 允许更新的字段（添加 analyzed）
+        for key in ['date', 'time', 'league', 'home_team', 'away_team', 'score', 'analyzed']:
             if key in data:
                 existing_dict[key] = data[key]
         try:

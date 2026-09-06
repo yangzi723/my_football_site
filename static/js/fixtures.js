@@ -214,6 +214,7 @@
             });
         });
 
+        // ★ 已分析复选框自动保存（不添加文字显示）
         document.querySelectorAll('.analyzed-checkbox').forEach(cb => {
             cb.addEventListener('change', function(e) {
                 e.stopPropagation();
@@ -230,7 +231,7 @@
                         showToast('✅ 已分析状态已更新');
                     } else {
                         showToast('❌ 更新失败: ' + (res.error || '未知错误'));
-                        this.checked = !this.checked;
+                        this.checked = !this.checked; // 回滚
                     }
                 })
                 .catch(err => {
