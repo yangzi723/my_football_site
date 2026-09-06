@@ -93,6 +93,7 @@
         return [];
     }
 
+    // ---------- 保存字段（核心函数） ----------
     function saveField(id, field, value) {
         return fetch('/api/match/' + id)
             .then(res => {
@@ -184,7 +185,6 @@
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const isEmptyPred = !m.initial_prediction || m.initial_prediction === '[]' || m.initial_prediction === '""' || m.initial_prediction === 'null';
 
-                    // ★ 亚初终列
                     const asianOdds = m.asian_odds || '';
 
                     html += `<tr>
@@ -285,8 +285,6 @@
             });
         });
 
-        // 注意：由于已删除初01和初02列，此处不再绑定 inline-pos1/pos2 事件
-        // 但仍需保留原有的 odds-analysis-btn 事件
         document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -295,9 +293,6 @@
             });
         });
     }
-
-    // ---------- 删除初01/初02的独立保存函数，但保留通用保存 ----------
-    // 由于表格中不再有这些列，相关保存逻辑已移除
 
     // ========== 打开赔率分析模态框（含自动保存） ==========
     function openAnalysisModal(id) {
@@ -356,6 +351,7 @@
                     </div>
                 `;
 
+                // 确保赔率结构输入框 ID 正确
                 let infoHtml = `
                     <div style="background:#f0f6ff; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
                         <div style="font-weight:600; font-size:14px; color:#1a3a6b; margin-bottom:8px;">📊 基本面评分</div>
@@ -386,29 +382,54 @@
                 analysisInfoContainer.innerHTML = infoHtml;
                 analysisModal.style.display = 'flex';
 
-                // ========== 绑定自动保存（防抖） ==========
-                const autoSave = debounce(function(field, value) {
-                    // 如果值没变化，不保存
-                    const oldVal = analysisModal.dataset[`old${field.charAt(0).toUpperCase() + field.slice(1)}`];
-                    // 但对于 initial_prediction 特殊处理
-                    if (field === 'initial_prediction') {
-                        const oldPred = analysisModal.dataset.oldPred || '[]';
-                        if (value === oldPred) return;
-                    } else {
-                        if (value === oldVal) return;
+                // ========== 使用事件委托绑定自动保存 ==========
+                if (analysisInfoContainer._autoSaveHandler) {
+                    analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
+                }
+
+                const autoSaveHandler = function(e) {
+                    const target = e.target;
+                    if (!target.classList.contains('analysis-input') && !target.classList.contains('pred-checkbox')) {
+                        return;
                     }
+                    let field = target.dataset.field;
+                    let value;
+                    if (target.classList.contains('pred-checkbox')) {
+                        const container = target.closest('.form-group');
+                        const checkedBoxes = container ? container.querySelectorAll('.pred-checkbox:checked') : document.querySelectorAll('.pred-checkbox:checked');
+                        const selected = Array.from(checkedBoxes).map(cb => cb.value);
+                        value = JSON.stringify(selected);
+                        field = 'initial_prediction';
+                    } else {
+                        value = target.value.trim();
+                    }
+                    if (!field) return;
+
+                    const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
+                    if (tag) tag.classList.remove('show');
+
+                    autoSave(field, value);
+                };
+
+                analysisInfoContainer._autoSaveHandler = autoSaveHandler;
+                analysisInfoContainer.addEventListener('input', autoSaveHandler);
+
+                const autoSave = debounce(function(field, value) {
+                    const oldKey = `old${field.charAt(0).toUpperCase() + field.slice(1)}`;
+                    let oldVal = analysisModal.dataset[oldKey];
+                    if (field === 'initial_prediction') {
+                        oldVal = analysisModal.dataset.oldPred || '[]';
+                    }
+                    if (value === oldVal) return;
 
                     saveField(id, field, value)
                         .then(res => {
                             if (res.success) {
-                                // 更新旧值缓存
                                 if (field === 'initial_prediction') {
                                     analysisModal.dataset.oldPred = value;
                                 } else {
-                                    const key = `old${field.charAt(0).toUpperCase() + field.slice(1)}`;
-                                    analysisModal.dataset[key] = value;
+                                    analysisModal.dataset[oldKey] = value;
                                 }
-                                // 显示保存标记
                                 const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                                 if (tag) tag.classList.add('show');
                             } else {
@@ -417,32 +438,6 @@
                         })
                         .catch(err => showToast(`❌ 请求出错: ${err.message}`, true));
                 }, 600);
-
-                // 绑定输入框自动保存
-                const inputFields = ['asian_odds', 'range', 'initial_analysis', 'final_analysis', 'odds_structure', 'pos1', 'pos2'];
-                inputFields.forEach(field => {
-                    const el = document.getElementById(`analysis-${field}`);
-                    if (el) {
-                        el.addEventListener('input', function() {
-                            const fieldName = this.dataset.field;
-                            const tag = document.getElementById(`analysis-saveTag-${fieldName}-${id}`);
-                            if (tag) tag.classList.remove('show');
-                            autoSave(fieldName, this.value.trim());
-                        });
-                    }
-                });
-
-                // 绑定初测复选框组自动保存
-                const checkboxes = document.querySelectorAll('.pred-checkbox');
-                checkboxes.forEach(cb => {
-                    cb.addEventListener('change', function() {
-                        const selected = Array.from(document.querySelectorAll('.pred-checkbox:checked')).map(cb => cb.value);
-                        const value = JSON.stringify(selected);
-                        const tag = document.getElementById(`analysis-saveTag-initial_prediction-${id}`);
-                        if (tag) tag.classList.remove('show');
-                        autoSave('initial_prediction', value);
-                    });
-                });
 
                 // ---------- 自定义下拉组件交互 ----------
                 const trigger = document.getElementById(`pred-trigger-${id}`);
@@ -474,8 +469,7 @@
                             }
                             item.classList.toggle('selected', checkbox.checked);
                             updateTriggerText();
-                            // 触发自动保存（通过 change 事件）
-                            checkbox.dispatchEvent(new Event('change'));
+                            checkbox.dispatchEvent(new Event('input', { bubbles: true }));
                         });
                         checkbox.addEventListener('change', function() {
                             item.classList.toggle('selected', this.checked);
@@ -503,17 +497,28 @@
             })
             .catch(err => {
                 showToast('❌ 加载数据失败: ' + err.message, true);
+                console.error('加载数据失败:', err);
             });
     }
 
     function closeAnalysisModal() {
+        if (analysisInfoContainer._autoSaveHandler) {
+            analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
+            delete analysisInfoContainer._autoSaveHandler;
+        }
         analysisModal.style.display = 'none';
     }
 
     // ---------- 保存按钮（手动） ----------
     function saveAnalysisData() {
+    try {
         const id = analysisModal.dataset.id;
-        if (!id) { showToast('❌ 未找到赛事ID'); return; }
+        if (!id) {
+            showToast('❌ 未找到赛事ID', true);
+            return;
+        }
+
+        console.log('[手动保存] 开始保存 id=' + id);
 
         const pos1Input = document.getElementById('analysis-pos1');
         const pos2Input = document.getElementById('analysis-pos2');
@@ -539,15 +544,29 @@
         }
         const initialPredictionVal = JSON.stringify(selectedOptions);
 
+        console.log('[手动保存] 收集数据:', {
+            pos1: pos1Val,
+            pos2: pos2Val,
+            asian: asianVal,
+            range: rangeVal,
+            initial_analysis: initialAnalysisVal,
+            final_analysis: finalAnalysisVal,
+            odds_structure: oddsStructureVal,
+            initial_prediction: initialPredictionVal
+        });
+
         saveAnalysisBtn.textContent = '⏳ 保存中...';
         saveAnalysisBtn.disabled = true;
 
+        // 先获取当前数据
         fetch('/api/match/' + id)
             .then(res => {
                 if (!res.ok) throw new Error('获取当前数据失败');
                 return res.json();
             })
             .then(data => {
+                console.log('[手动保存] 获取到的原始数据:', data);
+                // 更新字段
                 data.pos1 = pos1Val;
                 data.pos2 = pos2Val;
                 data.asian_odds = asianVal;
@@ -556,6 +575,8 @@
                 data.final_analysis = finalAnalysisVal;
                 data.initial_prediction = initialPredictionVal;
                 data.odds_structure = oddsStructureVal;
+
+                console.log('[手动保存] 准备发送的请求体:', data);
                 return fetch('/api/match/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -568,6 +589,7 @@
             })
             .then(result => {
                 if (result.success) {
+                    // 更新旧值缓存
                     analysisModal.dataset.oldPos1 = pos1Val;
                     analysisModal.dataset.oldPos2 = pos2Val;
                     analysisModal.dataset.oldAsian = asianVal;
@@ -635,7 +657,13 @@
                 saveAnalysisBtn.textContent = '💾 保存修改';
                 saveAnalysisBtn.disabled = false;
             });
+    } catch (error) {
+        showToast('❌ 保存过程中发生错误: ' + error.message, true);
+        console.error('手动保存异常:', error);
+        saveAnalysisBtn.textContent = '💾 保存修改';
+        saveAnalysisBtn.disabled = false;
     }
+}
 
     // ---------- 分页 ----------
     function updatePagination() {

@@ -175,6 +175,7 @@ def api_update_match(match_id):
     data.setdefault('initial_prediction', '')
     data.setdefault('initial_analysis', '')
     data.setdefault('final_analysis', '')
+    data.setdefault('odds_structure', '')
     # ===== 新增：ai_result 默认值 =====
     data.setdefault('ai_result', '')
     data.setdefault('review', '')   # ← 新增

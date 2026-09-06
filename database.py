@@ -225,7 +225,8 @@ def update_match_full(match_id, data):
                 final_analysis = :final_analysis,
                 initial_prediction = :initial_prediction,
                 ai_result = :ai_result,
-                review = :review
+                review = :review,
+                odds_structure = :odds_structure
             WHERE id = :id
         ''', {**data, 'id': match_id})
         conn.commit()
