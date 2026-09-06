@@ -16,7 +16,7 @@ init_db()
 
 # ---------- 页面路由 ----------
 
-@app.route('/')
+@app.route('/index')
 def index():
     return render_template('index.html')
 
@@ -48,9 +48,7 @@ def black_list():
 def draw_list():
     return render_template('draw_list.html')
 
-@app.route('/admin_edit')
-def admin_edit():
-    return render_template('admin_index.html')
+
 
 # ---------- API：保存预测记录 ----------
 @app.route('/api/save', methods=['POST'])
@@ -120,11 +118,12 @@ def api_save():
 @app.route('/api/history')
 def api_history():
     date_filter = request.args.get('date')
+    league_filter = request.args.get('league')
     limit = request.args.get('limit', 20, type=int)
     offset = request.args.get('offset', 0, type=int)
     try:
-        matches = get_all_matches(limit, offset, date_filter)
-        total = get_all_matches_count(date_filter)
+        matches = get_all_matches(limit, offset, date_filter, league_filter)
+        total = get_all_matches_count(date_filter, league_filter)
         return jsonify({
             'data': [dict(row) for row in matches],
             'total': total,
@@ -223,6 +222,7 @@ def api_stats():
         return jsonify({'error': str(e)}), 500
 
 # ---------- fixtures API ----------
+
 @app.route('/api/fetch_matches', methods=['GET'])
 def api_fetch_matches():
     date_str = request.args.get('date')
@@ -300,14 +300,16 @@ def api_fetch_matches():
         traceback.print_exc()
         return jsonify({'error': f'抓取失败: {str(e)}'}), 500
 
+# 获取列表（支持筛选）
 @app.route('/api/fixtures')
 def api_get_fixtures():
     date_filter = request.args.get('date')
+    league_filter = request.args.get('league')
     limit = request.args.get('limit', 20, type=int)
     offset = request.args.get('offset', 0, type=int)
     try:
-        fixtures = get_all_fixtures(date_filter, limit, offset)
-        total = count_fixtures(date_filter)
+        fixtures = get_all_fixtures(date_filter, league_filter, limit, offset)
+        total = count_fixtures(date_filter, league_filter)
         return jsonify({
             'data': [dict(row) for row in fixtures],
             'total': total,
@@ -318,6 +320,7 @@ def api_get_fixtures():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+# 单个赛事操作（GET/PUT/DELETE）
 @app.route('/api/fixtures/<int:fid>', methods=['GET', 'PUT', 'DELETE'])
 def api_fixture_detail(fid):
     if request.method == 'GET':
@@ -333,7 +336,8 @@ def api_fixture_detail(fid):
         if not existing:
             return jsonify({'error': '赛事不存在'}), 404
         existing_dict = dict(existing)
-        for key in ['date', 'time', 'league', 'home_team', 'away_team', 'score']:
+        # 允许更新的字段（包含 analyzed）
+        for key in ['date', 'time', 'league', 'home_team', 'away_team', 'score', 'analyzed']:
             if key in data:
                 existing_dict[key] = data[key]
         try:
