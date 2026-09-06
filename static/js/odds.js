@@ -53,7 +53,6 @@
         toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    // ---------- 显示兼容 ----------
     function getPredictionDisplay(initialPrediction) {
         if (!initialPrediction) return '';
         if (typeof initialPrediction === 'string') {
@@ -103,7 +102,6 @@
             });
     }
 
-    // ---------- 更新联赛下拉框 ----------
     function updateLeagueSelect(matches) {
         const select = document.getElementById('filter-league');
         if (!select) return;
@@ -124,7 +122,6 @@
         }
     }
 
-    // ---------- 加载历史（支持日期和联赛筛选） ----------
     function loadHistory(date, league, limit, offset) {
         if (date === undefined) date = currentDateFilter;
         if (league === undefined) league = currentLeagueFilter;
@@ -214,7 +211,6 @@
             });
     }
 
-    // ---------- 事件绑定 ----------
     function bindEvents() {
         document.querySelectorAll('.result-select').forEach(sel => {
             sel.addEventListener('change', function() {
@@ -332,7 +328,7 @@
             .finally(() => { input.classList.remove('saving'); });
     }
 
-    // ---------- 打开赔率分析模态框（已增加基本面评分显示） ----------
+    // ========== 打开赔率分析模态框（已添加“赔率结构”字段） ==========
     function openAnalysisModal(id) {
         fetch('/api/match/' + id)
             .then(res => {
@@ -352,15 +348,17 @@
                 const initialAnalysisVal = data.initial_analysis || '';
                 const finalAnalysisVal = data.final_analysis || '';
                 const predArray = getInitialPredictionArray(data);
+                // 读取赔率结构（新字段）
+                const oddsStructureVal = data.odds_structure || '';
 
-                // 读取基本面评分数据
+                // 基本面评分
                 const homeScore = Math.round(parseFloat(data.home_score) || 0);
                 const awayScore = Math.round(parseFloat(data.away_score) || 0);
                 const homeProb = (parseFloat(data.home_prob) || 0) * 100;
                 const drawProb = (parseFloat(data.draw_prob) || 0) * 100;
                 const awayProb = (parseFloat(data.away_prob) || 0) * 100;
 
-                // 保存旧值
+                // 保存旧值（包含新字段）
                 analysisModal.dataset.oldPos1 = pos1Val;
                 analysisModal.dataset.oldPos2 = pos2Val;
                 analysisModal.dataset.oldAsian = asianVal;
@@ -368,10 +366,10 @@
                 analysisModal.dataset.oldInitialAnalysis = initialAnalysisVal;
                 analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
                 analysisModal.dataset.oldPred = JSON.stringify(predArray);
+                analysisModal.dataset.oldOddsStructure = oddsStructureVal;  // ★ 新增
 
                 const options = ['胜', '平', '负', '上盘', '下盘', '大球', '小球'];
 
-                // 构建自定义下拉组件 HTML
                 let dropdownHtml = `
                     <div class="custom-dropdown" id="pred-dropdown-${id}">
                         <button class="dropdown-trigger" id="pred-trigger-${id}" type="button">
@@ -389,7 +387,7 @@
                     </div>
                 `;
 
-                // ★ 在信息区域顶部加入基本面评分
+                // ★ 在“初01”上方添加“赔率结构”行
                 let infoHtml = `
                     <div style="background:#f0f6ff; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
                         <div style="font-weight:600; font-size:14px; color:#1a3a6b; margin-bottom:8px;">📊 基本面评分</div>
@@ -408,6 +406,8 @@
                     <div class="form-group"><span class="info-label" style="width:120px;">区间</span><input type="text" id="analysis-range" class="analysis-input" value="${rangeVal}" placeholder="如 2.5-3" data-id="${data.id}" data-field="range"><span class="save-tag" id="analysis-saveTag-range-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">初赔分析</span><input type="text" id="analysis-initial_analysis" class="analysis-input" value="${initialAnalysisVal}" placeholder="初赔分析" data-id="${data.id}" data-field="initial_analysis"><span class="save-tag" id="analysis-saveTag-initial_analysis-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">终赔分析</span><input type="text" id="analysis-final_analysis" class="analysis-input" value="${finalAnalysisVal}" placeholder="终赔分析" data-id="${data.id}" data-field="final_analysis"><span class="save-tag" id="analysis-saveTag-final_analysis-${data.id}">✓</span></div>
+                    <!-- ★ 新增：赔率结构 -->
+                    <div class="form-group"><span class="info-label" style="width:120px;">赔率结构</span><input type="text" id="analysis-odds-structure" class="analysis-input" value="${oddsStructureVal}" placeholder="如 胜平负" data-id="${data.id}" data-field="odds_structure"><span class="save-tag" id="analysis-saveTag-odds_structure-${data.id}">✓</span></div>
                     <div class="form-group" style="margin-top:10px;"><span class="info-label" style="width:120px;">初01</span><input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1"><span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">初02</span><input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2"><span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span></div>
                     <div class="form-group">
@@ -467,7 +467,8 @@
                     });
                 }
 
-                document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis').forEach(el => {
+                // 绑定输入事件（含新字段）
+                document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-odds-structure').forEach(el => {
                     el.addEventListener('input', function() {
                         const id = this.dataset.id;
                         const field = this.dataset.field;
@@ -489,7 +490,7 @@
         analysisModal.style.display = 'none';
     }
 
-    // ---------- 保存数据 ----------
+    // ---------- 保存数据（包含新字段） ----------
     function saveAnalysisData() {
         const id = analysisModal.dataset.id;
         if (!id) { showToast('❌ 未找到赛事ID'); return; }
@@ -500,6 +501,7 @@
         const rangeInput = document.getElementById('analysis-range');
         const initialAnalysisInput = document.getElementById('analysis-initial_analysis');
         const finalAnalysisInput = document.getElementById('analysis-final_analysis');
+        const oddsStructureInput = document.getElementById('analysis-odds-structure');  // ★ 新增
 
         const pos1Val = pos1Input ? pos1Input.value.trim() : '';
         const pos2Val = pos2Input ? pos2Input.value.trim() : '';
@@ -507,6 +509,7 @@
         const rangeVal = rangeInput ? rangeInput.value.trim() : '';
         const initialAnalysisVal = initialAnalysisInput ? initialAnalysisInput.value.trim() : '';
         const finalAnalysisVal = finalAnalysisInput ? finalAnalysisInput.value.trim() : '';
+        const oddsStructureVal = oddsStructureInput ? oddsStructureInput.value.trim() : '';  // ★ 新增
 
         const menu = document.getElementById(`pred-menu-${id}`);
         let selectedOptions = [];
@@ -532,6 +535,7 @@
                 data.initial_analysis = initialAnalysisVal;
                 data.final_analysis = finalAnalysisVal;
                 data.initial_prediction = initialPredictionVal;
+                data.odds_structure = oddsStructureVal;  // ★ 新增
                 return fetch('/api/match/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -551,8 +555,9 @@
                     analysisModal.dataset.oldInitialAnalysis = initialAnalysisVal;
                     analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
                     analysisModal.dataset.oldPred = initialPredictionVal;
+                    analysisModal.dataset.oldOddsStructure = oddsStructureVal;  // ★ 新增
 
-                    const fields = ['pos1', 'pos2', 'asian', 'range', 'initial_analysis', 'final_analysis', 'initial_prediction'];
+                    const fields = ['pos1', 'pos2', 'asian', 'range', 'initial_analysis', 'final_analysis', 'initial_prediction', 'odds_structure'];  // ★ 新增
                     fields.forEach(field => {
                         const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                         if (tag) tag.classList.add('show');
@@ -566,6 +571,7 @@
             .catch(err => {
                 showToast('❌ 保存失败: ' + err.message);
                 console.error('保存错误:', err);
+                // 恢复旧值（包含新字段）
                 const oldPos1 = analysisModal.dataset.oldPos1 || '';
                 const oldPos2 = analysisModal.dataset.oldPos2 || '';
                 const oldAsian = analysisModal.dataset.oldAsian || '';
@@ -573,6 +579,7 @@
                 const oldInitialAnalysis = analysisModal.dataset.oldInitialAnalysis || '';
                 const oldFinalAnalysis = analysisModal.dataset.oldFinalAnalysis || '';
                 const oldPred = analysisModal.dataset.oldPred || '[]';
+                const oldOddsStructure = analysisModal.dataset.oldOddsStructure || '';  // ★ 新增
                 try {
                     const oldArr = JSON.parse(oldPred);
                     const menu = document.getElementById(`pred-menu-${id}`);
@@ -602,6 +609,7 @@
                 if (rangeInput) rangeInput.value = oldRange;
                 if (initialAnalysisInput) initialAnalysisInput.value = oldInitialAnalysis;
                 if (finalAnalysisInput) finalAnalysisInput.value = oldFinalAnalysis;
+                if (oddsStructureInput) oddsStructureInput.value = oldOddsStructure;  // ★ 新增
             })
             .finally(() => {
                 saveAnalysisBtn.textContent = '💾 保存修改';
@@ -663,7 +671,8 @@
             judgment: 'equal',
             asian_odds: '', range: '', pos1: '', pos2: '',
             initial_analysis: '', final_analysis: '',
-            initial_prediction: '[]'
+            initial_prediction: '[]',
+            odds_structure: ''  // ★ 新增，确保空记录也包含该字段
         };
         fetch('/api/save', {
             method: 'POST',
@@ -721,14 +730,13 @@
         alert('请使用“赔率分析”按钮进行编辑。');
     });
 
-    // ---------- 页面初始化：根据 URL 参数决定是否过滤 ----------
+    // ---------- 页面初始化 ----------
     const urlParams = new URLSearchParams(window.location.search);
     const filterDateParam = urlParams.get('date');
     const filterHome = urlParams.get('home');
     const filterAway = urlParams.get('away');
 
     if (filterDateParam && filterHome && filterAway) {
-        // 从赛事列表跳转过来的，只显示该赛事
         loading.style.display = 'block';
         tableWrap.style.display = 'none';
         fetch(`/api/match/find?date=${encodeURIComponent(filterDateParam)}&home_team=${encodeURIComponent(filterHome)}&away_team=${encodeURIComponent(filterAway)}`)
@@ -796,7 +804,6 @@
                 console.error('加载失败:', err);
             });
     } else {
-        // 无过滤参数，正常加载所有记录
         loadHistory('', '', 20, 0);
     }
 })();
