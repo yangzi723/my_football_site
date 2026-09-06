@@ -184,8 +184,8 @@
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const isEmptyPred = !m.initial_prediction || m.initial_prediction === '[]' || m.initial_prediction === '""' || m.initial_prediction === 'null';
 
-                    const pos1Val = m.pos1 || '';
-                    const pos2Val = m.pos2 || '';
+                    // ★ 亚初终列
+                    const asianOdds = m.asian_odds || '';
 
                     html += `<tr>
                             <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
@@ -196,8 +196,7 @@
                             <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
                             <td>${scoreDisplay}</td>
                             <td>${judgmentDisplay}</td>
-                            <td><textarea class="inline-edit inline-pos1" data-id="${m.id}" data-field="pos1" placeholder="—" title="${pos1Val || '—'}" rows="1">${pos1Val}</textarea><span class="save-tag" id="saveTag-pos1-${m.id}">✓</span></td>
-                            <td><textarea class="inline-edit inline-pos2" data-id="${m.id}" data-field="pos2" placeholder="—" title="${pos2Val || '—'}" rows="1">${pos2Val}</textarea><span class="save-tag" id="saveTag-pos2-${m.id}">✓</span></td>
+                            <td>${asianOdds}</td>
                             <td style="text-align:center;"><span class="prediction-clickable ${isEmptyPred ? 'empty' : ''}" style="cursor:default; text-decoration:none;">${predDisplay || '—'}</span></td>
                             <td>
                                 <select class="result-select" data-id="${m.id}">
@@ -286,24 +285,8 @@
             });
         });
 
-        document.querySelectorAll('.inline-pos1, .inline-pos2').forEach(inp => {
-            inp.addEventListener('blur', function() { handleInlineSave(this); });
-            inp.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.blur();
-                }
-                if (e.key === 'Escape') { this.blur(); }
-            });
-            inp.addEventListener('input', function() {
-                const id = this.dataset.id;
-                const field = this.dataset.field;
-                const tag = document.getElementById(`saveTag-${field}-${id}`);
-                if (tag) tag.classList.remove('show');
-                this.title = this.value || '—';
-            });
-        });
-
+        // 注意：由于已删除初01和初02列，此处不再绑定 inline-pos1/pos2 事件
+        // 但仍需保留原有的 odds-analysis-btn 事件
         document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -313,32 +296,8 @@
         });
     }
 
-    function handleInlineSave(input) {
-        const id = input.dataset.id;
-        const field = input.dataset.field;
-        const value = input.value.trim();
-        const tag = document.getElementById(`saveTag-${field}-${id}`);
-        const oldVal = input.defaultValue || '';
-        if (value === oldVal) { if (tag) tag.classList.remove('show'); return; }
-        input.classList.add('saving');
-        if (tag) tag.classList.remove('show');
-        saveField(id, field, value)
-            .then(res => {
-                if (res.success) {
-                    input.defaultValue = value;
-                    if (tag) tag.classList.add('show');
-                    showToast(`✅ ${field} 已保存`);
-                } else {
-                    showToast('❌ 保存失败: ' + (res.error || '未知错误'), true);
-                    input.value = oldVal;
-                }
-            })
-            .catch(err => {
-                showToast('❌ 请求出错: ' + err.message, true);
-                input.value = oldVal;
-            })
-            .finally(() => { input.classList.remove('saving'); });
-    }
+    // ---------- 删除初01/初02的独立保存函数，但保留通用保存 ----------
+    // 由于表格中不再有这些列，相关保存逻辑已移除
 
     // ========== 打开赔率分析模态框（含自动保存） ==========
     function openAnalysisModal(id) {
@@ -413,11 +372,11 @@
                     <div class="info-row"><span class="info-label">基本面判断</span><span class="info-value">${judgmentDisplay}</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">亚初终</span><input type="text" id="analysis-asian" class="analysis-input" value="${asianVal}" placeholder="如 0.85 半球 0.95" data-id="${data.id}" data-field="asian_odds"><span class="save-tag" id="analysis-saveTag-asian-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">区间</span><input type="text" id="analysis-range" class="analysis-input" value="${rangeVal}" placeholder="如 2.5-3" data-id="${data.id}" data-field="range"><span class="save-tag" id="analysis-saveTag-range-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">初赔分析</span><input type="text" id="analysis-initial_analysis" class="analysis-input" value="${initialAnalysisVal}" placeholder="初赔分析" data-id="${data.id}" data-field="initial_analysis"><span class="save-tag" id="analysis-saveTag-initial_analysis-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">终赔分析</span><input type="text" id="analysis-final_analysis" class="analysis-input" value="${finalAnalysisVal}" placeholder="终赔分析" data-id="${data.id}" data-field="final_analysis"><span class="save-tag" id="analysis-saveTag-final_analysis-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">赔率结构</span><input type="text" id="analysis-odds-structure" class="analysis-input" value="${oddsStructureVal}" placeholder="如 胜平负" data-id="${data.id}" data-field="odds_structure"><span class="save-tag" id="analysis-saveTag-odds_structure-${data.id}">✓</span></div>
                     <div class="form-group" style="margin-top:10px;"><span class="info-label" style="width:120px;">初01</span><input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1"><span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">初02</span><input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2"><span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span></div>
+                    <div class="form-group"><span class="info-label" style="width:120px;">初赔分析</span><input type="text" id="analysis-initial_analysis" class="analysis-input" value="${initialAnalysisVal}" placeholder="初赔分析" data-id="${data.id}" data-field="initial_analysis"><span class="save-tag" id="analysis-saveTag-initial_analysis-${data.id}">✓</span></div>
+                    <div class="form-group"><span class="info-label" style="width:120px;">终赔分析</span><input type="text" id="analysis-final_analysis" class="analysis-input" value="${finalAnalysisVal}" placeholder="终赔分析" data-id="${data.id}" data-field="final_analysis"><span class="save-tag" id="analysis-saveTag-final_analysis-${data.id}">✓</span></div>
                     <div class="form-group">
                         <span class="info-label" style="width:120px;">初测</span>
                         ${dropdownHtml}
@@ -818,8 +777,7 @@
                     const scoreDisplay = `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const isEmptyPred = !m.initial_prediction || m.initial_prediction === '[]' || m.initial_prediction === '""' || m.initial_prediction === 'null';
-                    const pos1Val = m.pos1 || '';
-                    const pos2Val = m.pos2 || '';
+                    const asianOdds = m.asian_odds || '';
 
                     const rowHtml = `<tr>
                         <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
@@ -830,8 +788,7 @@
                         <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
                         <td>${scoreDisplay}</td>
                         <td>${judgmentDisplay}</td>
-                        <td><textarea class="inline-edit inline-pos1" data-id="${m.id}" data-field="pos1" placeholder="—" title="${pos1Val || '—'}" rows="1">${pos1Val}</textarea><span class="save-tag" id="saveTag-pos1-${m.id}">✓</span></td>
-                        <td><textarea class="inline-edit inline-pos2" data-id="${m.id}" data-field="pos2" placeholder="—" title="${pos2Val || '—'}" rows="1">${pos2Val}</textarea><span class="save-tag" id="saveTag-pos2-${m.id}">✓</span></td>
+                        <td>${asianOdds}</td>
                         <td style="text-align:center;"><span class="prediction-clickable ${isEmptyPred ? 'empty' : ''}" style="cursor:default; text-decoration:none;">${predDisplay || '—'}</span></td>
                         <td>
                             <select class="result-select" data-id="${m.id}">
