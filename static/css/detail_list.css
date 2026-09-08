@@ -85,10 +85,15 @@ h1 { margin-bottom: 20px; }
 .detail-table th:nth-child(4) { width: 150px; }
 .detail-table th:nth-child(5) { width: 80px; }
 .detail-table th:nth-child(6) { width: 80px; }
-.detail-table th:nth-child(7) { width: 80px; }
+.detail-table th:nth-child(7) { width: 80px; text-align: center; }  /* 初测列头居中 */
 .detail-table th:nth-child(8) { width: 110px; }
 .detail-table th:nth-child(9) { width: 60px; }
 .detail-table th:nth-child(10) { width: 160px; }
+
+/* ★ 初测列内容居中 */
+.detail-table td:nth-child(7) {
+    text-align: center;
+}
 
 .loading-text { padding: 30px; text-align: center; color: #6b7280; }
 .pagination {

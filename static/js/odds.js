@@ -429,55 +429,6 @@
                     analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
                 }
 
-                const autoSaveHandler = function(e) {
-                    const target = e.target;
-                    // 检查是否为可保存元素：输入框、复选框、下拉框
-                    if (!target.classList.contains('analysis-input') && !target.classList.contains('pred-checkbox') && target.id !== 'analysis-divergence' && target.id !== 'analysis-match') {
-                        return;
-                    }
-                    let field = target.dataset.field;
-                    let value;
-                    if (target.classList.contains('pred-checkbox')) {
-                        // 初测复选框组
-                        const container = target.closest('.form-group');
-                        const checkedBoxes = container ? container.querySelectorAll('.pred-checkbox:checked') : document.querySelectorAll('.pred-checkbox:checked');
-                        const selected = Array.from(checkedBoxes).map(cb => cb.value);
-                        value = JSON.stringify(selected);
-                        field = 'initial_prediction';
-                    } else if (target.id === 'analysis-divergence') {
-                        value = target.checked ? '是' : '否';
-                        field = 'fundamental_divergence';
-                    } else if (target.id === 'analysis-match') {
-                        value = target.checked ? '是' : '否';
-                        field = 'fundamental_match';
-                    } else {
-                        value = target.value.trim();
-                    }
-                    if (!field) return;
-
-                    const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
-                    if (tag) tag.classList.remove('show');
-
-                    autoSave(field, value);
-                };
-
-                analysisInfoContainer._autoSaveHandler = autoSaveHandler;
-                analysisInfoContainer.addEventListener('input', autoSaveHandler);
-
-                // 为复选框额外绑定 change 事件（确保变化时触发 input 事件）
-                const divCheckbox = document.getElementById('analysis-divergence');
-                const matchCheckbox = document.getElementById('analysis-match');
-                if (divCheckbox) {
-                    divCheckbox.addEventListener('change', function() {
-                        this.dispatchEvent(new Event('input', { bubbles: true }));
-                    });
-                }
-                if (matchCheckbox) {
-                    matchCheckbox.addEventListener('change', function() {
-                        this.dispatchEvent(new Event('input', { bubbles: true }));
-                    });
-                }
-
                 // 防抖保存函数
                 const autoSave = debounce(function(field, value) {
                     const oldKey = `old${field.charAt(0).toUpperCase() + field.slice(1)}`;
@@ -502,7 +453,7 @@
                                 const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                                 if (tag) tag.classList.add('show');
                                 console.log(`[自动保存] ${field} 保存成功`);
-                                // ★ 标记数据已变更，关闭时刷新表格
+                                // 标记数据已变更，关闭时刷新表格
                                 analysisModal.dataset.changed = 'true';
                             } else {
                                 showToast(`❌ 保存失败 (${field}): ${res.error || '未知错误'}`, true);
@@ -510,6 +461,48 @@
                         })
                         .catch(err => showToast(`❌ 请求出错: ${err.message}`, true));
                 }, 600);
+
+                // 事件处理器：捕获 input 事件（用于文本输入框和下拉选择）
+                const autoSaveHandler = function(e) {
+                    const target = e.target;
+                    if (!target.classList.contains('analysis-input') && !target.classList.contains('pred-checkbox') && target.id !== 'analysis-divergence' && target.id !== 'analysis-match') {
+                        return;
+                    }
+                    let field = target.dataset.field;
+                    let value;
+                    if (target.classList.contains('pred-checkbox')) {
+                        // ★ 修复：直接使用当前模态框容器查找选中项
+                        const checkedBoxes = analysisInfoContainer.querySelectorAll('.pred-checkbox:checked');
+                        const selected = Array.from(checkedBoxes).map(cb => cb.value);
+                        value = JSON.stringify(selected);
+                        field = 'initial_prediction';
+                    } else if (target.id === 'analysis-divergence') {
+                        value = target.checked ? '是' : '否';
+                        field = 'fundamental_divergence';
+                    } else if (target.id === 'analysis-match') {
+                        value = target.checked ? '是' : '否';
+                        field = 'fundamental_match';
+                    } else {
+                        value = target.value.trim();
+                    }
+                    if (!field) return;
+
+                    const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
+                    if (tag) tag.classList.remove('show');
+
+                    autoSave(field, value);
+                };
+
+                analysisInfoContainer._autoSaveHandler = autoSaveHandler;
+                analysisInfoContainer.addEventListener('input', autoSaveHandler);
+
+                // 为所有复选框额外绑定 change 事件，确保触发 input 事件
+                const allCheckboxes = analysisInfoContainer.querySelectorAll('input[type="checkbox"]');
+                allCheckboxes.forEach(cb => {
+                    cb.addEventListener('change', function() {
+                        this.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                });
 
                 // ---------- 自定义下拉组件交互 ----------
                 const trigger = document.getElementById(`pred-trigger-${id}`);
@@ -546,6 +539,7 @@
                         checkbox.addEventListener('change', function() {
                             item.classList.toggle('selected', this.checked);
                             updateTriggerText();
+                            this.dispatchEvent(new Event('input', { bubbles: true }));
                         });
                         if (checkbox.checked) item.classList.add('selected');
                     });
@@ -575,18 +569,15 @@
 
     // ========== 关闭模态框（自动刷新表格） ==========
     function closeAnalysisModal() {
-        // 移除事件监听
         if (analysisInfoContainer._autoSaveHandler) {
             analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
             delete analysisInfoContainer._autoSaveHandler;
         }
-        // 关闭模态框
         analysisModal.style.display = 'none';
         
-        // ★ 如果数据有变更，刷新表格
         if (analysisModal.dataset.changed === 'true') {
             loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
-            analysisModal.dataset.changed = 'false'; // 重置标记
+            analysisModal.dataset.changed = 'false';
         }
     }
 

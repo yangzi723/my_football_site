@@ -32,6 +32,21 @@
     const deleteBtn = document.getElementById('deleteSelectedBtn');
     const selectAll = document.getElementById('selectAll');
 
+    // ---------- 工具：格式化初测数据 ----------
+    function getPredictionDisplay(val) {
+        if (!val) return '—';
+        if (typeof val === 'string') {
+            try {
+                const parsed = JSON.parse(val);
+                if (Array.isArray(parsed)) return parsed.join('、') || '—';
+                return val;
+            } catch (e) {
+                return val;
+            }
+        }
+        return val;
+    }
+
     // ---------- 自动调整 textarea 高度 ----------
     function autoResize(textarea) {
         textarea.style.height = 'auto';
@@ -126,9 +141,8 @@
             const homeTeam = m.home_team || '?';
             const awayTeam = m.away_team || '?';
             const league = m.league || '—';
-            const homeScore = Math.round(parseFloat(m.home_score) || 0);
-            const awayScore = Math.round(parseFloat(m.away_score) || 0);
-            const scoreDisplay = `${homeScore} VS ${awayScore}`;
+            // ★ 初测显示（替代原来的基本面评分）
+            const predDisplay = getPredictionDisplay(m.initial_prediction);
             const review = m.review || '';
             const color = resultType === '红' ? '#dc2626' : (resultType === '黑' ? '#1f2937' : '#d97706');
             html += `
@@ -139,7 +153,7 @@
                     <td>${homeTeam} <span style="font-weight:600;color:#3b7cff;">VS</span> ${awayTeam}</td>
                     <td>${pos1}</td>
                     <td>${pos2}</td>
-                    <td>${scoreDisplay}</td>
+                    <td>${predDisplay}</td>   <!-- ★ 初测列 -->
                     <td>${judgmentDisplay}</td>
                     <td style="color:${color};font-weight:600;">${resultType}</td>
                     <td>
@@ -154,16 +168,11 @@
 
         // 绑定复盘输入事件
         tbody.querySelectorAll('.review-input').forEach(el => {
-            // 初始化高度
             autoResize(el);
-
-            // 输入时自动调整高度 + 更新 title
             el.addEventListener('input', function() {
                 autoResize(this);
                 this.title = this.value;
             });
-
-            // 失焦自动保存（与 AI 结果下拉框选择后自动保存逻辑一致）
             el.addEventListener('blur', function() {
                 const id = this.dataset.id;
                 const value = this.value.trim();
@@ -171,8 +180,6 @@
                 if (value === oldVal) return;
                 saveReview(id, value);
             });
-
-            // 快捷键：Enter 失焦（Shift+Enter 换行），Escape 失焦
             el.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
