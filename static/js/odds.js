@@ -44,6 +44,7 @@
 
     let currentOffset = 0, currentLimit = 20, currentDateFilter = '', currentLeagueFilter = '', totalItems = 0;
 
+    // ★ 更新 judgmentMap，增加两个新选项
     const judgmentMap = {
         'home_advantage': '主队占优',
         'away_advantage': '客队占优',
@@ -52,7 +53,9 @@
         'away_strong': '客队较强优势',
         'home_dominant': '主队绝对优势',
         'away_dominant': '客队绝对优势',
-        'both_weak': '两队菜鸡'
+        'both_weak': '两队菜鸡',
+        'home_slight': '主队略占优',    // 新增
+        'away_slight': '客队略占优'     // 新增
     };
 
     let toastTimer;
@@ -65,7 +68,6 @@
         toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    // ---------- 显示兼容 ----------
     function getPredictionDisplay(initialPrediction) {
         if (!initialPrediction) return '';
         if (typeof initialPrediction === 'string') {
@@ -94,7 +96,6 @@
         return [];
     }
 
-    // ---------- 保存字段（核心函数） ----------
     function saveField(id, field, value) {
         return fetch('/api/match/' + id)
             .then(res => {
@@ -178,12 +179,12 @@
                     if (result === '红') resultHtml = `<span style="color:#dc2626;font-weight:600;">红</span>`;
                     else if (result === '黑') resultHtml = `<span style="color:#1f2937;font-weight:600;">黑</span>`;
                     else if (result === '走盘') resultHtml = `<span style="color:#d97706;font-weight:600;">走盘</span>`;
+                    // 使用扩展后的 judgmentMap
                     const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
                     const homeScore = Math.round(parseFloat(m.home_score) || 0);
                     const awayScore = Math.round(parseFloat(m.away_score) || 0);
                     const scoreDisplay = `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
 
-                    // ★ 初测显示值（用于输入框）
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '';
                     const asianOdds = m.asian_odds || '';
 
@@ -285,7 +286,6 @@
             });
         });
 
-        // 绑定所有内联编辑输入框（包括初测列）
         document.querySelectorAll('.inline-edit').forEach(inp => {
             inp.addEventListener('blur', function() { handleInlineSave(this); });
             inp.addEventListener('keydown', function(e) {
@@ -313,7 +313,6 @@
         });
     }
 
-    // ---------- 处理内联保存（含 initial_prediction 转换） ----------
     function handleInlineSave(input) {
         const id = input.dataset.id;
         const field = input.dataset.field;
@@ -321,25 +320,13 @@
         const tag = document.getElementById(`saveTag-${field}-${id}`);
         const oldVal = input.defaultValue || '';
 
-        // ★ 对 initial_prediction 字段进行特殊转换
         if (field === 'initial_prediction') {
             if (value === '') {
                 value = '[]';
             } else {
-                // 按逗号或顿号分割，去除空格，过滤空项
                 const parts = value.split(/[,，、\s]+/).map(s => s.trim()).filter(s => s);
                 value = JSON.stringify(parts);
             }
-            // 显示值（用于更新 defaultValue）应为原始输入，但为了显示一致，保留原输入
-            // 保存成功后，将 defaultValue 更新为显示值（即分割前的字符串）
-            // 但为了后续显示，我们使用输入框的 value 作为显示，保存 JSON 字符串。
-            // 输入框中的值不变（保持用户输入的文本），但 defaultValue 设为显示文本。
-            // 这样下次加载时，getPredictionDisplay 会生成正确的显示文本。
-            // 但如果我们把显示文本存入数据库，下次读取会不一样，所以这里不更新 defaultValue。
-            // 我们只保存 JSON 到数据库，而输入框显示文本保持不变（但可能用户输入的是逗号分隔，我们保存为JSON）。
-            // 然而，如果在保存成功后，我们应当将输入框的 value 设为合并后的显示文本（即用顿号连接数组）。
-            // 这样用户看到的是格式化后的文本，而不是原始输入。
-            // 所以，我们可以在保存成功后，将输入框 value 设置为 format 后的字符串。
         }
 
         if (value === oldVal) { if (tag) tag.classList.remove('show'); return; }
@@ -349,11 +336,8 @@
         saveField(id, field, value)
             .then(res => {
                 if (res.success) {
-                    // 更新 defaultValue 为当前输入值（或格式化后的值）
-                    // 对于 initial_prediction，我们应显示合并后的文本
                     let displayVal = input.value;
                     if (field === 'initial_prediction') {
-                        // 从保存的 JSON 解析出数组，再合并为显示文本
                         try {
                             const parsed = JSON.parse(value);
                             if (Array.isArray(parsed)) {
@@ -366,7 +350,7 @@
                         }
                     }
                     input.defaultValue = displayVal;
-                    input.value = displayVal;  // 更新显示为格式化文本
+                    input.value = displayVal;
                     if (tag) tag.classList.add('show');
                     showToast(`✅ ${field} 已保存`);
                 } else {
@@ -393,6 +377,7 @@
 
                 analysisModal.dataset.id = id;
                 analysisModalTitle.textContent = `📊 赔率分析 - ${data.home_team} vs ${data.away_team}`;
+                // 使用扩展后的 judgmentMap
                 const judgmentDisplay = judgmentMap[data.judgment] || data.judgment || '—';
                 const pos1Val = data.pos1 || '';
                 const pos2Val = data.pos2 || '';
@@ -438,6 +423,20 @@
                     </div>
                 `;
 
+                // ★ 基本面判断下拉选项（增加两个新选项）
+                const judgmentOptions = [
+                    {val:'home_advantage', label:'主队占优'},
+                    {val:'away_advantage', label:'客队占优'},
+                    {val:'equal', label:'两队实力相当'},
+                    {val:'home_strong', label:'主队较强优势'},
+                    {val:'away_strong', label:'客队较强优势'},
+                    {val:'home_dominant', label:'主队绝对优势'},
+                    {val:'away_dominant', label:'客队绝对优势'},
+                    {val:'both_weak', label:'两队菜鸡'},
+                    {val:'home_slight', label:'主队略占优'},    // 新增
+                    {val:'away_slight', label:'客队略占优'}     // 新增
+                ];
+
                 let infoHtml = `
                     <div style="background:#f0f6ff; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
                         <div style="font-weight:600; font-size:14px; color:#1a3a6b; margin-bottom:8px;">📊 基本面评分</div>
@@ -451,7 +450,15 @@
                     </div>
                     <div class="info-row"><span class="info-label">ID</span><span class="info-value">${data.id}</span></div>
                     <div class="info-row"><span class="info-label">联赛</span><span class="info-value">${data.league || '—'}</span></div>
-                    <div class="info-row"><span class="info-label">基本面判断</span><span class="info-value">${judgmentDisplay}</span></div>
+                    <div class="info-row"><span class="info-label">基本面判断</span>
+                        <div class="info-value">
+                            <select id="analysis-judgment" class="analysis-input" data-id="${data.id}" data-field="judgment">
+                                ${judgmentOptions.map(opt => `
+                                    <option value="${opt.val}" ${data.judgment===opt.val?'selected':''}>${opt.label}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
                     <div class="form-group"><span class="info-label" style="width:120px;">亚初终</span><input type="text" id="analysis-asian" class="analysis-input" value="${asianVal}" placeholder="如 0.85 半球 0.95" data-id="${data.id}" data-field="asian_odds"><span class="save-tag" id="analysis-saveTag-asian-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">区间</span><input type="text" id="analysis-range" class="analysis-input" value="${rangeVal}" placeholder="如 2.5-3" data-id="${data.id}" data-field="range"><span class="save-tag" id="analysis-saveTag-range-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">赔率结构</span><input type="text" id="analysis-odds-structure" class="analysis-input" value="${oddsStructureVal}" placeholder="如 胜平负" data-id="${data.id}" data-field="odds_structure"><span class="save-tag" id="analysis-saveTag-odds_structure-${data.id}">✓</span></div>
@@ -572,7 +579,7 @@
                 }
 
                 // 清除保存标记（输入时）
-                document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-odds-structure').forEach(el => {
+                document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-odds-structure, #analysis-judgment').forEach(el => {
                     el.addEventListener('input', function() {
                         const id = this.dataset.id;
                         const field = this.dataset.field;
@@ -613,6 +620,7 @@
             const initialAnalysisInput = document.getElementById('analysis-initial_analysis');
             const finalAnalysisInput = document.getElementById('analysis-final_analysis');
             const oddsStructureInput = document.getElementById('analysis-odds-structure');
+            const judgmentInput = document.getElementById('analysis-judgment');
 
             const pos1Val = pos1Input ? pos1Input.value.trim() : '';
             const pos2Val = pos2Input ? pos2Input.value.trim() : '';
@@ -621,6 +629,7 @@
             const initialAnalysisVal = initialAnalysisInput ? initialAnalysisInput.value.trim() : '';
             const finalAnalysisVal = finalAnalysisInput ? finalAnalysisInput.value.trim() : '';
             const oddsStructureVal = oddsStructureInput ? oddsStructureInput.value.trim() : '';
+            const judgmentVal = judgmentInput ? judgmentInput.value : 'equal';
 
             const menu = document.getElementById(`pred-menu-${id}`);
             let selectedOptions = [];
@@ -638,6 +647,7 @@
                 initial_analysis: initialAnalysisVal,
                 final_analysis: finalAnalysisVal,
                 odds_structure: oddsStructureVal,
+                judgment: judgmentVal,
                 initial_prediction: initialPredictionVal
             });
 
@@ -658,6 +668,7 @@
                     data.final_analysis = finalAnalysisVal;
                     data.initial_prediction = initialPredictionVal;
                     data.odds_structure = oddsStructureVal;
+                    data.judgment = judgmentVal;
                     return fetch('/api/match/' + id, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -678,8 +689,9 @@
                         analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
                         analysisModal.dataset.oldOddsStructure = oddsStructureVal;
                         analysisModal.dataset.oldPred = initialPredictionVal;
+                        analysisModal.dataset.oldJudgment = judgmentVal;
 
-                        const fields = ['pos1', 'pos2', 'asian', 'range', 'initial_analysis', 'final_analysis', 'initial_prediction', 'odds_structure'];
+                        const fields = ['pos1', 'pos2', 'asian', 'range', 'initial_analysis', 'final_analysis', 'initial_prediction', 'odds_structure', 'judgment'];
                         fields.forEach(field => {
                             const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                             if (tag) tag.classList.add('show');
@@ -701,6 +713,7 @@
                     const oldInitialAnalysis = analysisModal.dataset.oldInitialAnalysis || '';
                     const oldFinalAnalysis = analysisModal.dataset.oldFinalAnalysis || '';
                     const oldOddsStructure = analysisModal.dataset.oldOddsStructure || '';
+                    const oldJudgment = analysisModal.dataset.oldJudgment || 'equal';
                     const oldPred = analysisModal.dataset.oldPred || '[]';
                     try {
                         const oldArr = JSON.parse(oldPred);
@@ -732,6 +745,7 @@
                     if (initialAnalysisInput) initialAnalysisInput.value = oldInitialAnalysis;
                     if (finalAnalysisInput) finalAnalysisInput.value = oldFinalAnalysis;
                     if (oddsStructureInput) oddsStructureInput.value = oldOddsStructure;
+                    if (judgmentInput) judgmentInput.value = oldJudgment;
                 })
                 .finally(() => {
                     saveAnalysisBtn.textContent = '💾 保存修改';

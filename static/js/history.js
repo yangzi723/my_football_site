@@ -7,7 +7,7 @@
         const loading = document.getElementById('loading');
         const tableWrap = document.getElementById('tableWrap');
         const filterDate = document.getElementById('filter-date');
-        const filterLeague = document.getElementById('filter-league'); // ★ 新增
+        const filterLeague = document.getElementById('filter-league');
         const filterBtn = document.getElementById('filterBtn');
         const clearFilterBtn = document.getElementById('clearFilterBtn');
 
@@ -34,13 +34,21 @@
         let currentOffset = 0;
         let currentLimit = 20;
         let currentDateFilter = '';
-        let currentLeagueFilter = ''; // ★ 新增
+        let currentLeagueFilter = '';
         let totalItems = 0;
 
+        // ★ 增加两个新判断选项
         const judgmentMap = {
-            'home_advantage':'主队占优', 'away_advantage':'客队占优', 'equal':'两队实力相当',
-            'home_strong':'主队较强优势', 'away_strong':'客队较强优势',
-            'home_dominant':'主队绝对优势', 'away_dominant':'客队绝对优势', 'both_weak':'两队菜鸡'
+            'home_advantage': '主队占优',
+            'away_advantage': '客队占优',
+            'equal': '两队实力相当',
+            'home_strong': '主队较强优势',
+            'away_strong': '客队较强优势',
+            'home_dominant': '主队绝对优势',
+            'away_dominant': '客队绝对优势',
+            'both_weak': '两队菜鸡',
+            'home_slight': '主队略占优',    // 新增
+            'away_slight': '客队略占优'     // 新增
         };
 
         // ========== 工具函数 ==========
@@ -168,7 +176,6 @@
                 currentLimit = data.limit || limit;
                 currentOffset = data.offset || offset;
 
-                // ★ 仅在无任何筛选时更新下拉框（保留全部联赛选项）
                 if (!date && !league) {
                     updateLeagueSelect(matches);
                 }
@@ -372,16 +379,16 @@
 
         filterBtn.addEventListener('click', function() {
             currentDateFilter = filterDate.value;
-            currentLeagueFilter = filterLeague.value; // ★ 读取联赛
+            currentLeagueFilter = filterLeague.value;
             currentOffset = 0;
             loadHistory();
         });
 
         clearFilterBtn.addEventListener('click', function() {
             filterDate.value = '';
-            filterLeague.value = ''; // ★ 清空联赛
+            filterLeague.value = '';
             currentDateFilter = '';
-            currentLeagueFilter = ''; // ★ 清空联赛
+            currentLeagueFilter = '';
             currentOffset = 0;
             loadHistory();
         });
@@ -472,11 +479,18 @@
             html += `<div class="form-group"><label>平局概率</label><input type="number" step="0.01" id="edit-draw-prob" value="${data.draw_prob||0}"></div>`;
             html += `<div class="form-group"><label>客胜概率</label><input type="number" step="0.01" id="edit-away-prob" value="${data.away_prob||0}"></div>`;
 
+            // ★ 增加两个新选项
             const judgmentOptions = [
-                {val:'home_advantage', label:'主队占优'}, {val:'away_advantage', label:'客队占优'},
-                {val:'equal', label:'两队实力相当'}, {val:'home_strong', label:'主队较强优势'},
-                {val:'away_strong', label:'客队较强优势'}, {val:'home_dominant', label:'主队绝对优势'},
-                {val:'away_dominant', label:'客队绝对优势'}, {val:'both_weak', label:'两队菜鸡'}
+                {val:'home_advantage', label:'主队占优'},
+                {val:'away_advantage', label:'客队占优'},
+                {val:'equal', label:'两队实力相当'},
+                {val:'home_strong', label:'主队较强优势'},
+                {val:'away_strong', label:'客队较强优势'},
+                {val:'home_dominant', label:'主队绝对优势'},
+                {val:'away_dominant', label:'客队绝对优势'},
+                {val:'both_weak', label:'两队菜鸡'},
+                {val:'home_slight', label:'主队略占优'},    // 新增
+                {val:'away_slight', label:'客队略占优'}     // 新增
             ];
             html += `<div class="form-group"><label>基本面判断</label><select id="edit-judgment">`;
             judgmentOptions.forEach(opt => {
@@ -506,7 +520,7 @@
                     .then(res => {
                         if (res.success) {
                             showToast('✅ 自动保存成功');
-                            loadHistory();        // 刷新表格数据，保持模态框开启
+                            loadHistory();
                         } else {
                             showToast('❌ 自动保存失败: ' + (res.error || '未知错误'), true);
                         }
@@ -514,7 +528,7 @@
                     .catch(err => {
                         showToast('❌ 自动保存请求出错: ' + err.message, true);
                     });
-                }, 600); // 延迟600ms
+                }, 600);
 
                 const inputs = editFormContainer.querySelectorAll('input, select');
                 inputs.forEach(el => {
@@ -530,7 +544,7 @@
                 .then(data => {
                     if (data.error) { alert(data.error); return; }
                     editTitle.textContent = `📝 预测/复盘 - ${data.home_team} vs ${data.away_team}`;
-                    saveEditBtn.dataset.id = id;   // 先设置 id
+                    saveEditBtn.dataset.id = id;
                     buildEditForm(data);
                     editModal.style.display = 'flex';
                 });
