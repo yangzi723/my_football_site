@@ -181,7 +181,11 @@
                     const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
                     const homeScore = Math.round(parseFloat(m.home_score) || 0);
                     const awayScore = Math.round(parseFloat(m.away_score) || 0);
-                    const scoreDisplay = `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
+                    // ★ 原基本面评分改为显示“背离/相符”状态
+                    let fundDisplay = [];
+                    if (m.fundamental_divergence === '是') fundDisplay.push('背离');
+                    if (m.fundamental_match === '是') fundDisplay.push('相符');
+                    const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
 
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '';
                     const asianOdds = m.asian_odds || '';
@@ -193,7 +197,7 @@
                             <td>${m.time || ''}</td>
                             <td>${m.league || ''}</td>
                             <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
-                            <td>${scoreDisplay}</td>
+                            <td>${fundText}</td>
                             <td>${judgmentDisplay}</td>
                             <td>${asianOdds}</td>
                             <td><input type="text" class="inline-edit inline-pred" data-id="${m.id}" data-field="initial_prediction" value="${predDisplay}" placeholder="—" title="${predDisplay || '—'}"></td>
@@ -437,7 +441,6 @@
                     {val:'away_slight', label:'客队略占优'}
                 ];
 
-                // ★ 调整布局：强制“背离”和“相符”在同一行
                 let infoHtml = `
                     <div style="background:#f0f6ff; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
                         <div style="font-weight:600; font-size:14px; color:#1a3a6b; margin-bottom:8px;">📊 基本面评分</div>
@@ -460,7 +463,6 @@
                             </select>
                         </div>
                     </div>
-                    <!-- ★ 基本面：标签"基本面"，右侧两个复选框（强制同行） -->
                     <div class="form-group" style="margin-top:10px;">
                         <span class="info-label" style="width:120px;">基本面</span>
                         <div style="display:flex; align-items:center; gap:16px; flex-wrap:nowrap;">
@@ -948,7 +950,10 @@
                     const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
                     const homeScore = Math.round(parseFloat(m.home_score) || 0);
                     const awayScore = Math.round(parseFloat(m.away_score) || 0);
-                    const scoreDisplay = `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
+                    let fundDisplay = [];
+                    if (m.fundamental_divergence === '是') fundDisplay.push('背离');
+                    if (m.fundamental_match === '是') fundDisplay.push('相符');
+                    const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '';
                     const asianOdds = m.asian_odds || '';
 
@@ -959,7 +964,7 @@
                         <td>${m.time || ''}</td>
                         <td>${m.league || ''}</td>
                         <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
-                        <td>${scoreDisplay}</td>
+                        <td>${fundText}</td>
                         <td>${judgmentDisplay}</td>
                         <td>${asianOdds}</td>
                         <td><input type="text" class="inline-edit inline-pred" data-id="${m.id}" data-field="initial_prediction" value="${predDisplay}" placeholder="—" title="${predDisplay || '—'}"></td>
