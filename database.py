@@ -56,25 +56,27 @@ def init_db():
         cur = conn.execute("PRAGMA table_info(matches)")
         existing_cols = [row[1] for row in cur.fetchall()]
 
-        # 添加 date, time, league（如果缺失）
-        for col in ['date', 'time', 'league']:
+        # 添加缺失的列（包括新增的 fundamental_divergence 和 fundamental_match）
+        cols_to_add = [
+            ('date', 'TEXT'),
+            ('time', 'TEXT'),
+            ('league', 'TEXT'),
+            ('pos1', 'TEXT'),
+            ('pos2', 'TEXT'),
+            ('asian_odds', 'TEXT'),
+            ('range', 'TEXT'),
+            ('initial_prediction', 'TEXT'),
+            ('initial_analysis', 'TEXT'),
+            ('final_analysis', 'TEXT'),
+            ('ai_result', 'TEXT'),
+            ('review', 'TEXT'),
+            ('odds_structure', 'TEXT'),
+            ('fundamental_divergence', 'TEXT'),
+            ('fundamental_match', 'TEXT')      # ★ 新增
+        ]
+        for col, col_type in cols_to_add:
             if col not in existing_cols:
-                conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
-
-        # 添加赔率相关字段
-        odds_cols = ['pos1', 'pos2', 'asian_odds', 'range', 'initial_prediction', 'initial_analysis', 'final_analysis']
-        for col in odds_cols:
-            if col not in existing_cols:
-                conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
-
-        # 添加 ai_result 列
-        if 'ai_result' not in existing_cols:
-            conn.execute('ALTER TABLE matches ADD COLUMN ai_result TEXT')
-
-        # 添加 review 列
-        if 'review' not in existing_cols:
-            conn.execute('ALTER TABLE matches ADD COLUMN review TEXT')
-
+                conn.execute(f'ALTER TABLE matches ADD COLUMN {col} {col_type}')
         conn.commit()
 
     # 初始化其他表
@@ -117,6 +119,7 @@ def save_match(data):
         ''', data)
         conn.commit()
         return cur.lastrowid
+
 def get_all_matches(limit=100, offset=0, date_filter=None, league_filter=None):
     with closing(get_db()) as conn:
         cur = conn.cursor()
@@ -152,6 +155,7 @@ def get_all_matches_count(date_filter=None, league_filter=None):
             sql += ' WHERE ' + ' AND '.join(conditions)
         cur.execute(sql, params)
         return cur.fetchone()['total']
+
 def get_match_by_id(match_id):
     with closing(get_db()) as conn:
         cur = conn.cursor()
@@ -178,7 +182,10 @@ def update_match_full(match_id, data):
     data.setdefault('initial_analysis', '')
     data.setdefault('final_analysis', '')
     data.setdefault('ai_result', '')
-    data.setdefault('review', '')   # review 字段默认值
+    data.setdefault('review', '')
+    data.setdefault('odds_structure', '')
+    data.setdefault('fundamental_divergence', '否')
+    data.setdefault('fundamental_match', '否')      # ★ 新增
 
     with closing(get_db()) as conn:
         conn.execute('''
@@ -226,7 +233,9 @@ def update_match_full(match_id, data):
                 initial_prediction = :initial_prediction,
                 ai_result = :ai_result,
                 review = :review,
-                odds_structure = :odds_structure
+                odds_structure = :odds_structure,
+                fundamental_divergence = :fundamental_divergence,
+                fundamental_match = :fundamental_match     -- ★ 新增
             WHERE id = :id
         ''', {**data, 'id': match_id})
         conn.commit()
@@ -306,21 +315,21 @@ def get_all_fixtures(date_filter=None, league_filter=None, limit=20, offset=0):
         conditions = []
         params = []
         if date_filter:
-            # 确保日期为字符串
             date_filter = str(date_filter)
             conditions.append("date = ?")
             params.append(date_filter)
         if league_filter:
             league_filter = str(league_filter).strip()
-            if league_filter:  # 非空
+            if league_filter:
                 conditions.append("league LIKE ?")
                 params.append('%' + league_filter + '%')
         if conditions:
             sql += ' WHERE ' + ' AND '.join(conditions)
         sql += ' ORDER BY date DESC, time LIMIT ? OFFSET ?'
-        params.extend([int(limit), int(offset)])  # 确保为整数
+        params.extend([int(limit), int(offset)])
         cur.execute(sql, params)
         return cur.fetchall()
+
 def count_fixtures(date_filter=None, league_filter=None):
     with closing(get_db()) as conn:
         cur = conn.cursor()
@@ -340,6 +349,7 @@ def count_fixtures(date_filter=None, league_filter=None):
             sql += ' WHERE ' + ' AND '.join(conditions)
         cur.execute(sql, params)
         return cur.fetchone()['total']
+
 def get_fixture_by_id(fid):
     with closing(get_db()) as conn:
         cur = conn.cursor()

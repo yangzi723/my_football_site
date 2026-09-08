@@ -10,6 +10,7 @@ def get_db():
 
 def init_db():
     with closing(get_db()) as conn:
+        # 创建 matches 表（如果不存在）
         conn.execute('''
             CREATE TABLE IF NOT EXISTS matches (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,24 +51,38 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+
+        # 获取现有列名
         cur = conn.execute("PRAGMA table_info(matches)")
         existing_cols = [row[1] for row in cur.fetchall()]
+
+        # 添加 date, time, league（如果缺失）
         for col in ['date', 'time', 'league']:
             if col not in existing_cols:
                 conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
-        
-        # ===== 新增：添加赔率相关字段 =====
+
+        # 添加赔率相关字段
         odds_cols = ['pos1', 'pos2', 'asian_odds', 'range', 'initial_prediction', 'initial_analysis', 'final_analysis']
         for col in odds_cols:
             if col not in existing_cols:
                 conn.execute(f'ALTER TABLE matches ADD COLUMN {col} TEXT')
-        # ===== 新增结束 =====
-        
+
+        # 添加 ai_result 列
+        if 'ai_result' not in existing_cols:
+            conn.execute('ALTER TABLE matches ADD COLUMN ai_result TEXT')
+
+        # 添加 review 列
+        if 'review' not in existing_cols:
+            conn.execute('ALTER TABLE matches ADD COLUMN review TEXT')
+
         conn.commit()
+
+    # 初始化其他表
     init_fixtures_table()
     init_odds_table()
-    init_user_table()  # 新增这一行
+    init_user_table()
 
+# ---------- matches 表操作 ----------
 def save_match(data):
     with closing(get_db()) as conn:
         cur = conn.cursor()
@@ -102,31 +117,41 @@ def save_match(data):
         ''', data)
         conn.commit()
         return cur.lastrowid
-
-def get_all_matches(limit=100, offset=0, date_filter=None):
+def get_all_matches(limit=100, offset=0, date_filter=None, league_filter=None):
     with closing(get_db()) as conn:
         cur = conn.cursor()
         sql = 'SELECT * FROM matches'
+        conditions = []
         params = []
         if date_filter:
-            sql += ' WHERE date = ?'
+            conditions.append("date = ?")
             params.append(date_filter)
+        if league_filter:
+            conditions.append("league LIKE ?")
+            params.append('%' + league_filter + '%')
+        if conditions:
+            sql += ' WHERE ' + ' AND '.join(conditions)
         sql += ' ORDER BY date DESC, time ASC LIMIT ? OFFSET ?'
         params.extend([limit, offset])
         cur.execute(sql, params)
         return cur.fetchall()
 
-def get_all_matches_count(date_filter=None):
+def get_all_matches_count(date_filter=None, league_filter=None):
     with closing(get_db()) as conn:
         cur = conn.cursor()
         sql = 'SELECT COUNT(*) as total FROM matches'
+        conditions = []
         params = []
         if date_filter:
-            sql += ' WHERE date = ?'
+            conditions.append("date = ?")
             params.append(date_filter)
+        if league_filter:
+            conditions.append("league LIKE ?")
+            params.append('%' + league_filter + '%')
+        if conditions:
+            sql += ' WHERE ' + ' AND '.join(conditions)
         cur.execute(sql, params)
         return cur.fetchone()['total']
-
 def get_match_by_id(match_id):
     with closing(get_db()) as conn:
         cur = conn.cursor()
@@ -152,7 +177,8 @@ def update_match_full(match_id, data):
     data.setdefault('initial_prediction', '')
     data.setdefault('initial_analysis', '')
     data.setdefault('final_analysis', '')
-    data.setdefault('ai_result', '')   # ← 新增
+    data.setdefault('ai_result', '')
+    data.setdefault('review', '')   # review 字段默认值
 
     with closing(get_db()) as conn:
         conn.execute('''
@@ -198,7 +224,9 @@ def update_match_full(match_id, data):
                 initial_analysis = :initial_analysis,
                 final_analysis = :final_analysis,
                 initial_prediction = :initial_prediction,
-                ai_result = :ai_result   -- ← 注意这里有逗号！前面 initial_prediction 后面必须有逗号
+                ai_result = :ai_result,
+                review = :review,
+                odds_structure = :odds_structure
             WHERE id = :id
         ''', {**data, 'id': match_id})
         conn.commit()
@@ -271,31 +299,47 @@ def get_fixtures_by_date(date):
         cur.execute('SELECT * FROM fixtures WHERE date = ? ORDER BY time', (date,))
         return cur.fetchall()
 
-def get_all_fixtures(date_filter=None, limit=20, offset=0):
+def get_all_fixtures(date_filter=None, league_filter=None, limit=20, offset=0):
     with closing(get_db()) as conn:
         cur = conn.cursor()
         sql = 'SELECT * FROM fixtures'
+        conditions = []
         params = []
         if date_filter:
-            sql += ' WHERE date = ?'
+            # 确保日期为字符串
+            date_filter = str(date_filter)
+            conditions.append("date = ?")
             params.append(date_filter)
-        # 排序：日期倒序，同一日期内时间升序
+        if league_filter:
+            league_filter = str(league_filter).strip()
+            if league_filter:  # 非空
+                conditions.append("league LIKE ?")
+                params.append('%' + league_filter + '%')
+        if conditions:
+            sql += ' WHERE ' + ' AND '.join(conditions)
         sql += ' ORDER BY date DESC, time LIMIT ? OFFSET ?'
-        params.extend([limit, offset])
+        params.extend([int(limit), int(offset)])  # 确保为整数
         cur.execute(sql, params)
         return cur.fetchall()
-
-def count_fixtures(date_filter=None):
+def count_fixtures(date_filter=None, league_filter=None):
     with closing(get_db()) as conn:
         cur = conn.cursor()
         sql = 'SELECT COUNT(*) as total FROM fixtures'
+        conditions = []
         params = []
         if date_filter:
-            sql += ' WHERE date = ?'
+            date_filter = str(date_filter)
+            conditions.append("date = ?")
             params.append(date_filter)
+        if league_filter:
+            league_filter = str(league_filter).strip()
+            if league_filter:
+                conditions.append("league LIKE ?")
+                params.append('%' + league_filter + '%')
+        if conditions:
+            sql += ' WHERE ' + ' AND '.join(conditions)
         cur.execute(sql, params)
         return cur.fetchone()['total']
-
 def get_fixture_by_id(fid):
     with closing(get_db()) as conn:
         cur = conn.cursor()
@@ -355,6 +399,7 @@ def save_odds(data):
         ''', data)
         conn.commit()
         return cur.lastrowid
+
 # ---------- 用户表 ----------
 def init_user_table():
     with closing(get_db()) as conn:
@@ -407,26 +452,6 @@ def get_all_users():
     with closing(get_db()) as conn:
         cur = conn.execute('SELECT * FROM users ORDER BY id')
         return cur.fetchall()
-# ---------- 用户管理函数 ----------
-def get_all_users():
-    with closing(get_db()) as conn:
-        cur = conn.execute('SELECT * FROM users ORDER BY id')
-        return cur.fetchall()
-
-def update_user_password(user_id, new_password_hash):
-    with closing(get_db()) as conn:
-        conn.execute('UPDATE users SET password_hash = ? WHERE id = ?', (new_password_hash, user_id))
-        conn.commit()
-
-def delete_user_by_id(user_id):
-    with closing(get_db()) as conn:
-        conn.execute('DELETE FROM users WHERE id = ?', (user_id,))
-        conn.commit()
-
-def update_user_admin(user_id, is_admin):
-    with closing(get_db()) as conn:
-        conn.execute('UPDATE users SET is_admin = ? WHERE id = ?', (1 if is_admin else 0, user_id))
-        conn.commit()
 
 if __name__ == '__main__':
     init_db()
