@@ -84,7 +84,6 @@
         }
     }
 
-    // ---------- 加载赛事 ----------
     function loadFixtures(date, league, limit, offset) {
         if (date === undefined) date = currentDateFilter;
         if (league === undefined) league = currentLeagueFilter;
@@ -114,7 +113,7 @@
             currentLimit = data.limit || limit;
             currentOffset = data.offset || offset;
 
-            // ★ 仅在无任何筛选时更新下拉框（保留全部联赛选项）
+            // 仅在无任何筛选时更新下拉框
             if (!date && !league) {
                 updateLeagueSelect(fixtures);
             }
@@ -170,7 +169,6 @@
         });
     }
 
-    // ---------- 事件绑定 ----------
     function bindEvents() {
         document.querySelectorAll('.save-score-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -180,6 +178,7 @@
             });
         });
 
+        // ★ 修改：基本面分析 -> 导入到历史预测，然后跳转到 /history
         document.querySelectorAll('.analysis-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -191,14 +190,62 @@
                 const vsIndex = homeAwayText.indexOf('VS');
                 let home = homeAwayText.substring(0, vsIndex).trim();
                 let away = homeAwayText.substring(vsIndex + 2).trim();
-                const params = new URLSearchParams({
+
+                // 构造 payload（空预测记录）
+                const payload = {
                     date: date,
                     time: time,
                     league: league,
-                    home: home,
-                    away: away
-                });
-                window.location.href = '/index?' + params.toString();
+                    home_team: home,
+                    away_team: away,
+                    home_rank: 0,
+                    home_scored: 0,
+                    home_conceded: 0,
+                    home_recent: 0,
+                    home_wins: 0,
+                    home_draws: 0,
+                    home_losses: 0,
+                    home_injuries: 0,
+                    home_motivation: 3,
+                    home_value: 0,
+                    away_rank: 0,
+                    away_scored: 0,
+                    away_conceded: 0,
+                    away_recent: 0,
+                    away_wins: 0,
+                    away_draws: 0,
+                    away_losses: 0,
+                    away_injuries: 0,
+                    away_motivation: 3,
+                    away_value: 0,
+                    home_unexpected: '',
+                    away_unexpected: '',
+                    home_score: 0,
+                    away_score: 0,
+                    home_prob: 0.33,
+                    draw_prob: 0.34,
+                    away_prob: 0.33,
+                    judgment: 'equal'
+                };
+
+                fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success) {
+                        showToast('✅ 已导入到历史预测！');
+                        // 延迟跳转，让用户看到提示
+                        setTimeout(() => {
+                            window.location.href = '/history';
+                        }, 500);
+                    } else {
+                        alert('导入失败: ' + (res.error || '未知错误'));
+                    }
+                })
+                .catch(err => alert('请求出错: ' + err.message));
             });
         });
 
