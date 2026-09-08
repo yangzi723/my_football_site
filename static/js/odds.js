@@ -181,13 +181,15 @@
                     const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
                     const homeScore = Math.round(parseFloat(m.home_score) || 0);
                     const awayScore = Math.round(parseFloat(m.away_score) || 0);
-                    // ★ 原基本面评分改为显示“背离/相符”状态
+                    
+                    // ★ 基本面列：显示背离/相符
                     let fundDisplay = [];
                     if (m.fundamental_divergence === '是') fundDisplay.push('背离');
                     if (m.fundamental_match === '是') fundDisplay.push('相符');
                     const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
 
-                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '';
+                    // ★ 初测显示：只读文本
+                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const asianOdds = m.asian_odds || '';
 
                     html += `<tr>
@@ -200,7 +202,7 @@
                             <td>${fundText}</td>
                             <td>${judgmentDisplay}</td>
                             <td>${asianOdds}</td>
-                            <td><input type="text" class="inline-edit inline-pred" data-id="${m.id}" data-field="initial_prediction" value="${predDisplay}" placeholder="—" title="${predDisplay || '—'}"></td>
+                            <td><span class="pred-display">${predDisplay}</span></td>
                             <td>
                                 <select class="result-select" data-id="${m.id}">
                                     <option value="">未定</option>
@@ -288,23 +290,8 @@
             });
         });
 
-        document.querySelectorAll('.inline-edit').forEach(inp => {
-            inp.addEventListener('blur', function() { handleInlineSave(this); });
-            inp.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    this.blur();
-                }
-                if (e.key === 'Escape') { this.blur(); }
-            });
-            inp.addEventListener('input', function() {
-                const id = this.dataset.id;
-                const field = this.dataset.field;
-                const tag = document.getElementById(`saveTag-${field}-${id}`);
-                if (tag) tag.classList.remove('show');
-                this.title = this.value || '—';
-            });
-        });
+        // ★ 移除 inline-edit 事件绑定，因为初测列已改为只读 span
+        // 但保留其他可能的内联编辑（如果有），目前没有，所以无需绑定
 
         document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -315,57 +302,7 @@
         });
     }
 
-    function handleInlineSave(input) {
-        const id = input.dataset.id;
-        const field = input.dataset.field;
-        let value = input.value.trim();
-        const tag = document.getElementById(`saveTag-${field}-${id}`);
-        const oldVal = input.defaultValue || '';
-
-        if (field === 'initial_prediction') {
-            if (value === '') {
-                value = '[]';
-            } else {
-                const parts = value.split(/[,，、\s]+/).map(s => s.trim()).filter(s => s);
-                value = JSON.stringify(parts);
-            }
-        }
-
-        if (value === oldVal) { if (tag) tag.classList.remove('show'); return; }
-        input.classList.add('saving');
-        if (tag) tag.classList.remove('show');
-
-        saveField(id, field, value)
-            .then(res => {
-                if (res.success) {
-                    let displayVal = input.value;
-                    if (field === 'initial_prediction') {
-                        try {
-                            const parsed = JSON.parse(value);
-                            if (Array.isArray(parsed)) {
-                                displayVal = parsed.join('、');
-                            } else {
-                                displayVal = value;
-                            }
-                        } catch (e) {
-                            displayVal = value;
-                        }
-                    }
-                    input.defaultValue = displayVal;
-                    input.value = displayVal;
-                    if (tag) tag.classList.add('show');
-                    showToast(`✅ ${field} 已保存`);
-                } else {
-                    showToast('❌ 保存失败: ' + (res.error || '未知错误'), true);
-                    input.value = oldVal;
-                }
-            })
-            .catch(err => {
-                showToast('❌ 请求出错: ' + err.message, true);
-                input.value = oldVal;
-            })
-            .finally(() => { input.classList.remove('saving'); });
-    }
+    // ---------- 已移除 handleInlineSave 函数，因为表格中不再有可编辑输入框 ----------
 
     // ========== 打开赔率分析模态框（含自动保存） ==========
     function openAnalysisModal(id) {
@@ -954,7 +891,7 @@
                     if (m.fundamental_divergence === '是') fundDisplay.push('背离');
                     if (m.fundamental_match === '是') fundDisplay.push('相符');
                     const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
-                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '';
+                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const asianOdds = m.asian_odds || '';
 
                     const rowHtml = `<tr>
@@ -967,7 +904,7 @@
                         <td>${fundText}</td>
                         <td>${judgmentDisplay}</td>
                         <td>${asianOdds}</td>
-                        <td><input type="text" class="inline-edit inline-pred" data-id="${m.id}" data-field="initial_prediction" value="${predDisplay}" placeholder="—" title="${predDisplay || '—'}"></td>
+                        <td><span class="pred-display">${predDisplay}</span></td>
                         <td>
                             <select class="result-select" data-id="${m.id}">
                                 <option value="">未定</option>
