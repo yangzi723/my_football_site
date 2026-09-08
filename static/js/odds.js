@@ -182,13 +182,11 @@
                     const homeScore = Math.round(parseFloat(m.home_score) || 0);
                     const awayScore = Math.round(parseFloat(m.away_score) || 0);
                     
-                    // ★ 基本面列：显示背离/相符
                     let fundDisplay = [];
                     if (m.fundamental_divergence === '是') fundDisplay.push('背离');
                     if (m.fundamental_match === '是') fundDisplay.push('相符');
                     const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
 
-                    // ★ 初测显示：只读文本
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const asianOdds = m.asian_odds || '';
 
@@ -290,9 +288,6 @@
             });
         });
 
-        // ★ 移除 inline-edit 事件绑定，因为初测列已改为只读 span
-        // 但保留其他可能的内联编辑（如果有），目前没有，所以无需绑定
-
         document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -301,8 +296,6 @@
             });
         });
     }
-
-    // ---------- 已移除 handleInlineSave 函数，因为表格中不再有可编辑输入框 ----------
 
     // ========== 打开赔率分析模态框（含自动保存） ==========
     function openAnalysisModal(id) {
@@ -416,7 +409,7 @@
                         <span class="save-tag" id="analysis-saveTag-fundamental_match-${data.id}">✓</span>
                     </div>
                     <div class="form-group"><span class="info-label" style="width:120px;">亚初终</span><input type="text" id="analysis-asian" class="analysis-input" value="${asianVal}" placeholder="如 0.85 半球 0.95" data-id="${data.id}" data-field="asian_odds"><span class="save-tag" id="analysis-saveTag-asian-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">区间</span><input type="text" id="analysis-range" class="analysis-input" value="${rangeVal}" placeholder="如 2.5-3" data-id="${data.id}" data-field="range"><span class="save-tag" id="analysis-saveTag-range-${data.id}">✓</span></div>
+                    <div class="form-group"><span class="info-label" style="width:120px;">身价</span><input type="text" id="analysis-range" class="analysis-input" value="${rangeVal}" placeholder="如 2.5-3" data-id="${data.id}" data-field="range"><span class="save-tag" id="analysis-saveTag-range-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">赔率结构</span><input type="text" id="analysis-odds-structure" class="analysis-input" value="${oddsStructureVal}" placeholder="如 胜平负" data-id="${data.id}" data-field="odds_structure"><span class="save-tag" id="analysis-saveTag-odds_structure-${data.id}">✓</span></div>
                     <div class="form-group" style="margin-top:10px;"><span class="info-label" style="width:120px;">初01</span><input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1"><span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">初02</span><input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2"><span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span></div>
@@ -438,12 +431,14 @@
 
                 const autoSaveHandler = function(e) {
                     const target = e.target;
+                    // 检查是否为可保存元素：输入框、复选框、下拉框
                     if (!target.classList.contains('analysis-input') && !target.classList.contains('pred-checkbox') && target.id !== 'analysis-divergence' && target.id !== 'analysis-match') {
                         return;
                     }
                     let field = target.dataset.field;
                     let value;
                     if (target.classList.contains('pred-checkbox')) {
+                        // 初测复选框组
                         const container = target.closest('.form-group');
                         const checkedBoxes = container ? container.querySelectorAll('.pred-checkbox:checked') : document.querySelectorAll('.pred-checkbox:checked');
                         const selected = Array.from(checkedBoxes).map(cb => cb.value);
@@ -469,6 +464,7 @@
                 analysisInfoContainer._autoSaveHandler = autoSaveHandler;
                 analysisInfoContainer.addEventListener('input', autoSaveHandler);
 
+                // 为复选框额外绑定 change 事件（确保变化时触发 input 事件）
                 const divCheckbox = document.getElementById('analysis-divergence');
                 const matchCheckbox = document.getElementById('analysis-match');
                 if (divCheckbox) {
@@ -482,14 +478,19 @@
                     });
                 }
 
+                // 防抖保存函数
                 const autoSave = debounce(function(field, value) {
                     const oldKey = `old${field.charAt(0).toUpperCase() + field.slice(1)}`;
                     let oldVal = analysisModal.dataset[oldKey];
                     if (field === 'initial_prediction') {
                         oldVal = analysisModal.dataset.oldPred || '[]';
                     }
-                    if (value === oldVal) return;
+                    if (value === oldVal) {
+                        console.log(`[自动保存] 字段 ${field} 值未变化，跳过`);
+                        return;
+                    }
 
+                    console.log(`[自动保存] 保存字段 ${field} = ${value}`);
                     saveField(id, field, value)
                         .then(res => {
                             if (res.success) {
@@ -500,6 +501,7 @@
                                 }
                                 const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                                 if (tag) tag.classList.add('show');
+                                console.log(`[自动保存] ${field} 保存成功`);
                             } else {
                                 showToast(`❌ 保存失败 (${field}): ${res.error || '未知错误'}`, true);
                             }
