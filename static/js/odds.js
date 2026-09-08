@@ -409,7 +409,7 @@
                         <span class="save-tag" id="analysis-saveTag-fundamental_match-${data.id}">✓</span>
                     </div>
                     <div class="form-group"><span class="info-label" style="width:120px;">亚初终</span><input type="text" id="analysis-asian" class="analysis-input" value="${asianVal}" placeholder="如 0.85 半球 0.95" data-id="${data.id}" data-field="asian_odds"><span class="save-tag" id="analysis-saveTag-asian-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">身价</span><input type="text" id="analysis-range" class="analysis-input" value="${rangeVal}" placeholder="如 2.5-3" data-id="${data.id}" data-field="range"><span class="save-tag" id="analysis-saveTag-range-${data.id}">✓</span></div>
+                    <div class="form-group"><span class="info-label" style="width:120px;">区间</span><input type="text" id="analysis-range" class="analysis-input" value="${rangeVal}" placeholder="如 2.5-3" data-id="${data.id}" data-field="range"><span class="save-tag" id="analysis-saveTag-range-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">赔率结构</span><input type="text" id="analysis-odds-structure" class="analysis-input" value="${oddsStructureVal}" placeholder="如 胜平负" data-id="${data.id}" data-field="odds_structure"><span class="save-tag" id="analysis-saveTag-odds_structure-${data.id}">✓</span></div>
                     <div class="form-group" style="margin-top:10px;"><span class="info-label" style="width:120px;">初01</span><input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1"><span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">初02</span><input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2"><span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span></div>
@@ -502,6 +502,8 @@
                                 const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                                 if (tag) tag.classList.add('show');
                                 console.log(`[自动保存] ${field} 保存成功`);
+                                // ★ 标记数据已变更，关闭时刷新表格
+                                analysisModal.dataset.changed = 'true';
                             } else {
                                 showToast(`❌ 保存失败 (${field}): ${res.error || '未知错误'}`, true);
                             }
@@ -571,12 +573,21 @@
             });
     }
 
+    // ========== 关闭模态框（自动刷新表格） ==========
     function closeAnalysisModal() {
+        // 移除事件监听
         if (analysisInfoContainer._autoSaveHandler) {
             analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
             delete analysisInfoContainer._autoSaveHandler;
         }
+        // 关闭模态框
         analysisModal.style.display = 'none';
+        
+        // ★ 如果数据有变更，刷新表格
+        if (analysisModal.dataset.changed === 'true') {
+            loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
+            analysisModal.dataset.changed = 'false'; // 重置标记
+        }
     }
 
     // ---------- 保存按钮（手动） ----------
