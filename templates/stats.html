@@ -19,8 +19,6 @@
             color: #1e2a3a;
             padding: 20px;
         }
-        /* 移除 .top-nav 定义，使用全局样式 */
-        /* 调整容器顶部内边距为固定导航栏留空 */
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -28,7 +26,7 @@
             border-radius: 20px;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
             padding: 30px 35px;
-            padding-top: 80px;  /* 固定导航栏高度约 60px，加上间距 */
+            padding-top: 80px;
         }
         h1 {
             margin-bottom: 20px;
@@ -84,24 +82,12 @@
         .stat-table tr:hover {
             background: #f8fafc;
         }
-        .stat-table .col-id {
-            min-width: 60px;
-        }
-        .stat-table .col-team {
-            min-width: 120px;
-        }
-        .stat-table .col-league {
-            min-width: 80px;
-        }
-        .stat-table .col-odds {
-            min-width: 70px;
-        }
-        .stat-table .col-analysis {
-            min-width: 120px;
-        }
-        .stat-table .col-judgment {
-            min-width: 100px;
-        }
+        .stat-table .col-id { min-width: 60px; }
+        .stat-table .col-team { min-width: 120px; }
+        .stat-table .col-league { min-width: 80px; }
+        .stat-table .col-odds { min-width: 70px; }
+        .stat-table .col-analysis { min-width: 120px; }
+        .stat-table .col-judgment { min-width: 100px; }
         h2 {
             margin-top: 30px;
             font-size: 20px;
@@ -129,19 +115,24 @@
             border-radius: 10px;
             transition: width 0.3s;
         }
-        .bar-fill.red {
-            background: #dc2626;
-        }
-        .bar-fill.black {
-            background: #1f2937;
-        }
-        .bar-fill.draw {
-            background: #d97706;
-        }
+        .bar-fill.red { background: #dc2626; }
+        .bar-fill.black { background: #1f2937; }
+        .bar-fill.draw { background: #d97706; }
         .bar-value {
             width: 60px;
             text-align: right;
             font-size: 14px;
+        }
+        /* 新增：球队链接样式 */
+        .team-link {
+            color: #1a3a6b;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .team-link:hover {
+            text-decoration: underline;
+            color: #3b7cff;
         }
         @media (max-width: 700px) {
             .container { padding: 16px; }
@@ -178,7 +169,9 @@
             'away_strong': '客队较强优势',
             'home_dominant': '主队绝对优势',
             'away_dominant': '客队绝对优势',
-            'both_weak': '两队菜鸡'
+            'both_weak': '两队菜鸡',
+			'home_slight': '主队略占优',
+			'away_slight': '客队略占优'
         };
 
         function loadStats() {
@@ -230,6 +223,8 @@
                     if (!latestMap[key] || m.id > latestMap[key].id) {
                         latestMap[key] = {
                             id: m.id,
+                            date: m.date || '',
+                            time: m.time || '',
                             league: m.league || '',
                             initial_odds: m.pos2 || '',
                             initial_analysis: m.initial_analysis || '',
@@ -256,6 +251,8 @@
                         black: item.black || 0,
                         draw: item.draw || 0,
                         id: (item.id !== undefined && item.id !== null && item.id !== '') ? item.id : latest.id || '-',
+                        date: latest.date || '',
+                        time: latest.time || '',
                         league: (item.league && item.league !== '-') ? item.league : (latest.league || '-'),
                         initial_odds: (item.initial_odds && item.initial_odds !== '-') ? item.initial_odds : (latest.initial_odds || '-'),
                         initial_analysis: (item.initial_analysis && item.initial_analysis !== '-') ? item.initial_analysis : (latest.initial_analysis || '-'),
@@ -301,7 +298,18 @@
                 const blackJ = item.black;
                 const drawJ = item.draw;
                 const rate = totalJ > 0 ? ((redJ / totalJ) * 100).toFixed(1) : '0.0';
-                const teamDisplay = `${item.home_team} <span style="font-weight:600;color:#3b7cff;">VS</span> ${item.away_team}`;
+                // 构造跳转链接
+                const params = new URLSearchParams({
+                    date: item.date,
+                    time: item.time,
+                    league: item.league,
+                    home: item.home_team,
+                    away: item.away_team
+                });
+                const oddsUrl = `/odds?${params.toString()}`;
+                const homeLink = `<a href="${oddsUrl}" class="team-link">${item.home_team}</a>`;
+                const awayLink = `<a href="${oddsUrl}" class="team-link">${item.away_team}</a>`;
+                const teamDisplay = `${homeLink} <span style="font-weight:600;color:#3b7cff;">VS</span> ${awayLink}`;
                 html += `
                     <tr>
                         <td>${item.id}</td>

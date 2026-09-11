@@ -12,7 +12,9 @@
         'away_strong': '客队较强优势',
         'home_dominant': '主队绝对优势',
         'away_dominant': '客队绝对优势',
-        'both_weak': '两队菜鸡'
+        'both_weak': '两队菜鸡',
+		'home_slight': '主队略占优',
+		'away_slight': '客队略占优'
     };
 
     let allMatches = [];
@@ -31,6 +33,21 @@
     const perPageSelect = document.getElementById('perPageSelect');
     const deleteBtn = document.getElementById('deleteSelectedBtn');
     const selectAll = document.getElementById('selectAll');
+
+    // ---------- 工具：格式化初测数据 ----------
+    function getPredictionDisplay(val) {
+        if (!val) return '—';
+        if (typeof val === 'string') {
+            try {
+                const parsed = JSON.parse(val);
+                if (Array.isArray(parsed)) return parsed.join('、') || '—';
+                return val;
+            } catch (e) {
+                return val;
+            }
+        }
+        return val;
+    }
 
     // ---------- 自动调整 textarea 高度 ----------
     function autoResize(textarea) {
@@ -126,20 +143,33 @@
             const homeTeam = m.home_team || '?';
             const awayTeam = m.away_team || '?';
             const league = m.league || '—';
-            const homeScore = Math.round(parseFloat(m.home_score) || 0);
-            const awayScore = Math.round(parseFloat(m.away_score) || 0);
-            const scoreDisplay = `${homeScore} VS ${awayScore}`;
+            // ★ 初测显示（替代原来的基本面评分）
+            const predDisplay = getPredictionDisplay(m.initial_prediction);
             const review = m.review || '';
             const color = resultType === '红' ? '#dc2626' : (resultType === '黑' ? '#1f2937' : '#d97706');
+
+            // 构造跳转到 odds 的链接
+            const params = new URLSearchParams({
+                date: m.date || '',
+                time: m.time || '',
+                league: m.league || '',
+                home: m.home_team || '',
+                away: m.away_team || ''
+            });
+            const oddsUrl = `/odds?${params.toString()}`;
+            const homeLink = `<a href="${oddsUrl}" class="team-link">${homeTeam}</a>`;
+            const awayLink = `<a href="${oddsUrl}" class="team-link">${awayTeam}</a>`;
+            const teamDisplay = `${homeLink} <span style="font-weight:600;color:#3b7cff;">VS</span> ${awayLink}`;
+
             html += `
                 <tr>
                     <td><input type="checkbox" class="row-checkbox" data-id="${m.id}" /></td>
                     <td>${m.id}</td>
                     <td>${league}</td>
-                    <td>${homeTeam} <span style="font-weight:600;color:#3b7cff;">VS</span> ${awayTeam}</td>
+                    <td>${teamDisplay}</td>
                     <td>${pos1}</td>
                     <td>${pos2}</td>
-                    <td>${scoreDisplay}</td>
+                    <td>${predDisplay}</td>   <!-- ★ 初测列 -->
                     <td>${judgmentDisplay}</td>
                     <td style="color:${color};font-weight:600;">${resultType}</td>
                     <td>
@@ -154,16 +184,11 @@
 
         // 绑定复盘输入事件
         tbody.querySelectorAll('.review-input').forEach(el => {
-            // 初始化高度
             autoResize(el);
-
-            // 输入时自动调整高度 + 更新 title
             el.addEventListener('input', function() {
                 autoResize(this);
                 this.title = this.value;
             });
-
-            // 失焦自动保存（与 AI 结果下拉框选择后自动保存逻辑一致）
             el.addEventListener('blur', function() {
                 const id = this.dataset.id;
                 const value = this.value.trim();
@@ -171,8 +196,6 @@
                 if (value === oldVal) return;
                 saveReview(id, value);
             });
-
-            // 快捷键：Enter 失焦（Shift+Enter 换行），Escape 失焦
             el.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();

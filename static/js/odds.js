@@ -52,7 +52,9 @@
         'away_strong': '客队较强优势',
         'home_dominant': '主队绝对优势',
         'away_dominant': '客队绝对优势',
-        'both_weak': '两队菜鸡'
+        'both_weak': '两队菜鸡',
+        'home_slight': '主队略占优',
+        'away_slight': '客队略占优'
     };
 
     let toastTimer;
@@ -65,7 +67,6 @@
         toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    // ---------- 显示兼容 ----------
     function getPredictionDisplay(initialPrediction) {
         if (!initialPrediction) return '';
         if (typeof initialPrediction === 'string') {
@@ -94,7 +95,6 @@
         return [];
     }
 
-    // ---------- 保存字段（核心函数） ----------
     function saveField(id, field, value) {
         return fetch('/api/match/' + id)
             .then(res => {
@@ -181,10 +181,13 @@
                     const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
                     const homeScore = Math.round(parseFloat(m.home_score) || 0);
                     const awayScore = Math.round(parseFloat(m.away_score) || 0);
-                    const scoreDisplay = `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
+                    
+                    let fundDisplay = [];
+                    if (m.fundamental_divergence === '是') fundDisplay.push('背离');
+                    if (m.fundamental_match === '是') fundDisplay.push('相符');
+                    const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
 
-                    // ★ 初测显示值（用于输入框）
-                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '';
+                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const asianOdds = m.asian_odds || '';
 
                     html += `<tr>
@@ -194,10 +197,10 @@
                             <td>${m.time || ''}</td>
                             <td>${m.league || ''}</td>
                             <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
-                            <td>${scoreDisplay}</td>
+                            <td>${fundText}</td>
                             <td>${judgmentDisplay}</td>
                             <td>${asianOdds}</td>
-                            <td><input type="text" class="inline-edit inline-pred" data-id="${m.id}" data-field="initial_prediction" value="${predDisplay}" placeholder="—" title="${predDisplay || '—'}"></td>
+                            <td><span class="pred-display">${predDisplay}</span></td>
                             <td>
                                 <select class="result-select" data-id="${m.id}">
                                     <option value="">未定</option>
@@ -285,25 +288,6 @@
             });
         });
 
-        // 绑定所有内联编辑输入框（包括初测列）
-        document.querySelectorAll('.inline-edit').forEach(inp => {
-            inp.addEventListener('blur', function() { handleInlineSave(this); });
-            inp.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    this.blur();
-                }
-                if (e.key === 'Escape') { this.blur(); }
-            });
-            inp.addEventListener('input', function() {
-                const id = this.dataset.id;
-                const field = this.dataset.field;
-                const tag = document.getElementById(`saveTag-${field}-${id}`);
-                if (tag) tag.classList.remove('show');
-                this.title = this.value || '—';
-            });
-        });
-
         document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -311,74 +295,6 @@
                 if (id) openAnalysisModal(id);
             });
         });
-    }
-
-    // ---------- 处理内联保存（含 initial_prediction 转换） ----------
-    function handleInlineSave(input) {
-        const id = input.dataset.id;
-        const field = input.dataset.field;
-        let value = input.value.trim();
-        const tag = document.getElementById(`saveTag-${field}-${id}`);
-        const oldVal = input.defaultValue || '';
-
-        // ★ 对 initial_prediction 字段进行特殊转换
-        if (field === 'initial_prediction') {
-            if (value === '') {
-                value = '[]';
-            } else {
-                // 按逗号或顿号分割，去除空格，过滤空项
-                const parts = value.split(/[,，、\s]+/).map(s => s.trim()).filter(s => s);
-                value = JSON.stringify(parts);
-            }
-            // 显示值（用于更新 defaultValue）应为原始输入，但为了显示一致，保留原输入
-            // 保存成功后，将 defaultValue 更新为显示值（即分割前的字符串）
-            // 但为了后续显示，我们使用输入框的 value 作为显示，保存 JSON 字符串。
-            // 输入框中的值不变（保持用户输入的文本），但 defaultValue 设为显示文本。
-            // 这样下次加载时，getPredictionDisplay 会生成正确的显示文本。
-            // 但如果我们把显示文本存入数据库，下次读取会不一样，所以这里不更新 defaultValue。
-            // 我们只保存 JSON 到数据库，而输入框显示文本保持不变（但可能用户输入的是逗号分隔，我们保存为JSON）。
-            // 然而，如果在保存成功后，我们应当将输入框的 value 设为合并后的显示文本（即用顿号连接数组）。
-            // 这样用户看到的是格式化后的文本，而不是原始输入。
-            // 所以，我们可以在保存成功后，将输入框 value 设置为 format 后的字符串。
-        }
-
-        if (value === oldVal) { if (tag) tag.classList.remove('show'); return; }
-        input.classList.add('saving');
-        if (tag) tag.classList.remove('show');
-
-        saveField(id, field, value)
-            .then(res => {
-                if (res.success) {
-                    // 更新 defaultValue 为当前输入值（或格式化后的值）
-                    // 对于 initial_prediction，我们应显示合并后的文本
-                    let displayVal = input.value;
-                    if (field === 'initial_prediction') {
-                        // 从保存的 JSON 解析出数组，再合并为显示文本
-                        try {
-                            const parsed = JSON.parse(value);
-                            if (Array.isArray(parsed)) {
-                                displayVal = parsed.join('、');
-                            } else {
-                                displayVal = value;
-                            }
-                        } catch (e) {
-                            displayVal = value;
-                        }
-                    }
-                    input.defaultValue = displayVal;
-                    input.value = displayVal;  // 更新显示为格式化文本
-                    if (tag) tag.classList.add('show');
-                    showToast(`✅ ${field} 已保存`);
-                } else {
-                    showToast('❌ 保存失败: ' + (res.error || '未知错误'), true);
-                    input.value = oldVal;
-                }
-            })
-            .catch(err => {
-                showToast('❌ 请求出错: ' + err.message, true);
-                input.value = oldVal;
-            })
-            .finally(() => { input.classList.remove('saving'); });
     }
 
     // ========== 打开赔率分析模态框（含自动保存） ==========
@@ -402,6 +318,8 @@
                 const finalAnalysisVal = data.final_analysis || '';
                 const oddsStructureVal = data.odds_structure || '';
                 const predArray = getInitialPredictionArray(data);
+                const divergenceVal = data.fundamental_divergence || '否';
+                const matchVal = data.fundamental_match || '否';
 
                 const homeScore = Math.round(parseFloat(data.home_score) || 0);
                 const awayScore = Math.round(parseFloat(data.away_score) || 0);
@@ -418,6 +336,8 @@
                 analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
                 analysisModal.dataset.oldOddsStructure = oddsStructureVal;
                 analysisModal.dataset.oldPred = JSON.stringify(predArray);
+                analysisModal.dataset.oldDivergence = divergenceVal;
+                analysisModal.dataset.oldMatch = matchVal;
 
                 const options = ['胜', '平', '负', '上盘', '下盘', '大球', '小球'];
 
@@ -438,6 +358,19 @@
                     </div>
                 `;
 
+                const judgmentOptions = [
+                    {val:'home_advantage', label:'主队占优'},
+                    {val:'away_advantage', label:'客队占优'},
+                    {val:'equal', label:'两队实力相当'},
+                    {val:'home_strong', label:'主队较强优势'},
+                    {val:'away_strong', label:'客队较强优势'},
+                    {val:'home_dominant', label:'主队绝对优势'},
+                    {val:'away_dominant', label:'客队绝对优势'},
+                    {val:'both_weak', label:'两队菜鸡'},
+                    {val:'home_slight', label:'主队略占优'},
+                    {val:'away_slight', label:'客队略占优'}
+                ];
+
                 let infoHtml = `
                     <div style="background:#f0f6ff; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
                         <div style="font-weight:600; font-size:14px; color:#1a3a6b; margin-bottom:8px;">📊 基本面评分</div>
@@ -451,7 +384,30 @@
                     </div>
                     <div class="info-row"><span class="info-label">ID</span><span class="info-value">${data.id}</span></div>
                     <div class="info-row"><span class="info-label">联赛</span><span class="info-value">${data.league || '—'}</span></div>
-                    <div class="info-row"><span class="info-label">基本面判断</span><span class="info-value">${judgmentDisplay}</span></div>
+                    <div class="info-row"><span class="info-label">基本面判断</span>
+                        <div class="info-value">
+                            <select id="analysis-judgment" class="analysis-input" data-id="${data.id}" data-field="judgment">
+                                ${judgmentOptions.map(opt => `
+                                    <option value="${opt.val}" ${data.judgment===opt.val?'selected':''}>${opt.label}</option>
+                                `).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top:10px;">
+                        <span class="info-label" style="width:120px;">基本面</span>
+                        <div style="display:flex; align-items:center; gap:16px; flex-wrap:nowrap;">
+                            <label style="display:flex; align-items:center; gap:4px; cursor:pointer; white-space:nowrap;">
+                                <span>背离</span>
+                                <input type="checkbox" id="analysis-divergence" data-id="${data.id}" data-field="fundamental_divergence" ${divergenceVal==='是'?'checked':''}>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:4px; cursor:pointer; white-space:nowrap;">
+                                <span>相符</span>
+                                <input type="checkbox" id="analysis-match" data-id="${data.id}" data-field="fundamental_match" ${matchVal==='是'?'checked':''}>
+                            </label>
+                        </div>
+                        <span class="save-tag" id="analysis-saveTag-fundamental_divergence-${data.id}">✓</span>
+                        <span class="save-tag" id="analysis-saveTag-fundamental_match-${data.id}">✓</span>
+                    </div>
                     <div class="form-group"><span class="info-label" style="width:120px;">亚初终</span><input type="text" id="analysis-asian" class="analysis-input" value="${asianVal}" placeholder="如 0.85 半球 0.95" data-id="${data.id}" data-field="asian_odds"><span class="save-tag" id="analysis-saveTag-asian-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">区间</span><input type="text" id="analysis-range" class="analysis-input" value="${rangeVal}" placeholder="如 2.5-3" data-id="${data.id}" data-field="range"><span class="save-tag" id="analysis-saveTag-range-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">赔率结构</span><input type="text" id="analysis-odds-structure" class="analysis-input" value="${oddsStructureVal}" placeholder="如 胜平负" data-id="${data.id}" data-field="odds_structure"><span class="save-tag" id="analysis-saveTag-odds_structure-${data.id}">✓</span></div>
@@ -473,19 +429,59 @@
                     analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
                 }
 
+                // 防抖保存函数
+                const autoSave = debounce(function(field, value) {
+                    const oldKey = `old${field.charAt(0).toUpperCase() + field.slice(1)}`;
+                    let oldVal = analysisModal.dataset[oldKey];
+                    if (field === 'initial_prediction') {
+                        oldVal = analysisModal.dataset.oldPred || '[]';
+                    }
+                    if (value === oldVal) {
+                        console.log(`[自动保存] 字段 ${field} 值未变化，跳过`);
+                        return;
+                    }
+
+                    console.log(`[自动保存] 保存字段 ${field} = ${value}`);
+                    saveField(id, field, value)
+                        .then(res => {
+                            if (res.success) {
+                                if (field === 'initial_prediction') {
+                                    analysisModal.dataset.oldPred = value;
+                                } else {
+                                    analysisModal.dataset[oldKey] = value;
+                                }
+                                const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
+                                if (tag) tag.classList.add('show');
+                                console.log(`[自动保存] ${field} 保存成功`);
+                                // 标记数据已变更，关闭时刷新表格
+                                analysisModal.dataset.changed = 'true';
+                            } else {
+                                showToast(`❌ 保存失败 (${field}): ${res.error || '未知错误'}`, true);
+                            }
+                        })
+                        .catch(err => showToast(`❌ 请求出错: ${err.message}`, true));
+                }, 600);
+
+                // 事件处理器：捕获 input 事件（用于文本输入框和下拉选择）
                 const autoSaveHandler = function(e) {
                     const target = e.target;
-                    if (!target.classList.contains('analysis-input') && !target.classList.contains('pred-checkbox')) {
+                    if (!target.classList.contains('analysis-input') && !target.classList.contains('pred-checkbox') && target.id !== 'analysis-divergence' && target.id !== 'analysis-match') {
                         return;
                     }
                     let field = target.dataset.field;
                     let value;
                     if (target.classList.contains('pred-checkbox')) {
-                        const container = target.closest('.form-group');
-                        const checkedBoxes = container ? container.querySelectorAll('.pred-checkbox:checked') : document.querySelectorAll('.pred-checkbox:checked');
+                        // ★ 修复：直接使用当前模态框容器查找选中项
+                        const checkedBoxes = analysisInfoContainer.querySelectorAll('.pred-checkbox:checked');
                         const selected = Array.from(checkedBoxes).map(cb => cb.value);
                         value = JSON.stringify(selected);
                         field = 'initial_prediction';
+                    } else if (target.id === 'analysis-divergence') {
+                        value = target.checked ? '是' : '否';
+                        field = 'fundamental_divergence';
+                    } else if (target.id === 'analysis-match') {
+                        value = target.checked ? '是' : '否';
+                        field = 'fundamental_match';
                     } else {
                         value = target.value.trim();
                     }
@@ -500,30 +496,13 @@
                 analysisInfoContainer._autoSaveHandler = autoSaveHandler;
                 analysisInfoContainer.addEventListener('input', autoSaveHandler);
 
-                const autoSave = debounce(function(field, value) {
-                    const oldKey = `old${field.charAt(0).toUpperCase() + field.slice(1)}`;
-                    let oldVal = analysisModal.dataset[oldKey];
-                    if (field === 'initial_prediction') {
-                        oldVal = analysisModal.dataset.oldPred || '[]';
-                    }
-                    if (value === oldVal) return;
-
-                    saveField(id, field, value)
-                        .then(res => {
-                            if (res.success) {
-                                if (field === 'initial_prediction') {
-                                    analysisModal.dataset.oldPred = value;
-                                } else {
-                                    analysisModal.dataset[oldKey] = value;
-                                }
-                                const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
-                                if (tag) tag.classList.add('show');
-                            } else {
-                                showToast(`❌ 保存失败 (${field}): ${res.error || '未知错误'}`, true);
-                            }
-                        })
-                        .catch(err => showToast(`❌ 请求出错: ${err.message}`, true));
-                }, 600);
+                // 为所有复选框额外绑定 change 事件，确保触发 input 事件
+                const allCheckboxes = analysisInfoContainer.querySelectorAll('input[type="checkbox"]');
+                allCheckboxes.forEach(cb => {
+                    cb.addEventListener('change', function() {
+                        this.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                });
 
                 // ---------- 自定义下拉组件交互 ----------
                 const trigger = document.getElementById(`pred-trigger-${id}`);
@@ -560,6 +539,7 @@
                         checkbox.addEventListener('change', function() {
                             item.classList.toggle('selected', this.checked);
                             updateTriggerText();
+                            this.dispatchEvent(new Event('input', { bubbles: true }));
                         });
                         if (checkbox.checked) item.classList.add('selected');
                     });
@@ -572,7 +552,7 @@
                 }
 
                 // 清除保存标记（输入时）
-                document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-odds-structure').forEach(el => {
+                document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-odds-structure, #analysis-judgment, #analysis-divergence, #analysis-match').forEach(el => {
                     el.addEventListener('input', function() {
                         const id = this.dataset.id;
                         const field = this.dataset.field;
@@ -587,12 +567,18 @@
             });
     }
 
+    // ========== 关闭模态框（自动刷新表格） ==========
     function closeAnalysisModal() {
         if (analysisInfoContainer._autoSaveHandler) {
             analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
             delete analysisInfoContainer._autoSaveHandler;
         }
         analysisModal.style.display = 'none';
+        
+        if (analysisModal.dataset.changed === 'true') {
+            loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
+            analysisModal.dataset.changed = 'false';
+        }
     }
 
     // ---------- 保存按钮（手动） ----------
@@ -613,6 +599,9 @@
             const initialAnalysisInput = document.getElementById('analysis-initial_analysis');
             const finalAnalysisInput = document.getElementById('analysis-final_analysis');
             const oddsStructureInput = document.getElementById('analysis-odds-structure');
+            const judgmentInput = document.getElementById('analysis-judgment');
+            const divergenceInput = document.getElementById('analysis-divergence');
+            const matchInput = document.getElementById('analysis-match');
 
             const pos1Val = pos1Input ? pos1Input.value.trim() : '';
             const pos2Val = pos2Input ? pos2Input.value.trim() : '';
@@ -621,6 +610,9 @@
             const initialAnalysisVal = initialAnalysisInput ? initialAnalysisInput.value.trim() : '';
             const finalAnalysisVal = finalAnalysisInput ? finalAnalysisInput.value.trim() : '';
             const oddsStructureVal = oddsStructureInput ? oddsStructureInput.value.trim() : '';
+            const judgmentVal = judgmentInput ? judgmentInput.value : 'equal';
+            const divergenceVal = divergenceInput ? (divergenceInput.checked ? '是' : '否') : '否';
+            const matchVal = matchInput ? (matchInput.checked ? '是' : '否') : '否';
 
             const menu = document.getElementById(`pred-menu-${id}`);
             let selectedOptions = [];
@@ -638,6 +630,9 @@
                 initial_analysis: initialAnalysisVal,
                 final_analysis: finalAnalysisVal,
                 odds_structure: oddsStructureVal,
+                judgment: judgmentVal,
+                fundamental_divergence: divergenceVal,
+                fundamental_match: matchVal,
                 initial_prediction: initialPredictionVal
             });
 
@@ -658,6 +653,9 @@
                     data.final_analysis = finalAnalysisVal;
                     data.initial_prediction = initialPredictionVal;
                     data.odds_structure = oddsStructureVal;
+                    data.judgment = judgmentVal;
+                    data.fundamental_divergence = divergenceVal;
+                    data.fundamental_match = matchVal;
                     return fetch('/api/match/' + id, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -678,8 +676,11 @@
                         analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
                         analysisModal.dataset.oldOddsStructure = oddsStructureVal;
                         analysisModal.dataset.oldPred = initialPredictionVal;
+                        analysisModal.dataset.oldJudgment = judgmentVal;
+                        analysisModal.dataset.oldDivergence = divergenceVal;
+                        analysisModal.dataset.oldMatch = matchVal;
 
-                        const fields = ['pos1', 'pos2', 'asian', 'range', 'initial_analysis', 'final_analysis', 'initial_prediction', 'odds_structure'];
+                        const fields = ['pos1', 'pos2', 'asian', 'range', 'initial_analysis', 'final_analysis', 'initial_prediction', 'odds_structure', 'judgment', 'fundamental_divergence', 'fundamental_match'];
                         fields.forEach(field => {
                             const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                             if (tag) tag.classList.add('show');
@@ -701,6 +702,9 @@
                     const oldInitialAnalysis = analysisModal.dataset.oldInitialAnalysis || '';
                     const oldFinalAnalysis = analysisModal.dataset.oldFinalAnalysis || '';
                     const oldOddsStructure = analysisModal.dataset.oldOddsStructure || '';
+                    const oldJudgment = analysisModal.dataset.oldJudgment || 'equal';
+                    const oldDivergence = analysisModal.dataset.oldDivergence || '否';
+                    const oldMatch = analysisModal.dataset.oldMatch || '否';
                     const oldPred = analysisModal.dataset.oldPred || '[]';
                     try {
                         const oldArr = JSON.parse(oldPred);
@@ -732,6 +736,9 @@
                     if (initialAnalysisInput) initialAnalysisInput.value = oldInitialAnalysis;
                     if (finalAnalysisInput) finalAnalysisInput.value = oldFinalAnalysis;
                     if (oddsStructureInput) oddsStructureInput.value = oldOddsStructure;
+                    if (judgmentInput) judgmentInput.value = oldJudgment;
+                    if (divergenceInput) divergenceInput.checked = (oldDivergence === '是');
+                    if (matchInput) matchInput.checked = (oldMatch === '是');
                 })
                 .finally(() => {
                     saveAnalysisBtn.textContent = '💾 保存修改';
@@ -800,7 +807,9 @@
             asian_odds: '', range: '', pos1: '', pos2: '',
             initial_analysis: '', final_analysis: '',
             initial_prediction: '[]',
-            odds_structure: ''
+            odds_structure: '',
+            fundamental_divergence: '否',
+            fundamental_match: '否'
         };
         fetch('/api/save', {
             method: 'POST',
@@ -882,8 +891,11 @@
                     const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
                     const homeScore = Math.round(parseFloat(m.home_score) || 0);
                     const awayScore = Math.round(parseFloat(m.away_score) || 0);
-                    const scoreDisplay = `<span class="score-vs">${homeScore}</span> <span class="vs-large">VS</span> <span class="score-vs">${awayScore}</span>`;
-                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '';
+                    let fundDisplay = [];
+                    if (m.fundamental_divergence === '是') fundDisplay.push('背离');
+                    if (m.fundamental_match === '是') fundDisplay.push('相符');
+                    const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
+                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const asianOdds = m.asian_odds || '';
 
                     const rowHtml = `<tr>
@@ -893,10 +905,10 @@
                         <td>${m.time || ''}</td>
                         <td>${m.league || ''}</td>
                         <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
-                        <td>${scoreDisplay}</td>
+                        <td>${fundText}</td>
                         <td>${judgmentDisplay}</td>
                         <td>${asianOdds}</td>
-                        <td><input type="text" class="inline-edit inline-pred" data-id="${m.id}" data-field="initial_prediction" value="${predDisplay}" placeholder="—" title="${predDisplay || '—'}"></td>
+                        <td><span class="pred-display">${predDisplay}</span></td>
                         <td>
                             <select class="result-select" data-id="${m.id}">
                                 <option value="">未定</option>
