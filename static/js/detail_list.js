@@ -145,12 +145,26 @@
             const predDisplay = getPredictionDisplay(m.initial_prediction);
             const review = m.review || '';
             const color = resultType === '红' ? '#dc2626' : (resultType === '黑' ? '#1f2937' : '#d97706');
+
+            // 构造跳转到 odds 的链接
+            const params = new URLSearchParams({
+                date: m.date || '',
+                time: m.time || '',
+                league: m.league || '',
+                home: m.home_team || '',
+                away: m.away_team || ''
+            });
+            const oddsUrl = `/odds?${params.toString()}`;
+            const homeLink = `<a href="${oddsUrl}" class="team-link">${homeTeam}</a>`;
+            const awayLink = `<a href="${oddsUrl}" class="team-link">${awayTeam}</a>`;
+            const teamDisplay = `${homeLink} <span style="font-weight:600;color:#3b7cff;">VS</span> ${awayLink}`;
+
             html += `
                 <tr>
                     <td><input type="checkbox" class="row-checkbox" data-id="${m.id}" /></td>
                     <td>${m.id}</td>
                     <td>${league}</td>
-                    <td>${homeTeam} <span style="font-weight:600;color:#3b7cff;">VS</span> ${awayTeam}</td>
+                    <td>${teamDisplay}</td>
                     <td>${pos1}</td>
                     <td>${pos2}</td>
                     <td>${predDisplay}</td>   <!-- ★ 初测列 -->
