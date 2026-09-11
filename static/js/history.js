@@ -37,18 +37,11 @@
         let currentLeagueFilter = '';
         let totalItems = 0;
 
-        // ★ 增加两个新判断选项
         const judgmentMap = {
-            'home_advantage': '主队占优',
-            'away_advantage': '客队占优',
-            'equal': '两队实力相当',
-            'home_strong': '主队较强优势',
-            'away_strong': '客队较强优势',
-            'home_dominant': '主队绝对优势',
-            'away_dominant': '客队绝对优势',
-            'both_weak': '两队菜鸡',
-            'home_slight': '主队略占优',    // 新增
-            'away_slight': '客队略占优'     // 新增
+            'home_advantage':'主队占优', 'away_advantage':'客队占优', 'equal':'两队实力相当',
+            'home_strong':'主队较强优势', 'away_strong':'客队较强优势',
+            'home_dominant':'主队绝对优势', 'away_dominant':'客队绝对优势', 'both_weak':'两队菜鸡',
+            'home_slight':'主队略占优', 'away_slight':'客队略占优'
         };
 
         // ========== 工具函数 ==========
@@ -200,13 +193,26 @@
                     const predDisplay = getPredictionDisplay(m.initial_prediction);
                     const aiVal = m.ai_result || '';
 
+                    // ★ 构造跳转到 odds 的链接
+                    const oddsParams = new URLSearchParams({
+                        date: m.date || '',
+                        time: m.time || '',
+                        league: m.league || '',
+                        home: m.home_team || '',
+                        away: m.away_team || ''
+                    });
+                    const oddsUrl = `/odds?${oddsParams.toString()}`;
+                    const homeLink = `<a href="${oddsUrl}" class="team-link">${m.home_team}</a>`;
+                    const awayLink = `<a href="${oddsUrl}" class="team-link">${m.away_team}</a>`;
+                    const teamDisplay = `${homeLink} <span class="vs-large">VS</span> ${awayLink}`;
+
                     html += `<tr data-id="${m.id}">
                         <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
                         <td>${m.id}</td>
                         <td>${m.date || ''}</td>
                         <td>${m.time || ''}</td>
                         <td>${m.league || ''}</td>
-                        <td><a href="/?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/?id=${m.id}" class="team-link">${m.away_team}</a></td>
+                        <td>${teamDisplay}</td>
                         <td>${scoreDisplay}</td>
                         <td>${judgment}</td>
                         <td>${predDisplay}</td>
@@ -479,7 +485,6 @@
             html += `<div class="form-group"><label>平局概率</label><input type="number" step="0.01" id="edit-draw-prob" value="${data.draw_prob||0}"></div>`;
             html += `<div class="form-group"><label>客胜概率</label><input type="number" step="0.01" id="edit-away-prob" value="${data.away_prob||0}"></div>`;
 
-            // ★ 增加两个新选项
             const judgmentOptions = [
                 {val:'home_advantage', label:'主队占优'},
                 {val:'away_advantage', label:'客队占优'},
@@ -489,8 +494,8 @@
                 {val:'home_dominant', label:'主队绝对优势'},
                 {val:'away_dominant', label:'客队绝对优势'},
                 {val:'both_weak', label:'两队菜鸡'},
-                {val:'home_slight', label:'主队略占优'},    // 新增
-                {val:'away_slight', label:'客队略占优'}     // 新增
+                {val:'home_slight', label:'主队略占优'},
+                {val:'away_slight', label:'客队略占优'}
             ];
             html += `<div class="form-group"><label>基本面判断</label><select id="edit-judgment">`;
             judgmentOptions.forEach(opt => {
