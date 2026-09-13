@@ -230,14 +230,22 @@ def api_fetch_matches():
     if not date_str:
         date_str = datetime.now().strftime('%Y-%m-%d')
     include_finished = request.args.get('include_finished', 'false').lower() == 'true'
+    force = request.args.get('force', 'false').lower() == 'true'   # ★ 新增
 
     try:
         datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
         return jsonify({'error': '日期格式无效，请使用 YYYY-MM-DD'}), 400
 
+    # 若开启强制刷新，先删除该日期的旧记录
+    if force:
+        with get_db() as conn:
+            conn.execute('DELETE FROM fixtures WHERE date = ?', (date_str,))
+            conn.commit()
+
+    # 仅在未强制刷新时才使用缓存
     cached = get_fixtures_by_date(date_str)
-    if cached:
+    if cached and not force:
         return jsonify([dict(row) for row in cached])
 
     try:
@@ -249,25 +257,34 @@ def api_fetch_matches():
         scraper = JczqChineseScraper()
         all_matches = []
 
-        default_url = f"{scraper.base_url}?playid=270&g=2&date={date_str}"
-        default_resp = scraper.session.get(default_url, timeout=15)
-        default_resp.encoding = 'gb2312'
-        default_html = default_resp.text
-        if default_html:
-            matches = scraper.parse_html(default_html, date_str)
-            all_matches.extend(matches)
+        # ★ 遍历多个 playid，以覆盖更多联赛（如瑞超、芬超）
+        playids = [270, 271, 272]   # 270: 胜平负，271: 让球胜平负，272: 其他（视竞彩网结构调整）
+        for playid in playids:
+            for g in [2, 1]:    # 尝试不同的 g 参数
+                try:
+                    url = f"{scraper.base_url}?playid={playid}&g={g}&date={date_str}"
+                    resp = scraper.session.get(url, timeout=15)
+                    resp.encoding = 'gb2312'
+                    if resp.text:
+                        matches = scraper.parse_html(resp.text, date_str)
+                        all_matches.extend(matches)
+                except Exception:
+                    continue
 
         if include_finished:
             for status in ['0', '1']:
-                finished_url = f"{scraper.base_url}?playid=270&g=2&date={date_str}&status={status}"
-                finished_resp = scraper.session.get(finished_url, timeout=15)
-                finished_resp.encoding = 'gb2312'
-                finished_html = finished_resp.text
-                if finished_html:
-                    matches = scraper.parse_html(finished_html, date_str)
-                    all_matches.extend(matches)
-                    break
+                for playid in playids:
+                    try:
+                        url = f"{scraper.base_url}?playid={playid}&g=2&date={date_str}&status={status}"
+                        resp = scraper.session.get(url, timeout=15)
+                        resp.encoding = 'gb2312'
+                        if resp.text:
+                            matches = scraper.parse_html(resp.text, date_str)
+                            all_matches.extend(matches)
+                    except Exception:
+                        continue
 
+        # 去重
         seen = set()
         unique = []
         for m in all_matches:
