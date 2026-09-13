@@ -178,11 +178,10 @@
                     if (result === '红') resultHtml = `<span style="color:#dc2626;font-weight:600;">红</span>`;
                     else if (result === '黑') resultHtml = `<span style="color:#1f2937;font-weight:600;">黑</span>`;
                     else if (result === '走盘') resultHtml = `<span style="color:#d97706;font-weight:600;">走盘</span>`;
-
                     const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
                     const homeScore = Math.round(parseFloat(m.home_score) || 0);
                     const awayScore = Math.round(parseFloat(m.away_score) || 0);
-
+                    
                     let fundDisplay = [];
                     if (m.fundamental_divergence === '是') fundDisplay.push('背离');
                     if (m.fundamental_match === '是') fundDisplay.push('相符');
@@ -190,9 +189,6 @@
 
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const asianOdds = m.asian_odds || '';
-
-                    // ★ 下注状态
-                    const betChecked = m.bet === '是';
 
                     html += `<tr>
                             <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
@@ -205,7 +201,6 @@
                             <td>${judgmentDisplay}</td>
                             <td>${asianOdds}</td>
                             <td><span class="pred-display">${predDisplay}</span></td>
-                            <td style="text-align:center;"><input type="checkbox" class="bet-checkbox" data-id="${m.id}" ${betChecked ? 'checked' : ''}></td>
                             <td>
                                 <select class="result-select" data-id="${m.id}">
                                     <option value="">未定</option>
@@ -289,29 +284,6 @@
                             showToast(`批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`);
                             loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                         }
-                    });
-            });
-        });
-
-        // ★ 下注复选框：自动保存
-        document.querySelectorAll('.bet-checkbox').forEach(cb => {
-            cb.addEventListener('change', function(e) {
-                e.stopPropagation();
-                const id = this.dataset.id;
-                const value = this.checked ? '是' : '否';
-                const self = this;
-                saveField(id, 'bet', value)
-                    .then(res => {
-                        if (res.success) {
-                            showToast('✅ 下注状态已更新');
-                        } else {
-                            showToast('❌ 更新失败: ' + (res.error || '未知错误'), true);
-                            self.checked = !self.checked;
-                        }
-                    })
-                    .catch(err => {
-                        showToast('❌ 请求出错: ' + err.message, true);
-                        self.checked = !self.checked;
                     });
             });
         });
@@ -457,14 +429,19 @@
                     analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
                 }
 
+                // 防抖保存函数
                 const autoSave = debounce(function(field, value) {
                     const oldKey = `old${field.charAt(0).toUpperCase() + field.slice(1)}`;
                     let oldVal = analysisModal.dataset[oldKey];
                     if (field === 'initial_prediction') {
                         oldVal = analysisModal.dataset.oldPred || '[]';
                     }
-                    if (value === oldVal) return;
+                    if (value === oldVal) {
+                        console.log(`[自动保存] 字段 ${field} 值未变化，跳过`);
+                        return;
+                    }
 
+                    console.log(`[自动保存] 保存字段 ${field} = ${value}`);
                     saveField(id, field, value)
                         .then(res => {
                             if (res.success) {
@@ -475,6 +452,8 @@
                                 }
                                 const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                                 if (tag) tag.classList.add('show');
+                                console.log(`[自动保存] ${field} 保存成功`);
+                                // 标记数据已变更，关闭时刷新表格
                                 analysisModal.dataset.changed = 'true';
                             } else {
                                 showToast(`❌ 保存失败 (${field}): ${res.error || '未知错误'}`, true);
@@ -483,6 +462,7 @@
                         .catch(err => showToast(`❌ 请求出错: ${err.message}`, true));
                 }, 600);
 
+                // 事件处理器：捕获 input 事件（用于文本输入框和下拉选择）
                 const autoSaveHandler = function(e) {
                     const target = e.target;
                     if (!target.classList.contains('analysis-input') && !target.classList.contains('pred-checkbox') && target.id !== 'analysis-divergence' && target.id !== 'analysis-match') {
@@ -491,6 +471,7 @@
                     let field = target.dataset.field;
                     let value;
                     if (target.classList.contains('pred-checkbox')) {
+                        // ★ 修复：直接使用当前模态框容器查找选中项
                         const checkedBoxes = analysisInfoContainer.querySelectorAll('.pred-checkbox:checked');
                         const selected = Array.from(checkedBoxes).map(cb => cb.value);
                         value = JSON.stringify(selected);
@@ -515,6 +496,7 @@
                 analysisInfoContainer._autoSaveHandler = autoSaveHandler;
                 analysisInfoContainer.addEventListener('input', autoSaveHandler);
 
+                // 为所有复选框额外绑定 change 事件，确保触发 input 事件
                 const allCheckboxes = analysisInfoContainer.querySelectorAll('input[type="checkbox"]');
                 allCheckboxes.forEach(cb => {
                     cb.addEventListener('change', function() {
@@ -569,6 +551,7 @@
                     });
                 }
 
+                // 清除保存标记（输入时）
                 document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-odds-structure, #analysis-judgment, #analysis-divergence, #analysis-match').forEach(el => {
                     el.addEventListener('input', function() {
                         const id = this.dataset.id;
@@ -584,13 +567,14 @@
             });
     }
 
+    // ========== 关闭模态框（自动刷新表格） ==========
     function closeAnalysisModal() {
         if (analysisInfoContainer._autoSaveHandler) {
             analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
             delete analysisInfoContainer._autoSaveHandler;
         }
         analysisModal.style.display = 'none';
-
+        
         if (analysisModal.dataset.changed === 'true') {
             loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
             analysisModal.dataset.changed = 'false';
@@ -605,6 +589,8 @@
                 showToast('❌ 未找到赛事ID', true);
                 return;
             }
+
+            console.log('[手动保存] 开始保存 id=' + id);
 
             const pos1Input = document.getElementById('analysis-pos1');
             const pos2Input = document.getElementById('analysis-pos2');
@@ -635,6 +621,20 @@
                 selectedOptions = Array.from(checkedBoxes).map(cb => cb.value);
             }
             const initialPredictionVal = JSON.stringify(selectedOptions);
+
+            console.log('[手动保存] 收集数据:', {
+                pos1: pos1Val,
+                pos2: pos2Val,
+                asian: asianVal,
+                range: rangeVal,
+                initial_analysis: initialAnalysisVal,
+                final_analysis: finalAnalysisVal,
+                odds_structure: oddsStructureVal,
+                judgment: judgmentVal,
+                fundamental_divergence: divergenceVal,
+                fundamental_match: matchVal,
+                initial_prediction: initialPredictionVal
+            });
 
             saveAnalysisBtn.textContent = '⏳ 保存中...';
             saveAnalysisBtn.disabled = true;
@@ -694,6 +694,7 @@
                 .catch(err => {
                     showToast('❌ 保存失败: ' + err.message, true);
                     console.error('保存错误:', err);
+                    // 恢复旧值
                     const oldPos1 = analysisModal.dataset.oldPos1 || '';
                     const oldPos2 = analysisModal.dataset.oldPos2 || '';
                     const oldAsian = analysisModal.dataset.oldAsian || '';
@@ -808,8 +809,7 @@
             initial_prediction: '[]',
             odds_structure: '',
             fundamental_divergence: '否',
-            fundamental_match: '否',
-            bet: '否'
+            fundamental_match: '否'
         };
         fetch('/api/save', {
             method: 'POST',
@@ -897,7 +897,6 @@
                     const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const asianOdds = m.asian_odds || '';
-                    const betChecked = m.bet === '是';
 
                     const rowHtml = `<tr>
                         <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
@@ -910,7 +909,6 @@
                         <td>${judgmentDisplay}</td>
                         <td>${asianOdds}</td>
                         <td><span class="pred-display">${predDisplay}</span></td>
-                        <td style="text-align:center;"><input type="checkbox" class="bet-checkbox" data-id="${m.id}" ${betChecked ? 'checked' : ''}></td>
                         <td>
                             <select class="result-select" data-id="${m.id}">
                                 <option value="">未定</option>
