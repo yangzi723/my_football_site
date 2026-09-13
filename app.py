@@ -449,7 +449,10 @@ def all_list():
 @app.route('/ai_prediction')
 def ai_prediction():
     return render_template('ai_prediction.html')
-    
+
+@app.route('/ai_stats')
+def ai_stats():
+    return render_template('ai_stats.html')
 
 
 if __name__ == '__main__':

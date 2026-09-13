@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI预测统计</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f0f4f8;
+            color: #1e2a3a;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px 35px;
+            padding-top: 80px;
+        }
+        h1 { margin-bottom: 20px; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #f8fafc;
+            padding: 18px;
+            border-radius: 14px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            transition: transform 0.1s, box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            cursor: pointer;
+        }
+        .stat-card .number { font-size: 32px; font-weight: 700; color: #0a2540; }
+        .stat-card .label { font-size: 14px; color: #4b657a; }
+        .stat-card.clickable:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        .stat-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        .stat-table th {
+            background: #1f3a5f;
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .stat-table td {
+            padding: 8px 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .stat-table tr:hover { background: #f8fafc; }
+        .stat-table .col-id { min-width: 60px; }
+        .stat-table .col-team { min-width: 120px; }
+        .stat-table .col-league { min-width: 80px; }
+        .stat-table .col-odds { min-width: 70px; }
+        .stat-table .col-analysis { min-width: 120px; }
+        .stat-table .col-judgment { min-width: 100px; }
+        h2 { margin-top: 30px; font-size: 20px; }
+        .bar-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 4px 0;
+        }
+        .bar-label { width: 100px; font-size: 14px; }
+        .bar-track {
+            flex: 1;
+            height: 20px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            background: #2563eb;
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+        .bar-fill.red { background: #dc2626; }
+        .bar-fill.black { background: #1f2937; }
+        .bar-fill.draw { background: #d97706; }
+        .bar-fill.pending { background: #6b7280; }
+        .bar-value { width: 60px; text-align: right; font-size: 14px; }
+        .team-link {
+            color: #1a3a6b;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .team-link:hover {
+            text-decoration: underline;
+            color: #3b7cff;
+        }
+        .pagination {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .pagination button,
+        .pagination .page-num {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #cdd8e6;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            min-width: 36px;
+            text-align: center;
+        }
+        .pagination button:hover:not(:disabled),
+        .pagination .page-num:hover { background: #e2e8f0; }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination .page-num.active {
+            background: #1a3a6b;
+            color: white;
+            border-color: #1a3a6b;
+        }
+        .pagination .ellipsis { padding: 6px 8px; color: #6b7280; }
+        .pagination select {
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #cdd8e6;
+            font-size: 14px;
+        }
+        .pagination .count-info { font-size: 13px; color: #4b657a; margin-left: 8px; }
+
+        /* AI 徽章 */
+        .ai-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: linear-gradient(135deg, #6366f1, #3b82f6);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        @media (max-width: 700px) {
+            .container { padding: 16px; }
+            .stat-table { font-size: 12px; }
+            .stat-table th, .stat-table td { padding: 6px 4px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% include '_navbar.html' %}
+        <h1>🤖 AI预测统计 <span class="ai-badge">AI</span></h1>
+        <div id="statsLoading" style="padding:20px; text-align:center;">加载中...</div>
+        <div id="statsContent" style="display:none;">
+            <div class="stats-grid" id="overviewCards"></div>
+
+            <h2>📊 AI预测结果分布</h2>
+            <div id="resultDistribution"></div>
+
+            <h2>📋 各基本面判断下的结果统计</h2>
+            <div id="judgmentStats"></div>
+            <div class="pagination" id="judgmentPagination" style="display:none;">
+                <button id="judgPrevBtn" disabled>上一页</button>
+                <span id="judgPageNumbers"></span>
+                <button id="judgNextBtn" disabled>下一页</button>
+                <select id="judgPerPage">
+                    <option value="5">5条/页</option>
+                    <option value="10" selected>10条/页</option>
+                    <option value="20">20条/页</option>
+                    <option value="50">50条/页</option>
+                </select>
+                <span class="count-info">共 <span id="judgTotalCount">0</span> 条</span>
+            </div>
+
+            <h2>🏆 各联赛下的结果统计</h2>
+            <div id="leagueStats"></div>
+            <div class="pagination" id="leaguePagination" style="display:none;">
+                <button id="leaguePrevBtn" disabled>上一页</button>
+                <span id="leaguePageNumbers"></span>
+                <button id="leagueNextBtn" disabled>下一页</button>
+                <select id="leaguePerPage">
+                    <option value="5">5条/页</option>
+                    <option value="10" selected>10条/页</option>
+                    <option value="20">20条/页</option>
+                    <option value="50">50条/页</option>
+                </select>
+                <span class="count-info">共 <span id="leagueTotalCount">0</span> 条</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ============================================================
+         * AI 预测统计页面
+         *   - 数据来源：/api/stats 与 /api/history
+         *   - 若后续 AI 预测使用独立接口，只需替换下方 DATA_SOURCE
+         * ============================================================ */
+        const DATA_SOURCE = {
+            stats: '/api/stats',        // 汇总接口
+            history: '/api/history',    // 明细接口
+            // 独立 AI 接口时改为：
+            // stats: '/api/ai_stats',
+            // history: '/api/ai_history',
+        };
+
+        // AI 预测页面的跳转地址（用于卡片点击）
+        const AI_PAGE = '/ai_prediction';
+
+        const judgmentMap = {
+            'home_advantage': '主队占优',
+            'away_advantage': '客队占优',
+            'equal': '两队实力相当',
+            'home_strong': '主队较强优势',
+            'away_strong': '客队较强优势',
+            'home_dominant': '主队绝对优势',
+            'away_dominant': '客队绝对优势',
+            'both_weak': '两队菜鸡',
+            'home_slight': '主队略占优',
+            'away_slight': '客队略占优'
+        };
+
+        let allJudgmentItems = [];
+        let judgOffset = 0;
+        let judgLimit = 10;
+
+        let allLeagueItems = [];
+        let leagueOffset = 0;
+        let leagueLimit = 10;
+
+        // ============ 循环分页拉全量数据 ============
+        async function fetchAllMatches() {
+            const limit = 200;
+            const maxRounds = 2000;
+            const seen = new Set();
+
+            let offset = 0, round = 0, all = [], total = null, stopped = '';
+
+            while (round++ < maxRounds) {
+                let data;
+                try {
+                    const res = await fetch(`${DATA_SOURCE.history}?limit=${limit}&offset=${offset}`, { cache: 'no-store' });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    data = await res.json();
+                } catch (e) {
+                    console.error('拉取失败:', e);
+                    stopped = '请求失败，已加载部分数据';
+                    break;
+                }
+
+                const items = Array.isArray(data.data) ? data.data
+                            : (Array.isArray(data) ? data : []);
+                if (items.length === 0) { stopped = '已到达数据末尾'; break; }
+
+                let added = 0;
+                for (const m of items) {
+                    const key = (m && m.id !== undefined && m.id !== null && m.id !== '')
+                        ? 'id:' + m.id
+                        : ['k', m && m.date, m && m.time, m && m.league, m && m.home_team, m && m.away_team].join('|');
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    all.push(m);
+                    added++;
+                }
+                if (added === 0) { stopped = '服务端未返回新数据，已停止加载'; break; }
+
+                offset += items.length;
+
+                const t = Number(data && data.total);
+                if (Number.isFinite(t) && t > 0) {
+                    total = t;
+                    if (all.length >= total) { stopped = '已加载全部数据'; break; }
+                }
+            }
+            if (round >= maxRounds) stopped = '达到最大请求次数，已停止加载';
+            if (Number.isFinite(total) && total > 0 && all.length > total) {
+                all = all.slice(0, total);
+            }
+            return all;
+        }
+
+        // ============ 加载并渲染 ============
+        async function loadAIStats() {
+            try {
+                const [statsRes, matches] = await Promise.all([
+                    fetch(DATA_SOURCE.stats).then(r => r.json()),
+                    fetchAllMatches()
+                ]);
+                const statsData = statsRes;
+
+                document.getElementById('statsLoading').style.display = 'none';
+                document.getElementById('statsContent').style.display = 'block';
+
+                const total = statsData.total || 0;
+                const resultCounts = statsData.result_counts || [];
+                const red = resultCounts.find(r => r.result === '红')?.cnt || 0;
+                const black = resultCounts.find(r => r.result === '黑')?.cnt || 0;
+                const draw = resultCounts.find(r => r.result === '走盘')?.cnt || 0;
+                const unset = total - red - black - draw;
+
+                // ---- 概览卡片（点击跳转到 AI 预测页） ----
+                const overview = document.getElementById('overviewCards');
+                overview.innerHTML = `
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}'">
+                        <div class="number">${total}</div>
+                        <div class="label">总场次 点击查看</div>
+                    </div>
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=红'">
+                        <div class="number" style="color:#dc2626;">${red}</div>
+                        <div class="label">红 (命中)</div>
+                    </div>
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=黑'">
+                        <div class="number" style="color:#1f2937;">${black}</div>
+                        <div class="label">黑 (未中)</div>
+                    </div>
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=走盘'">
+                        <div class="number" style="color:#d97706;">${draw}</div>
+                        <div class="label">走盘</div>
+                    </div>
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=待定'">
+                        <div class="number" style="color:#6b7280;">${unset}</div>
+                        <div class="label">待定</div>
+                    </div>
+                `;
+
+                // ---- 结果分布 ----
+                const distDiv = document.getElementById('resultDistribution');
+                const maxVal = Math.max(red, black, draw, unset, 1);
+                distDiv.innerHTML = `
+                    <div class="bar-container"><div class="bar-label">红</div><div class="bar-track"><div class="bar-fill red" style="width:${(red/maxVal)*100}%;"></div></div><div class="bar-value">${red}</div></div>
+                    <div class="bar-container"><div class="bar-label">黑</div><div class="bar-track"><div class="bar-fill black" style="width:${(black/maxVal)*100}%;"></div></div><div class="bar-value">${black}</div></div>
+                    <div class="bar-container"><div class="bar-label">走盘</div><div class="bar-track"><div class="bar-fill draw" style="width:${(draw/maxVal)*100}%;"></div></div><div class="bar-value">${draw}</div></div>
+                    <div class="bar-container"><div class="bar-label">待定</div><div class="bar-track"><div class="bar-fill pending" style="width:${(unset/maxVal)*100}%;"></div></div><div class="bar-value">${unset}</div></div>
+                `;
+
+                // ---- 基本面判断统计 ----
+                const latestMap = {};
+                matches.forEach(m => {
+                    const key = m.judgment;
+                    if (!key) return;
+                    if (!latestMap[key] || (Number(m.id) > Number(latestMap[key].id))) {
+                        latestMap[key] = {
+                            id: m.id,
+                            date: m.date || '',
+                            time: m.time || '',
+                            league: m.league || '',
+                            initial_odds: m.pos2 || '',
+                            initial_analysis: m.initial_analysis || '',
+                            final_analysis: m.final_analysis || '',
+                            home_team: m.home_team || '',
+                            away_team: m.away_team || ''
+                        };
+                    }
+                });
+
+                const jStats = statsData.judgment_stats || [];
+                allJudgmentItems = jStats.map(item => {
+                    const key = item.judgment;
+                    const latest = latestMap[key] || {};
+                    return {
+                        judgment: item.judgment,
+                        total: item.total || 0,
+                        red: item.red || 0,
+                        black: item.black || 0,
+                        draw: item.draw || 0,
+                        id: (item.id !== undefined && item.id !== null && item.id !== '') ? item.id : latest.id || '-',
+                        date: latest.date || '',
+                        time: latest.time || '',
+                        league: (item.league && item.league !== '-') ? item.league : (latest.league || '-'),
+                        initial_odds: (item.initial_odds && item.initial_odds !== '-') ? item.initial_odds : (latest.initial_odds || '-'),
+                        initial_analysis: (item.initial_analysis && item.initial_analysis !== '-') ? item.initial_analysis : (latest.initial_analysis || '-'),
+                        final_analysis: (item.final_analysis && item.final_analysis !== '-') ? item.final_analysis : (latest.final_analysis || '-'),
+                        home_team: latest.home_team || '?',
+                        away_team: latest.away_team || '?'
+                    };
+                });
+
+                judgOffset = 0;
+                renderJudgmentTable();
+                updateJudgmentPagination();
+
+                // ---- 联赛统计（本地计算） ----
+                const leagueMap = {};
+                matches.forEach(m => {
+                    const lg = m.league || '未知联赛';
+                    if (!leagueMap[lg]) leagueMap[lg] = { total: 0, red: 0, black: 0, draw: 0 };
+                    leagueMap[lg].total++;
+                    if (m.result === '红') leagueMap[lg].red++;
+                    else if (m.result === '黑') leagueMap[lg].black++;
+                    else if (m.result === '走盘') leagueMap[lg].draw++;
+                });
+                allLeagueItems = Object.entries(leagueMap).map(([league, v]) => ({
+                    league,
+                    total: v.total,
+                    red: v.red,
+                    black: v.black,
+                    draw: v.draw
+                })).sort((a, b) => b.total - a.total);
+
+                leagueOffset = 0;
+                renderLeagueTable();
+                updateLeaguePagination();
+
+            } catch (err) {
+                document.getElementById('statsLoading').textContent = '❌ 加载失败: ' + err;
+                console.error(err);
+            }
+        }
+
+        // ============ 基本面判断表格 ============
+        function renderJudgmentTable() {
+            const start = judgOffset;
+            const end = Math.min(start + judgLimit, allJudgmentItems.length);
+            const pageItems = allJudgmentItems.slice(start, end);
+
+            if (allJudgmentItems.length === 0) {
+                document.getElementById('judgmentStats').innerHTML = '<p style="color:#6b7280;">暂无数据</p>';
+                return;
+            }
+
+            let html = `
+                <table class="stat-table">
+                    <thead>
+                        <tr>
+                            <th class="col-id">ID</th>
+                            <th class="col-team">主队 VS 客队</th>
+                            <th class="col-league">联赛</th>
+                            <th class="col-odds">初02</th>
+                            <th class="col-analysis">初盘分析</th>
+                            <th class="col-analysis">终盘分析</th>
+                            <th class="col-judgment">基本面判断</th>
+                            <th>总场次</th>
+                            <th>红</th>
+                            <th>黑</th>
+                            <th>走盘</th>
+                            <th>胜率 (红/总)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            pageItems.forEach(item => {
+                const label = judgmentMap[item.judgment] || item.judgment;
+                const totalJ = item.total;
+                const redJ = item.red;
+                const blackJ = item.black;
+                const drawJ = item.draw;
+                const rate = totalJ > 0 ? ((redJ / totalJ) * 100).toFixed(1) : '0.0';
+                const params = new URLSearchParams({
+                    date: item.date,
+                    time: item.time,
+                    league: item.league,
+                    home: item.home_team,
+                    away: item.away_team
+                });
+                const oddsUrl = `${AI_PAGE}?${params.toString()}`;
+                const homeLink = `<a href="${oddsUrl}" class="team-link">${item.home_team}</a>`;
+                const awayLink = `<a href="${oddsUrl}" class="team-link">${item.away_team}</a>`;
+                const teamDisplay = `${homeLink} <span style="font-weight:600;color:#3b7cff;">VS</span> ${awayLink}`;
+                html += `
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${teamDisplay}</td>
+                        <td>${item.league}</td>
+                        <td>${item.initial_odds}</td>
+                        <td>${item.initial_analysis}</td>
+                        <td>${item.final_analysis}</td>
+                        <td>${label}</td>
+                        <td>${totalJ}</td>
+                        <td style="color:#dc2626;">${redJ}</td>
+                        <td style="color:#1f2937;">${blackJ}</td>
+                        <td style="color:#d97706;">${drawJ}</td>
+                        <td>${rate}%</td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table>`;
+            document.getElementById('judgmentStats').innerHTML = html;
+            document.getElementById('judgTotalCount').textContent = allJudgmentItems.length;
+        }
+
+        function updateJudgmentPagination() {
+            const totalItems = allJudgmentItems.length;
+            const totalPages = Math.ceil(totalItems / judgLimit) || 1;
+            const currentPage = Math.floor(judgOffset / judgLimit) + 1;
+
+            const pageNumbers = document.getElementById('judgPageNumbers');
+            const prevBtn = document.getElementById('judgPrevBtn');
+            const nextBtn = document.getElementById('judgNextBtn');
+            const pagination = document.getElementById('judgmentPagination');
+
+            if (totalItems === 0) { pagination.style.display = 'none'; return; }
+
+            let html = '';
+            const maxVisible = 7;
+            let startPage = 1, endPage = totalPages;
+            if (totalPages > maxVisible) {
+                const half = Math.floor(maxVisible / 2);
+                if (currentPage <= half + 1) endPage = maxVisible;
+                else if (currentPage >= totalPages - half) startPage = totalPages - maxVisible + 1;
+                else { startPage = currentPage - half; endPage = currentPage + half; }
+            }
+            if (startPage > 1) {
+                html += `<span class="page-num" data-page="1">1</span>`;
+                if (startPage > 2) html += `<span class="ellipsis">…</span>`;
+            }
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<span class="page-num ${i===currentPage?'active':''}" data-page="${i}">${i}</span>`;
+            }
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="ellipsis">…</span>`;
+                html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
+            }
+            pageNumbers.innerHTML = html;
+            pageNumbers.querySelectorAll('.page-num').forEach(el => {
+                el.addEventListener('click', function() {
+                    const page = parseInt(this.dataset.page);
+                    if (page >= 1 && page <= totalPages) {
+                        judgOffset = (page - 1) * judgLimit;
+                        renderJudgmentTable();
+                        updateJudgmentPagination();
+                    }
+                });
+            });
+            prevBtn.disabled = judgOffset === 0;
+            nextBtn.disabled = judgOffset + judgLimit >= totalItems;
+            pagination.style.display = 'flex';
+        }
+
+        // ============ 联赛统计表格 ============
+        function renderLeagueTable() {
+            const start = leagueOffset;
+            const end = Math.min(start + leagueLimit, allLeagueItems.length);
+            const pageItems = allLeagueItems.slice(start, end);
+
+            if (allLeagueItems.length === 0) {
+                document.getElementById('leagueStats').innerHTML = '<p style="color:#6b7280;">暂无数据</p>';
+                return;
+            }
+
+            let html = `
+                <table class="stat-table">
+                    <thead>
+                        <tr>
+                            <th>联赛</th>
+                            <th>总场次</th>
+                            <th>红</th>
+                            <th>黑</th>
+                            <th>走盘</th>
+                            <th>待定</th>
+                            <th>胜率 (红/总)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            pageItems.forEach(item => {
+                const rate = item.total > 0 ? ((item.red / item.total) * 100).toFixed(1) : '0.0';
+                const unset = item.total - item.red - item.black - item.draw;
+                html += `
+                    <tr>
+                        <td><strong>${item.league}</strong></td>
+                        <td>${item.total}</td>
+                        <td style="color:#dc2626;">${item.red}</td>
+                        <td style="color:#1f2937;">${item.black}</td>
+                        <td style="color:#d97706;">${item.draw}</td>
+                        <td style="color:#6b7280;">${unset}</td>
+                        <td>${rate}%</td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table>`;
+            document.getElementById('leagueStats').innerHTML = html;
+            document.getElementById('leagueTotalCount').textContent = allLeagueItems.length;
+        }
+
+        function updateLeaguePagination() {
+            const totalItems = allLeagueItems.length;
+            const totalPages = Math.ceil(totalItems / leagueLimit) || 1;
+            const currentPage = Math.floor(leagueOffset / leagueLimit) + 1;
+
+            const pageNumbers = document.getElementById('leaguePageNumbers');
+            const prevBtn = document.getElementById('leaguePrevBtn');
+            const nextBtn = document.getElementById('leagueNextBtn');
+            const pagination = document.getElementById('leaguePagination');
+
+            if (totalItems === 0) { pagination.style.display = 'none'; return; }
+
+            let html = '';
+            const maxVisible = 7;
+            let startPage = 1, endPage = totalPages;
+            if (totalPages > maxVisible) {
+                const half = Math.floor(maxVisible / 2);
+                if (currentPage <= half + 1) endPage = maxVisible;
+                else if (currentPage >= totalPages - half) startPage = totalPages - maxVisible + 1;
+                else { startPage = currentPage - half; endPage = currentPage + half; }
+            }
+            if (startPage > 1) {
+                html += `<span class="page-num" data-page="1">1</span>`;
+                if (startPage > 2) html += `<span class="ellipsis">…</span>`;
+            }
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<span class="page-num ${i===currentPage?'active':''}" data-page="${i}">${i}</span>`;
+            }
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="ellipsis">…</span>`;
+                html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
+            }
+            pageNumbers.innerHTML = html;
+            pageNumbers.querySelectorAll('.page-num').forEach(el => {
+                el.addEventListener('click', function() {
+                    const page = parseInt(this.dataset.page);
+                    if (page >= 1 && page <= totalPages) {
+                        leagueOffset = (page - 1) * leagueLimit;
+                        renderLeagueTable();
+                        updateLeaguePagination();
+                    }
+                });
+            });
+            prevBtn.disabled = leagueOffset === 0;
+            nextBtn.disabled = leagueOffset + leagueLimit >= totalItems;
+            pagination.style.display = 'flex';
+        }
+
+        // ============ 事件绑定 ============
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('judgPrevBtn').addEventListener('click', function() {
+                if (judgOffset > 0) {
+                    judgOffset = Math.max(0, judgOffset - judgLimit);
+                    renderJudgmentTable();
+                    updateJudgmentPagination();
+                }
+            });
+            document.getElementById('judgNextBtn').addEventListener('click', function() {
+                if (judgOffset + judgLimit < allJudgmentItems.length) {
+                    const totalPages = Math.max(1, Math.ceil(allJudgmentItems.length / judgLimit));
+                    const currentPage = Math.floor(judgOffset / judgLimit) + 1;
+                    judgOffset = Math.min(totalPages - 1, currentPage) * judgLimit;
+                    renderJudgmentTable();
+                    updateJudgmentPagination();
+                }
+            });
+            document.getElementById('judgPerPage').addEventListener('change', function() {
+                judgLimit = parseInt(this.value);
+                judgOffset = 0;
+                renderJudgmentTable();
+                updateJudgmentPagination();
+            });
+
+            document.getElementById('leaguePrevBtn').addEventListener('click', function() {
+                if (leagueOffset > 0) {
+                    leagueOffset = Math.max(0, leagueOffset - leagueLimit);
+                    renderLeagueTable();
+                    updateLeaguePagination();
+                }
+            });
+            document.getElementById('leagueNextBtn').addEventListener('click', function() {
+                if (leagueOffset + leagueLimit < allLeagueItems.length) {
+                    const totalPages = Math.max(1, Math.ceil(allLeagueItems.length / leagueLimit));
+                    const currentPage = Math.floor(leagueOffset / leagueLimit) + 1;
+                    leagueOffset = Math.min(totalPages - 1, currentPage) * leagueLimit;
+                    renderLeagueTable();
+                    updateLeaguePagination();
+                }
+            });
+            document.getElementById('leaguePerPage').addEventListener('change', function() {
+                leagueLimit = parseInt(this.value);
+                leagueOffset = 0;
+                renderLeagueTable();
+                updateLeaguePagination();
+            });
+        });
+
+        window.addEventListener('load', loadAIStats);
+    </script>
+</body>
+</html>
