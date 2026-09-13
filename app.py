@@ -48,6 +48,10 @@ def black_list():
 def draw_list():
     return render_template('draw_list.html')
 
+@app.route('/pending_list')
+def pending_list():
+    return render_template('pending_list.html')
+
 
 
 # ---------- API：保存预测记录 ----------

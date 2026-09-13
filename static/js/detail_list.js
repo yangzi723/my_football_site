@@ -112,7 +112,11 @@
             })
             .then(data => {
                 const matches = data.data || [];
-                allMatches = matches.filter(m => m.result === resultType);
+                if (resultType === '待定') {
+    allMatches = matches.filter(m => !m.result || m.result === '' || m.result === null);
+} else {
+    allMatches = matches.filter(m => m.result === resultType);
+}
                 totalItems = allMatches.length;
                 loading.style.display = 'none';
                 tableWrap.style.display = 'block';
@@ -146,7 +150,10 @@
             const league = m.league || '—';
             const predDisplay = getPredictionDisplay(m.initial_prediction); // 初测
             const review = m.review || '';
-            const color = resultType === '红' ? '#dc2626' : (resultType === '黑' ? '#1f2937' : '#d97706');
+            const color = resultType === '红' ? '#dc2626' 
+            : resultType === '黑' ? '#1f2937' 
+            : resultType === '走盘' ? '#d97706' 
+            : '#6b7280';  // 待定：灰色
 
             // 构造跳转到 odds 的链接
             const params = new URLSearchParams({

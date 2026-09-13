@@ -204,7 +204,10 @@
                         <div class="number" style="color:#d97706;">${draw}</div>
                         <div class="label">走盘 点击查看</div>
                     </div>
-                    <div class="stat-card"><div class="number" style="color:#6b7280;">${unset}</div><div class="label">未定</div></div>
+                    <div class="stat-card clickable" onclick="window.location.href='/pending_list'">
+    <div class="number" style="color:#6b7280;">${unset}</div>
+    <div class="label">待定 点击查看</div>
+</div>
                 `;
 
                 const distDiv = document.getElementById('resultDistribution');
