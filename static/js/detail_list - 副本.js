@@ -113,15 +113,15 @@
             .then(data => {
                 const matches = data.data || [];
                 if (resultType === '待定') {
-                    allMatches = matches.filter(m => !m.result || m.result === '' || m.result === null);
-                } else {
-                    allMatches = matches.filter(m => m.result === resultType);
-                }
+    allMatches = matches.filter(m => !m.result || m.result === '' || m.result === null);
+} else {
+    allMatches = matches.filter(m => m.result === resultType);
+}
                 totalItems = allMatches.length;
                 loading.style.display = 'none';
                 tableWrap.style.display = 'block';
                 if (totalItems === 0) {
-                    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:30px;">暂无${resultType}单记录</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:30px;">暂无${resultType}单记录</td></tr>`;
                     pagination.style.display = 'none';
                     return;
                 }
@@ -144,15 +144,16 @@
             const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '—';
             const pos1 = m.pos1 || '—';
             const pos2 = m.pos2 || '—';
-            const asianOdds = m.asian_odds || '—';
+            const asianOdds = m.asian_odds || '—';   // ★ 亚初终
             const homeTeam = m.home_team || '?';
             const awayTeam = m.away_team || '?';
             const league = m.league || '—';
-            const predDisplay = getPredictionDisplay(m.initial_prediction);
+            const predDisplay = getPredictionDisplay(m.initial_prediction); // 初测
             const review = m.review || '';
-            // 下注状态
-            const bet = m.bet === '是' ? '是' : '否';
-            const color = resultType === '红' ? '#dc2626' : (resultType === '黑' ? '#1f2937' : (resultType === '走盘' ? '#d97706' : '#6b7280'));
+            const color = resultType === '红' ? '#dc2626' 
+            : resultType === '黑' ? '#1f2937' 
+            : resultType === '走盘' ? '#d97706' 
+            : '#6b7280';  // 待定：灰色
 
             // 构造跳转到 odds 的链接
             const params = new URLSearchParams({
@@ -175,10 +176,9 @@
                     <td>${teamDisplay}</td>
                     <td>${pos1}</td>
                     <td>${pos2}</td>
-                    <td>${asianOdds}</td>
-                    <td>${predDisplay}</td>
+                    <td>${asianOdds}</td>   <!-- ★ 亚初终 -->
+                    <td>${predDisplay}</td> <!-- 初测 -->
                     <td>${judgmentDisplay}</td>
-                    <td>${bet}</td>
                     <td style="color:${color};font-weight:600;">${resultType}</td>
                     <td>
                         <textarea class="review-input" data-id="${m.id}" placeholder="输入复盘..." title="${review}">${review}</textarea>
