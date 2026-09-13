@@ -5,6 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>全部已分析赛事</title>
     <link rel="stylesheet" href="/static/css/detail_list.css" />
+    <style>
+        .filter-bar {
+            display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+            margin-bottom: 14px; padding: 12px 16px;
+            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+        }
+        .filter-bar .filter-label { font-size: 14px; color: #4b657a; }
+        .filter-bar select {
+            padding: 6px 10px; border-radius: 6px; border: 1px solid #cdd8e6;
+            font-size: 14px; min-width: 130px; background: white; cursor: pointer;
+        }
+        .filter-bar select:hover { background: #f1f5f9; }
+        .filter-bar .clear-filter-btn {
+            padding: 6px 12px; border-radius: 6px; border: 1px solid #cdd8e6;
+            background: white; cursor: pointer; font-size: 13px;
+        }
+        .filter-bar .clear-filter-btn:hover { background: #e2e8f0; }
+        .filter-bar .filter-info {
+            font-size: 13px; color: #1a3a6b; margin-left: auto; font-weight: 500;
+        }
+        .load-tip { font-size: 13px; color: #b45309; margin-bottom: 8px; }
+        @media (max-width: 700px) {
+            .filter-bar select { min-width: 100px; font-size: 13px; }
+            .filter-bar .filter-info { margin-left: 0; width: 100%; }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -14,7 +40,21 @@
             <button class="delete-btn" id="deleteSelectedBtn">🗑️ 删除选中</button>
         </div>
         <h1>📝 全部已分析赛事</h1>
+
+        <div class="filter-bar" id="filterBar" style="display:none;">
+            <span class="filter-label">🔍 筛选：</span>
+            <select id="pos1Filter" title="按初01筛选">
+                <option value="">全部初01</option>
+            </select>
+            <select id="pos2Filter" title="按初02筛选">
+                <option value="">全部初02</option>
+            </select>
+            <button id="clearFilterBtn" class="clear-filter-btn">清除筛选</button>
+            <span class="filter-info" id="filterInfo"></span>
+        </div>
+
         <div id="loading" class="loading-text">加载中...</div>
+        <div id="loadTip" class="load-tip" style="display:none;"></div>
         <div id="tableWrap" style="display:none;">
             <table class="detail-table">
                 <thead>
@@ -51,8 +91,9 @@
     </div>
 
     <script>
-        // ★ 使用特殊标记：全部已分析赛事（红 + 黑 + 走盘）
+        // ★ 走合并模式：history 全部 + fixtures 里 analyzed=1 的
         window.RESULT_TYPE = 'ALL';
+        window.ALL_LIST_MODE = 'FIXTURES';
     </script>
     <script src="/static/js/detail_list.js"></script>
 </body>
