@@ -296,6 +296,11 @@ def api_fetch_matches():
         if not unique:
             return jsonify([])
 
+        # ★ 联赛名称映射（可扩展）
+        LEAGUE_NAME_MAP = {
+            '芬兰超级联赛': '芬超',
+        }
+
         fixtures = []
         for m in unique:
             matchup = m.get('主队VS客队', '')
@@ -304,10 +309,13 @@ def api_fetch_matches():
                 parts = matchup.split(' VS ')
                 home = parts[0].strip()
                 away = parts[1].strip()
+            # 获取原始联赛名称并映射
+            raw_league = m.get('联赛', '')
+            league = LEAGUE_NAME_MAP.get(raw_league, raw_league)
             fixtures.append({
                 'date': m.get('比赛日期', ''),
                 'time': m.get('比赛时间', ''),
-                'league': m.get('联赛', ''),
+                'league': league,          # 使用映射后的名称
                 'home_team': home,
                 'away_team': away,
                 'score': m.get('比分', '')
