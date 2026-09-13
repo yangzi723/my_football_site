@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI预测</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/css/odds.css">
+</head>
+<body>
+    <div class="container">
+        {% include '_navbar.html' %}
+
+        <h1>📋 AI预测</h1>
+
+        <div class="section-divider">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
+                <h2 class="section-title">📊 预测记录</h2>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="action-btn add-btn" id="addMatchBtn" style="padding:6px 14px; font-size:13px;">➕ 手动添加</button>
+                    <button class="action-btn batch-delete-btn" id="batchDeleteBtn" style="padding:6px 14px; font-size:13px;">🗑️ 批量删除</button>
+                </div>
+            </div>
+            <div class="filter-row">
+                <label>日期筛选：</label>
+                <input type="date" id="filter-date">
+                <label>联赛：</label>
+                <select id="filter-league">
+                    <option value="">全部联赛</option>
+                </select>
+                <button id="filterBtn">筛选</button>
+                <button id="clearFilterBtn">清除筛选</button>
+            </div>
+            <div id="loading" style="padding:20px; text-align:center;">加载中...</div>
+            <div id="tableWrap" style="display:none; overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:50px;">
+                                <label class="select-all-label">
+                                    <input type="checkbox" id="selectAllCheckbox">
+                                </label>
+                            </th>
+                            <th>ID</th>
+                            <th>日期</th>
+                            <th>时间</th>
+                            <th>联赛</th>
+                            <th>主队 VS 客队</th>
+                            <th>基本面</th>
+                            <th>基本面判断</th>
+                            <th>亚初终</th>
+                            <th style="min-width:100px; text-align:center;">预测</th>
+                            <th style="width:55px; text-align:center;">下注</th>
+                            <th>结果</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination" style="display:none;">
+                <button id="prevPageBtn" disabled>上一页</button>
+                <span id="pageNumbers"></span>
+                <button id="nextPageBtn" disabled>下一页</button>
+                <select id="perPageSelect" style="margin-left:10px;padding:4px 8px;border-radius:6px;border:1px solid #cdd8e6;">
+                    <option value="10">10条/页</option>
+                    <option value="20" selected>20条/页</option>
+                    <option value="50">50条/页</option>
+                    <option value="100">100条/页</option>
+                </select>
+                <span style="font-size:13px; color:#4b657a; margin-left:8px;">共 <span id="totalCount">0</span> 条</span>
+            </div>
+        </div>
+
+        <!-- AI分析模态框 -->
+        <div id="analysisModal" class="modal-edit">
+            <div class="modal-edit-content">
+                <h3 id="analysisModalTitle">📊 AI分析 - 赛事信息</h3>
+                <div id="analysisInfoContainer"></div>
+                <div class="btn-group">
+                    <button class="btn" id="saveAnalysisBtn">💾 保存修改</button>
+                    <button class="btn btn-secondary" id="closeAnalysisBtn">关闭</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 旧编辑模态框（保留备用） -->
+        <div id="editModal" class="modal-edit">
+            <div class="modal-edit-content">
+                <h3 id="editTitle">📝 预测/复盘</h3>
+                <div id="editFormContainer"></div>
+                <div class="btn-group">
+                    <button class="btn" id="saveEditBtn">💾 保存修改</button>
+                    <button class="btn btn-secondary" id="cancelEditBtn">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <!-- 引用外部 JavaScript -->
+    <script src="/static/js/ai_prediction.js"></script>
+</body>
+</html>

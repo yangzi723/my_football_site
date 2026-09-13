@@ -445,6 +445,10 @@ def api_odds_save():
 @app.route('/all_list')
 def all_list():
     return render_template('all_list.html')
+
+@app.route('/ai_prediction')
+def ai_prediction():
+    return render_template('ai_prediction.html')
     
 
 
