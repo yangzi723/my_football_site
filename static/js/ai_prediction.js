@@ -1,7 +1,6 @@
 (function() {
     "use strict";
 
-    // ---------- 防抖工具 ----------
     function debounce(fn, delay) {
         let timer;
         return function(...args) {
@@ -9,6 +8,14 @@
             timer = setTimeout(() => fn.apply(this, args), delay);
         };
     }
+
+    /* ============================================================
+     * 读取 URL 上的 result 参数（如 ?result=红 / ?result=待定）
+     * ============================================================ */
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlResultFilter = urlParams.get('result') || '';
+    // 客户端过滤缓存
+    let clientFilterCache = { key: '', data: [] };
 
     const tbody = document.getElementById('historyBody');
     const loading = document.getElementById('loading');
@@ -74,9 +81,7 @@
                 const parsed = JSON.parse(initialPrediction);
                 if (Array.isArray(parsed)) return parsed.join('、');
                 return initialPrediction;
-            } catch (e) {
-                return initialPrediction;
-            }
+            } catch (e) { return initialPrediction; }
         }
         return initialPrediction;
     }
@@ -88,19 +93,14 @@
                 const parsed = JSON.parse(val);
                 if (Array.isArray(parsed)) return parsed;
                 return [];
-            } catch (e) {
-                return val ? [val] : [];
-            }
+            } catch (e) { return val ? [val] : []; }
         }
         return [];
     }
 
     function saveField(id, field, value) {
         return fetch('/api/match/' + id)
-            .then(res => {
-                if (!res.ok) throw new Error('获取数据失败');
-                return res.json();
-            })
+            .then(res => { if (!res.ok) throw new Error('获取数据失败'); return res.json(); })
             .then(data => {
                 const payload = { ...data };
                 payload[field] = value;
@@ -122,9 +122,7 @@
         const currentValue = select.value;
         select.innerHTML = '<option value="">全部联赛</option>';
         const leagues = new Set();
-        matches.forEach(m => {
-            if (m.league) leagues.add(m.league);
-        });
+        matches.forEach(m => { if (m.league) leagues.add(m.league); });
         Array.from(leagues).sort().forEach(league => {
             const opt = document.createElement('option');
             opt.value = league;
@@ -136,12 +134,153 @@
         }
     }
 
+    /* ============================================================
+     * 把行渲染提取出来，供两种模式共用
+     * ============================================================ */
+    function renderRows(matches) {
+        if (matches.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
+            return;
+        }
+
+        let html = '';
+        matches.forEach(m => {
+            const result = m.result || '未定';
+            let resultHtml = result;
+            if (result === '红') resultHtml = `<span style="color:#dc2626;font-weight:600;">红</span>`;
+            else if (result === '黑') resultHtml = `<span style="color:#1f2937;font-weight:600;">黑</span>`;
+            else if (result === '走盘') resultHtml = `<span style="color:#d97706;font-weight:600;">走盘</span>`;
+
+            const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
+            const homeScore = Math.round(parseFloat(m.home_score) || 0);
+            const awayScore = Math.round(parseFloat(m.away_score) || 0);
+
+            let fundDisplay = [];
+            if (m.fundamental_divergence === '是') fundDisplay.push('背离');
+            if (m.fundamental_match === '是') fundDisplay.push('相符');
+            const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
+
+            const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
+            const asianOdds = m.asian_odds || '';
+            const betChecked = m.bet === '是';
+
+            html += `<tr>
+                    <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
+                    <td>${m.id}</td>
+                    <td>${m.date || ''}</td>
+                    <td>${m.time || ''}</td>
+                    <td>${m.league || ''}</td>
+                    <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
+                    <td>${fundText}</td>
+                    <td>${judgmentDisplay}</td>
+                    <td>${asianOdds}</td>
+                    <td><span class="pred-display">${predDisplay}</span></td>
+                    <td style="text-align:center;"><input type="checkbox" class="bet-checkbox" data-id="${m.id}" ${betChecked ? 'checked' : ''}></td>
+                    <td>
+                        <select class="result-select" data-id="${m.id}">
+                            <option value="">未定</option>
+                            <option value="红" ${result==='红'?'selected':''}>红</option>
+                            <option value="黑" ${result==='黑'?'selected':''}>黑</option>
+                            <option value="走盘" ${result==='走盘'?'selected':''}>走盘</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button class="action-btn odds-analysis-btn" data-id="${m.id}">📊 AI分析</button>
+                        <button class="action-btn delete-btn" data-id="${m.id}">🗑️ 删除</button>
+                    </td>
+                </tr>`;
+        });
+        tbody.innerHTML = html;
+        bindEvents();
+    }
+
+    /* ============================================================
+     * 客户端过滤模式（循环拉全量 + 本地过滤 + 本地分页）
+     * ============================================================ */
+    async function loadWithClientFilter(date, league, limit, offset) {
+        loading.style.display = 'block';
+        tableWrap.style.display = 'none';
+
+        const cacheKey = (date || '') + '|' + (league || '');
+
+        if (clientFilterCache.key !== cacheKey) {
+            const all = [];
+            let o = 0;
+            const pageSize = 200;
+            let round = 0;
+            const maxRounds = 500;
+
+            while (round++ < maxRounds) {
+                let url = `/api/history?limit=${pageSize}&offset=${o}`;
+                if (date) url += '&date=' + encodeURIComponent(date);
+                if (league) url += '&league=' + encodeURIComponent(league);
+
+                let data;
+                try {
+                    const res = await fetch(url, { cache: 'no-store' });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    data = await res.json();
+                } catch (e) {
+                    loading.textContent = '❌ 加载失败: ' + e.message;
+                    console.error('客户端过滤加载失败:', e);
+                    return;
+                }
+
+                const items = data.data || [];
+                if (items.length === 0) break;
+
+                all.push(...items);
+
+                const t = Number(data.total);
+                if (Number.isFinite(t) && t > 0 && all.length >= t) break;
+
+                o += items.length;
+            }
+
+            // ★ 待定 = result 为空 / null / undefined
+            clientFilterCache.data = all.filter(m => {
+                if (urlResultFilter === '待定') {
+                    return !m.result || m.result === '' || m.result === null || m.result === undefined;
+                }
+                return m.result === urlResultFilter;
+            });
+            clientFilterCache.key = cacheKey;
+        }
+
+        const filtered = clientFilterCache.data;
+        totalItems = filtered.length;
+
+        loading.style.display = 'none';
+        tableWrap.style.display = 'block';
+
+        if (!date && !league) {
+            updateLeagueSelect(filtered);
+        }
+
+        currentLimit = limit;
+        currentOffset = Math.min(offset, Math.max(0, totalItems - 1));
+        if (currentOffset < 0) currentOffset = 0;
+
+        const pageData = filtered.slice(currentOffset, currentOffset + currentLimit);
+        renderRows(pageData);
+        updatePagination();
+    }
+
     function loadHistory(date, league, limit, offset) {
         if (date === undefined) date = currentDateFilter;
         if (league === undefined) league = currentLeagueFilter;
         if (limit === undefined) limit = currentLimit;
         if (offset === undefined) offset = currentOffset;
 
+        currentDateFilter = date;
+        currentLeagueFilter = league;
+
+        // 有 result 参数时走客户端过滤模式
+        if (urlResultFilter) {
+            return loadWithClientFilter(date, league, limit, offset);
+        }
+
+        // ---- 原有的服务器分页逻辑 ----
         loading.style.display = 'block';
         tableWrap.style.display = 'none';
         let url = `/api/history?limit=${limit}&offset=${offset}`;
@@ -165,63 +304,7 @@
                     updateLeagueSelect(matches);
                 }
 
-                if (matches.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
-                    pagination.style.display = 'none';
-                    return;
-                }
-
-                let html = '';
-                matches.forEach(m => {
-                    const result = m.result || '未定';
-                    let resultHtml = result;
-                    if (result === '红') resultHtml = `<span style="color:#dc2626;font-weight:600;">红</span>`;
-                    else if (result === '黑') resultHtml = `<span style="color:#1f2937;font-weight:600;">黑</span>`;
-                    else if (result === '走盘') resultHtml = `<span style="color:#d97706;font-weight:600;">走盘</span>`;
-
-                    const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
-                    const homeScore = Math.round(parseFloat(m.home_score) || 0);
-                    const awayScore = Math.round(parseFloat(m.away_score) || 0);
-
-                    let fundDisplay = [];
-                    if (m.fundamental_divergence === '是') fundDisplay.push('背离');
-                    if (m.fundamental_match === '是') fundDisplay.push('相符');
-                    const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
-
-                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
-                    const asianOdds = m.asian_odds || '';
-
-                    // 下注状态
-                    const betChecked = m.bet === '是';
-
-                    html += `<tr>
-                            <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
-                            <td>${m.id}</td>
-                            <td>${m.date || ''}</td>
-                            <td>${m.time || ''}</td>
-                            <td>${m.league || ''}</td>
-                            <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
-                            <td>${fundText}</td>
-                            <td>${judgmentDisplay}</td>
-                            <td>${asianOdds}</td>
-                            <td><span class="pred-display">${predDisplay}</span></td>
-                            <td style="text-align:center;"><input type="checkbox" class="bet-checkbox" data-id="${m.id}" ${betChecked ? 'checked' : ''}></td>
-                            <td>
-                                <select class="result-select" data-id="${m.id}">
-                                    <option value="">未定</option>
-                                    <option value="红" ${result==='红'?'selected':''}>红</option>
-                                    <option value="黑" ${result==='黑'?'selected':''}>黑</option>
-                                    <option value="走盘" ${result==='走盘'?'selected':''}>走盘</option>
-                                </select>
-                            </td>
-                            <td>
-                                <button class="action-btn odds-analysis-btn" data-id="${m.id}">📊 AI分析</button>
-                                <button class="action-btn delete-btn" data-id="${m.id}">🗑️ 删除</button>
-                            </td>
-                        </tr>`;
-                });
-                tbody.innerHTML = html;
-                bindEvents();
+                renderRows(matches);
                 updatePagination();
             })
             .catch(err => {
@@ -242,8 +325,10 @@
                 })
                 .then(res => res.json())
                 .then(res => {
-                    if (res.success) loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
-                    else alert('更新失败: ' + (res.error || '未知错误'));
+                    if (res.success) {
+                        if (urlResultFilter) clientFilterCache.key = '';
+                        loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
+                    } else alert('更新失败: ' + (res.error || '未知错误'));
                 });
             });
         });
@@ -255,8 +340,10 @@
                     fetch('/api/match/' + id, { method: 'DELETE' })
                         .then(res => res.json())
                         .then(res => {
-                            if (res.success) loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
-                            else alert('删除失败: ' + (res.error || '未知错误'));
+                            if (res.success) {
+                                if (urlResultFilter) clientFilterCache.key = '';
+                                loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
+                            } else alert('删除失败: ' + (res.error || '未知错误'));
                         });
                 }
             });
@@ -280,6 +367,7 @@
                         res.success ? successCount++ : failCount++;
                         if (successCount + failCount === ids.length) {
                             showToast(`批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`);
+                            if (urlResultFilter) clientFilterCache.key = '';
                             loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                         }
                     })
@@ -287,13 +375,13 @@
                         failCount++;
                         if (successCount + failCount === ids.length) {
                             showToast(`批量删除完成：成功 ${successCount} 条，失败 ${failCount} 条`);
+                            if (urlResultFilter) clientFilterCache.key = '';
                             loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                         }
                     });
             });
         });
 
-        // 下注复选框：自动保存
         document.querySelectorAll('.bet-checkbox').forEach(cb => {
             cb.addEventListener('change', function(e) {
                 e.stopPropagation();
@@ -325,19 +413,15 @@
         });
     }
 
-    // ========== 打开 AI 分析模态框（含自动保存） ==========
+    /* ========== 打开 AI 分析模态框（含自动保存） ========== */
     function openAnalysisModal(id) {
         fetch('/api/match/' + id)
-            .then(res => {
-                if (!res.ok) throw new Error('获取数据失败');
-                return res.json();
-            })
+            .then(res => { if (!res.ok) throw new Error('获取数据失败'); return res.json(); })
             .then(data => {
                 if (data.error) { alert(data.error); return; }
 
                 analysisModal.dataset.id = id;
                 analysisModalTitle.textContent = `📊 AI分析 - ${data.home_team} vs ${data.away_team}`;
-                const judgmentDisplay = judgmentMap[data.judgment] || data.judgment || '—';
                 const pos1Val = data.pos1 || '';
                 const pos2Val = data.pos2 || '';
                 const asianVal = data.asian_odds || '';
@@ -355,7 +439,6 @@
                 const drawProb = (parseFloat(data.draw_prob) || 0) * 100;
                 const awayProb = (parseFloat(data.away_prob) || 0) * 100;
 
-                // 保存旧值（用于恢复）
                 analysisModal.dataset.oldPos1 = pos1Val;
                 analysisModal.dataset.oldPos2 = pos2Val;
                 analysisModal.dataset.oldAsian = asianVal;
@@ -452,7 +535,6 @@
                 analysisInfoContainer.innerHTML = infoHtml;
                 analysisModal.style.display = 'flex';
 
-                // ========== 绑定自动保存（防抖） ==========
                 if (analysisInfoContainer._autoSaveHandler) {
                     analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
                 }
@@ -476,6 +558,7 @@
                                 const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                                 if (tag) tag.classList.add('show');
                                 analysisModal.dataset.changed = 'true';
+                                if (urlResultFilter) clientFilterCache.key = '';
                             } else {
                                 showToast(`❌ 保存失败 (${field}): ${res.error || '未知错误'}`, true);
                             }
@@ -522,7 +605,6 @@
                     });
                 });
 
-                // ---------- 自定义下拉组件交互 ----------
                 const trigger = document.getElementById(`pred-trigger-${id}`);
                 const menu = document.getElementById(`pred-menu-${id}`);
                 const dropdown = document.getElementById(`pred-dropdown-${id}`);
@@ -597,14 +679,10 @@
         }
     }
 
-    // ---------- 保存按钮（手动） ----------
     function saveAnalysisData() {
         try {
             const id = analysisModal.dataset.id;
-            if (!id) {
-                showToast('❌ 未找到赛事ID', true);
-                return;
-            }
+            if (!id) { showToast('❌ 未找到赛事ID', true); return; }
 
             const pos1Input = document.getElementById('analysis-pos1');
             const pos2Input = document.getElementById('analysis-pos2');
@@ -640,10 +718,7 @@
             saveAnalysisBtn.disabled = true;
 
             fetch('/api/match/' + id)
-                .then(res => {
-                    if (!res.ok) throw new Error('获取当前数据失败');
-                    return res.json();
-                })
+                .then(res => { if (!res.ok) throw new Error('获取当前数据失败'); return res.json(); })
                 .then(data => {
                     data.pos1 = pos1Val;
                     data.pos2 = pos2Val;
@@ -668,24 +743,13 @@
                 })
                 .then(result => {
                     if (result.success) {
-                        analysisModal.dataset.oldPos1 = pos1Val;
-                        analysisModal.dataset.oldPos2 = pos2Val;
-                        analysisModal.dataset.oldAsian = asianVal;
-                        analysisModal.dataset.oldRange = rangeVal;
-                        analysisModal.dataset.oldInitialAnalysis = initialAnalysisVal;
-                        analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
-                        analysisModal.dataset.oldOddsStructure = oddsStructureVal;
-                        analysisModal.dataset.oldPred = initialPredictionVal;
-                        analysisModal.dataset.oldJudgment = judgmentVal;
-                        analysisModal.dataset.oldDivergence = divergenceVal;
-                        analysisModal.dataset.oldMatch = matchVal;
-
                         const fields = ['pos1', 'pos2', 'asian', 'range', 'initial_analysis', 'final_analysis', 'initial_prediction', 'odds_structure', 'judgment', 'fundamental_divergence', 'fundamental_match'];
                         fields.forEach(field => {
                             const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                             if (tag) tag.classList.add('show');
                         });
                         showToast('✅ 所有数据保存成功！');
+                        if (urlResultFilter) clientFilterCache.key = '';
                         loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                     } else {
                         throw new Error(result.error || '未知错误');
@@ -693,51 +757,6 @@
                 })
                 .catch(err => {
                     showToast('❌ 保存失败: ' + err.message, true);
-                    console.error('保存错误:', err);
-                    const oldPos1 = analysisModal.dataset.oldPos1 || '';
-                    const oldPos2 = analysisModal.dataset.oldPos2 || '';
-                    const oldAsian = analysisModal.dataset.oldAsian || '';
-                    const oldRange = analysisModal.dataset.oldRange || '';
-                    const oldInitialAnalysis = analysisModal.dataset.oldInitialAnalysis || '';
-                    const oldFinalAnalysis = analysisModal.dataset.oldFinalAnalysis || '';
-                    const oldOddsStructure = analysisModal.dataset.oldOddsStructure || '';
-                    const oldJudgment = analysisModal.dataset.oldJudgment || 'equal';
-                    const oldDivergence = analysisModal.dataset.oldDivergence || '否';
-                    const oldMatch = analysisModal.dataset.oldMatch || '否';
-                    const oldPred = analysisModal.dataset.oldPred || '[]';
-                    try {
-                        const oldArr = JSON.parse(oldPred);
-                        const menu = document.getElementById(`pred-menu-${id}`);
-                        if (menu) {
-                            menu.querySelectorAll('.dropdown-item').forEach(item => {
-                                const cb = item.querySelector('input[type="checkbox"]');
-                                if (cb) {
-                                    cb.checked = oldArr.includes(cb.value);
-                                    item.classList.toggle('selected', cb.checked);
-                                }
-                            });
-                            const trigger = document.getElementById(`pred-trigger-${id}`);
-                            if (trigger) {
-                                const checked = menu.querySelectorAll('.dropdown-item input[type="checkbox"]:checked');
-                                const labels = Array.from(checked).map(cb => cb.value);
-                                const textSpan = trigger.querySelector('.selected-text');
-                                if (textSpan) {
-                                    textSpan.textContent = labels.length > 0 ? labels.join('、') : '请选择';
-                                    textSpan.classList.toggle('placeholder', labels.length === 0);
-                                }
-                            }
-                        }
-                    } catch (e) {}
-                    if (pos1Input) pos1Input.value = oldPos1;
-                    if (pos2Input) pos2Input.value = oldPos2;
-                    if (asianInput) asianInput.value = oldAsian;
-                    if (rangeInput) rangeInput.value = oldRange;
-                    if (initialAnalysisInput) initialAnalysisInput.value = oldInitialAnalysis;
-                    if (finalAnalysisInput) finalAnalysisInput.value = oldFinalAnalysis;
-                    if (oddsStructureInput) oddsStructureInput.value = oldOddsStructure;
-                    if (judgmentInput) judgmentInput.value = oldJudgment;
-                    if (divergenceInput) divergenceInput.checked = (oldDivergence === '是');
-                    if (matchInput) matchInput.checked = (oldMatch === '是');
                 })
                 .finally(() => {
                     saveAnalysisBtn.textContent = '💾 保存修改';
@@ -745,13 +764,11 @@
                 });
         } catch (error) {
             showToast('❌ 保存过程中发生错误: ' + error.message, true);
-            console.error('手动保存异常:', error);
             saveAnalysisBtn.textContent = '💾 保存修改';
             saveAnalysisBtn.disabled = false;
         }
     }
 
-    // ---------- 分页 ----------
     function updatePagination() {
         const totalPages = Math.ceil(totalItems / currentLimit) || 1;
         const currentPage = Math.floor(currentOffset / currentLimit) + 1;
@@ -820,13 +837,13 @@
         .then(res => {
             if (res.success) {
                 showToast('✅ 空记录已创建，ID: ' + res.id);
+                if (urlResultFilter) clientFilterCache.key = '';
                 loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
             } else showToast('❌ 创建失败: ' + (res.error || '未知错误'), true);
         })
         .catch(err => showToast('❌ 请求出错: ' + err.message, true));
     }
 
-    // ---------- 全局事件绑定 ----------
     filterBtn.addEventListener('click', function() {
         currentDateFilter = filterDate.value;
         currentLeagueFilter = filterLeague.value;
@@ -868,12 +885,23 @@
     });
 
     // ---------- 页面初始化 ----------
-    const urlParams = new URLSearchParams(window.location.search);
     const filterDateParam = urlParams.get('date');
     const filterHome = urlParams.get('home');
     const filterAway = urlParams.get('away');
 
+    // 如果 URL 携带 result 参数，直接在标题旁加一个提示
+    if (urlResultFilter) {
+        const h1 = document.querySelector('h1');
+        if (h1) {
+            const badge = document.createElement('span');
+            badge.style.cssText = 'display:inline-block;padding:3px 12px;background:#eef4ff;color:#1a3a6b;border-radius:20px;font-size:14px;font-weight:600;margin-left:10px;vertical-align:middle;';
+            badge.textContent = `已筛选：${urlResultFilter}`;
+            h1.appendChild(badge);
+        }
+    }
+
     if (filterDateParam && filterHome && filterAway) {
+        // 与 result 过滤兼容：如果同时存在特定赛事定位，优先按赛事定位
         loading.style.display = 'block';
         tableWrap.style.display = 'none';
         fetch(`/api/match/find?date=${encodeURIComponent(filterDateParam)}&home_team=${encodeURIComponent(filterHome)}&away_team=${encodeURIComponent(filterAway)}`)
@@ -883,58 +911,20 @@
                 tableWrap.style.display = 'block';
                 if (data && data.id) {
                     const m = data;
-                    const result = m.result || '未定';
-                    let resultHtml = result;
-                    if (result === '红') resultHtml = `<span style="color:#dc2626;font-weight:600;">红</span>`;
-                    else if (result === '黑') resultHtml = `<span style="color:#1f2937;font-weight:600;">黑</span>`;
-                    else if (result === '走盘') resultHtml = `<span style="color:#d97706;font-weight:600;">走盘</span>`;
-                    const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
-                    const homeScore = Math.round(parseFloat(m.home_score) || 0);
-                    const awayScore = Math.round(parseFloat(m.away_score) || 0);
-                    let fundDisplay = [];
-                    if (m.fundamental_divergence === '是') fundDisplay.push('背离');
-                    if (m.fundamental_match === '是') fundDisplay.push('相符');
-                    const fundText = fundDisplay.length ? fundDisplay.join('、') : '—';
-                    const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
-                    const asianOdds = m.asian_odds || '';
-                    const betChecked = m.bet === '是';
-
-                    const rowHtml = `<tr>
-                        <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
-                        <td>${m.id}</td>
-                        <td>${m.date || ''}</td>
-                        <td>${m.time || ''}</td>
-                        <td>${m.league || ''}</td>
-                        <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
-                        <td>${fundText}</td>
-                        <td>${judgmentDisplay}</td>
-                        <td>${asianOdds}</td>
-                        <td><span class="pred-display">${predDisplay}</span></td>
-                        <td style="text-align:center;"><input type="checkbox" class="bet-checkbox" data-id="${m.id}" ${betChecked ? 'checked' : ''}></td>
-                        <td>
-                            <select class="result-select" data-id="${m.id}">
-                                <option value="">未定</option>
-                                <option value="红" ${result==='红'?'selected':''}>红</option>
-                                <option value="黑" ${result==='黑'?'selected':''}>黑</option>
-                                <option value="走盘" ${result==='走盘'?'selected':''}>走盘</option>
-                            </select>
-                        </td>
-                        <td>
-                            <button class="action-btn odds-analysis-btn" data-id="${m.id}">📊 AI分析</button>
-                            <button class="action-btn delete-btn" data-id="${m.id}">🗑️ 删除</button>
-                        </td>
-                    </tr>`;
-                    tbody.innerHTML = rowHtml;
+                    // 若指定了 result 且不匹配，则不显示
+                    if (urlResultFilter) {
+                        const isPending = !m.result || m.result === '' || m.result === null || m.result === undefined;
+                        const matchesFilter = (urlResultFilter === '待定') ? isPending : (m.result === urlResultFilter);
+                        if (!matchesFilter) {
+                            tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">该赛事的结果不是「${urlResultFilter}」</td></tr>`;
+                            pagination.style.display = 'none';
+                            return;
+                        }
+                    }
+                    renderRows([m]);
                     pagination.style.display = 'none';
-                    bindEvents();
                 } else {
-                    const params = new URLSearchParams(window.location.search);
-                    const createUrl = `/index?date=${encodeURIComponent(params.get('date'))}&home=${encodeURIComponent(params.get('home'))}&away=${encodeURIComponent(params.get('away'))}`;
-                    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">
-                        该赛事暂无预测记录。
-                        <br><br>
-                        <a href="${createUrl}" class="btn btn-primary" style="display:inline-block;padding:8px 20px;background:#1a3a6b;color:white;border-radius:30px;text-decoration:none;">📝 去创建预测</a>
-                    </td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">该赛事暂无预测记录。</td></tr>`;
                     pagination.style.display = 'none';
                 }
             })
@@ -943,6 +933,7 @@
                 console.error('加载失败:', err);
             });
     } else {
+        // 初始化时带上 URL 参数
         loadHistory('', '', 20, 0);
     }
 })();

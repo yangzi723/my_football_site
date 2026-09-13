@@ -172,6 +172,22 @@
                 <span class="count-info">共 <span id="judgTotalCount">0</span> 条</span>
             </div>
 
+            <!-- ★ 新增：各联赛下的结果统计 -->
+            <h2>🏆 各联赛下的结果统计</h2>
+            <div id="leagueStats"></div>
+            <div class="pagination" id="leaguePagination" style="display:none;">
+                <button id="leaguePrevBtn" disabled>上一页</button>
+                <span id="leaguePageNumbers"></span>
+                <button id="leagueNextBtn" disabled>下一页</button>
+                <select id="leaguePerPage">
+                    <option value="5">5条/页</option>
+                    <option value="10" selected>10条/页</option>
+                    <option value="20">20条/页</option>
+                    <option value="50">50条/页</option>
+                </select>
+                <span class="count-info">共 <span id="leagueTotalCount">0</span> 条</span>
+            </div>
+
             <!-- 「全部已分析赛事」已独立成 /all_list 页面，点击上方「总场次」卡片跳转查看 -->
         </div>
     </div>
@@ -193,6 +209,11 @@
         let allJudgmentItems = [];
         let judgOffset = 0;
         let judgLimit = 10;
+
+        // ★ 新增：联赛统计状态
+        let allLeagueItems = [];
+        let leagueOffset = 0;
+        let leagueLimit = 10;
 
         /* ============================================================
          * 循环分页拉取全部数据（供分组统计用）
@@ -350,6 +371,28 @@
                 judgOffset = 0;
                 renderJudgmentTable();
                 updateJudgmentPagination();
+
+                // ★ 新增：联赛统计（本地聚合）
+                const leagueMap = {};
+                matches.forEach(m => {
+                    const lg = m.league || '未知联赛';
+                    if (!leagueMap[lg]) leagueMap[lg] = { total: 0, red: 0, black: 0, draw: 0 };
+                    leagueMap[lg].total++;
+                    if (m.result === '红') leagueMap[lg].red++;
+                    else if (m.result === '黑') leagueMap[lg].black++;
+                    else if (m.result === '走盘') leagueMap[lg].draw++;
+                });
+                allLeagueItems = Object.entries(leagueMap).map(([league, v]) => ({
+                    league,
+                    total: v.total,
+                    red: v.red,
+                    black: v.black,
+                    draw: v.draw
+                })).sort((a, b) => b.total - a.total);
+
+                leagueOffset = 0;
+                renderLeagueTable();
+                updateLeaguePagination();
             } catch (err) {
                 document.getElementById('statsLoading').textContent = '❌ 加载失败: ' + err;
                 console.error(err);
@@ -479,6 +522,106 @@
             pagination.style.display = 'flex';
         }
 
+        // ★ 新增：联赛统计表格渲染
+        function renderLeagueTable() {
+            const start = leagueOffset;
+            const end = Math.min(start + leagueLimit, allLeagueItems.length);
+            const pageItems = allLeagueItems.slice(start, end);
+
+            if (allLeagueItems.length === 0) {
+                document.getElementById('leagueStats').innerHTML = '<p style="color:#6b7280;">暂无数据</p>';
+                return;
+            }
+
+            let html = `
+                <table class="stat-table">
+                    <thead>
+                        <tr>
+                            <th>联赛</th>
+                            <th>总场次</th>
+                            <th>红</th>
+                            <th>黑</th>
+                            <th>走盘</th>
+                            <th>待定</th>
+                            <th>胜率 (红/总)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            pageItems.forEach(item => {
+                const rate = item.total > 0 ? ((item.red / item.total) * 100).toFixed(1) : '0.0';
+                const unset = item.total - item.red - item.black - item.draw;
+                html += `
+                    <tr>
+                        <td><strong>${item.league}</strong></td>
+                        <td>${item.total}</td>
+                        <td style="color:#dc2626;">${item.red}</td>
+                        <td style="color:#1f2937;">${item.black}</td>
+                        <td style="color:#d97706;">${item.draw}</td>
+                        <td style="color:#6b7280;">${unset}</td>
+                        <td>${rate}%</td>
+                    </tr>
+                `;
+            });
+            html += `</tbody></table>`;
+            document.getElementById('leagueStats').innerHTML = html;
+            document.getElementById('leagueTotalCount').textContent = allLeagueItems.length;
+        }
+
+        // ★ 新增：联赛统计分页
+        function updateLeaguePagination() {
+            const totalItems = allLeagueItems.length;
+            const totalPages = Math.ceil(totalItems / leagueLimit) || 1;
+            const currentPage = Math.floor(leagueOffset / leagueLimit) + 1;
+
+            const pageNumbers = document.getElementById('leaguePageNumbers');
+            const prevBtn = document.getElementById('leaguePrevBtn');
+            const nextBtn = document.getElementById('leagueNextBtn');
+            const pagination = document.getElementById('leaguePagination');
+
+            if (totalItems === 0) {
+                pagination.style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            const maxVisible = 7;
+            let startPage = 1, endPage = totalPages;
+            if (totalPages > maxVisible) {
+                const half = Math.floor(maxVisible / 2);
+                if (currentPage <= half + 1) endPage = maxVisible;
+                else if (currentPage >= totalPages - half) startPage = totalPages - maxVisible + 1;
+                else { startPage = currentPage - half; endPage = currentPage + half; }
+            }
+            if (startPage > 1) {
+                html += `<span class="page-num" data-page="1">1</span>`;
+                if (startPage > 2) html += `<span class="ellipsis">…</span>`;
+            }
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<span class="page-num ${i===currentPage?'active':''}" data-page="${i}">${i}</span>`;
+            }
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="ellipsis">…</span>`;
+                html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
+            }
+            pageNumbers.innerHTML = html;
+
+            pageNumbers.querySelectorAll('.page-num').forEach(el => {
+                el.addEventListener('click', function() {
+                    const page = parseInt(this.dataset.page);
+                    if (page >= 1 && page <= totalPages) {
+                        leagueOffset = (page - 1) * leagueLimit;
+                        renderLeagueTable();
+                        updateLeaguePagination();
+                    }
+                });
+            });
+
+            prevBtn.disabled = leagueOffset === 0;
+            nextBtn.disabled = leagueOffset + leagueLimit >= totalItems;
+            pagination.style.display = 'flex';
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('judgPrevBtn').addEventListener('click', function() {
                 if (judgOffset > 0) {
@@ -501,6 +644,30 @@
                 judgOffset = 0;
                 renderJudgmentTable();
                 updateJudgmentPagination();
+            });
+
+            // ★ 新增：联赛分页事件
+            document.getElementById('leaguePrevBtn').addEventListener('click', function() {
+                if (leagueOffset > 0) {
+                    leagueOffset = Math.max(0, leagueOffset - leagueLimit);
+                    renderLeagueTable();
+                    updateLeaguePagination();
+                }
+            });
+            document.getElementById('leagueNextBtn').addEventListener('click', function() {
+                if (leagueOffset + leagueLimit < allLeagueItems.length) {
+                    const totalPages = Math.max(1, Math.ceil(allLeagueItems.length / leagueLimit));
+                    const currentPage = Math.floor(leagueOffset / leagueLimit) + 1;
+                    leagueOffset = Math.min(totalPages - 1, currentPage) * leagueLimit;
+                    renderLeagueTable();
+                    updateLeaguePagination();
+                }
+            });
+            document.getElementById('leaguePerPage').addEventListener('change', function() {
+                leagueLimit = parseInt(this.value);
+                leagueOffset = 0;
+                renderLeagueTable();
+                updateLeaguePagination();
             });
         });
 
