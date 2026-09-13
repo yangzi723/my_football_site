@@ -72,7 +72,8 @@ def init_db():
             ('review', 'TEXT'),
             ('odds_structure', 'TEXT'),
             ('fundamental_divergence', 'TEXT'),
-            ('fundamental_match', 'TEXT')      # ★ 新增
+            ('fundamental_match', 'TEXT'),      # ★ 新增
+            ('bet', 'TEXT')   # ★ 新增
         ]
         for col, col_type in cols_to_add:
             if col not in existing_cols:
@@ -186,6 +187,7 @@ def update_match_full(match_id, data):
     data.setdefault('odds_structure', '')
     data.setdefault('fundamental_divergence', '否')
     data.setdefault('fundamental_match', '否')      # ★ 新增
+    data.setdefault('bet', '否')   # ★ 新增
 
     with closing(get_db()) as conn:
         conn.execute('''
@@ -235,7 +237,8 @@ def update_match_full(match_id, data):
                 review = :review,
                 odds_structure = :odds_structure,
                 fundamental_divergence = :fundamental_divergence,
-                fundamental_match = :fundamental_match     -- ★ 新增
+                fundamental_match = :fundamental_match,     -- ★ 新增
+                bet = :bet   -- ★ 新增
             WHERE id = :id
         ''', {**data, 'id': match_id})
         conn.commit()

@@ -493,33 +493,34 @@
     }
 
     function fetchMatches() {
-        const date = fetchDate.value;
-        if (!date) {
-            alert('请选择日期');
-            return;
-        }
-        const finished = includeFinished.checked;
-        const btn = fetchBtn;
-        btn.textContent = '⏳ 抓取中...';
-        btn.disabled = true;
-
-        fetch(`/api/fetch_matches?date=${date}&include_finished=${finished}`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                alert('❌ 抓取失败: ' + data.error);
-            } else {
-                alert(`✅ 抓取成功，共 ${data.length} 场比赛`);
-                currentOffset = 0;
-                loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, 0);
-            }
-        })
-        .catch(err => alert('❌ 请求出错: ' + err.message))
-        .finally(() => {
-            btn.textContent = '📡 抓取';
-            btn.disabled = false;
-        });
+    const date = fetchDate.value;
+    if (!date) {
+        alert('请选择日期');
+        return;
     }
+    const finished = includeFinished.checked;
+    const force = document.getElementById('force-refresh').checked;
+    const btn = fetchBtn;
+    btn.textContent = '⏳ 抓取中...';
+    btn.disabled = true;
+
+    fetch(`/api/fetch_matches?date=${date}&include_finished=${finished}&force=${force}`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.error) {
+            alert('❌ 抓取失败: ' + data.error);
+        } else {
+            alert(`✅ 抓取成功，共 ${data.length} 场比赛`);
+            currentOffset = 0;
+            loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, 0);
+        }
+    })
+    .catch(err => alert('❌ 请求出错: ' + err.message))
+    .finally(() => {
+        btn.textContent = '📡 抓取';
+        btn.disabled = false;
+    });
+}
 
     function setDefaultDate() {
         const today = new Date().toISOString().split('T')[0];

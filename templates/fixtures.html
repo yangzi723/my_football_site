@@ -14,13 +14,16 @@
     <h1>📅 赛事列表</h1>
 
     <div class="fetch-area">
-        <label>📡 获取赛事</label>
-        <input type="date" id="fetch-date">
-        <label class="checkbox-label">
-            <input type="checkbox" id="include-finished"> 包含已完赛
-        </label>
-        <button class="btn-success" id="fetchFixturesBtn">抓取</button>
-    </div>
+    <label>📡 获取赛事</label>
+    <input type="date" id="fetch-date">
+    <label class="checkbox-label">
+        <input type="checkbox" id="include-finished"> 包含已完赛
+    </label>
+    <label class="checkbox-label">
+        <input type="checkbox" id="force-refresh"> 强制刷新（忽略缓存）
+    </label>
+    <button class="btn-success" id="fetchFixturesBtn">抓取</button>
+</div>
 
     <div class="filter-row">
         <label>日期筛选：</label>

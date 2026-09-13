@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>赔率预测</title>
+    <title>AI预测</title>
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/css/odds.css">
 </head>
@@ -11,7 +11,7 @@
     <div class="container">
         {% include '_navbar.html' %}
 
-        <h1>📋 赔率预测</h1>
+        <h1>📋 AI预测</h1>
 
         <div class="section-divider">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:15px;">
@@ -24,10 +24,10 @@
             <div class="filter-row">
                 <label>日期筛选：</label>
                 <input type="date" id="filter-date">
-				<label>联赛：</label>
-<select id="filter-league">
-    <option value="">全部联赛</option>
-</select>
+                <label>联赛：</label>
+                <select id="filter-league">
+                    <option value="">全部联赛</option>
+                </select>
                 <button id="filterBtn">筛选</button>
                 <button id="clearFilterBtn">清除筛选</button>
             </div>
@@ -39,7 +39,6 @@
                             <th style="width:50px;">
                                 <label class="select-all-label">
                                     <input type="checkbox" id="selectAllCheckbox">
-                                    
                                 </label>
                             </th>
                             <th>ID</th>
@@ -51,7 +50,7 @@
                             <th>基本面判断</th>
                             <th>亚初终</th>
                             <th style="min-width:100px; text-align:center;">初测</th>
-							<th style="width:55px; text-align:center;">下注</th>   <!-- ★ 新增 -->
+                            <th style="width:55px; text-align:center;">下注</th>
                             <th>结果</th>
                             <th>操作</th>
                         </tr>
@@ -73,10 +72,10 @@
             </div>
         </div>
 
-        <!-- 赔率分析模态框 -->
+        <!-- AI分析模态框 -->
         <div id="analysisModal" class="modal-edit">
             <div class="modal-edit-content">
-                <h3 id="analysisModalTitle">📊 赔率分析 - 赛事信息</h3>
+                <h3 id="analysisModalTitle">📊 AI分析 - 赛事信息</h3>
                 <div id="analysisInfoContainer"></div>
                 <div class="btn-group">
                     <button class="btn" id="saveAnalysisBtn">💾 保存修改</button>
@@ -101,6 +100,6 @@
     </div>
 
     <!-- 引用外部 JavaScript -->
-    <script src="/static/js/odds.js"></script>
+    <script src="/static/js/ai_prediction.js"></script>
 </body>
 </html>

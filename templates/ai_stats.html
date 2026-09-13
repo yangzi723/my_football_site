@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>统计</title>
+    <title>AI预测统计</title>
     <link rel="stylesheet" href="/static/style.css" />
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -95,6 +95,7 @@
         .bar-fill.red { background: #dc2626; }
         .bar-fill.black { background: #1f2937; }
         .bar-fill.draw { background: #d97706; }
+        .bar-fill.pending { background: #6b7280; }
         .bar-value { width: 60px; text-align: right; font-size: 14px; }
         .team-link {
             color: #1a3a6b;
@@ -140,6 +141,20 @@
             font-size: 14px;
         }
         .pagination .count-info { font-size: 13px; color: #4b657a; margin-left: 8px; }
+
+        /* AI 徽章 */
+        .ai-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: linear-gradient(135deg, #6366f1, #3b82f6);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
         @media (max-width: 700px) {
             .container { padding: 16px; }
             .stat-table { font-size: 12px; }
@@ -150,11 +165,12 @@
 <body>
     <div class="container">
         {% include '_navbar.html' %}
-        <h1>📈 数据统计</h1>
+        <h1>🤖 AI预测统计 <span class="ai-badge">AI</span></h1>
         <div id="statsLoading" style="padding:20px; text-align:center;">加载中...</div>
         <div id="statsContent" style="display:none;">
             <div class="stats-grid" id="overviewCards"></div>
-            <h2>📊 结果分布</h2>
+
+            <h2>📊 AI预测结果分布</h2>
             <div id="resultDistribution"></div>
 
             <h2>📋 各基本面判断下的结果统计</h2>
@@ -172,7 +188,6 @@
                 <span class="count-info">共 <span id="judgTotalCount">0</span> 条</span>
             </div>
 
-            <!-- ★ 新增：各联赛下的结果统计 -->
             <h2>🏆 各联赛下的结果统计</h2>
             <div id="leagueStats"></div>
             <div class="pagination" id="leaguePagination" style="display:none;">
@@ -187,12 +202,26 @@
                 </select>
                 <span class="count-info">共 <span id="leagueTotalCount">0</span> 条</span>
             </div>
-
-            <!-- 「全部已分析赛事」已独立成 /all_list 页面，点击上方「总场次」卡片跳转查看 -->
         </div>
     </div>
 
     <script>
+        /* ============================================================
+         * AI 预测统计页面
+         *   - 数据来源：/api/stats 与 /api/history
+         *   - 若后续 AI 预测使用独立接口，只需替换下方 DATA_SOURCE
+         * ============================================================ */
+        const DATA_SOURCE = {
+            stats: '/api/stats',        // 汇总接口
+            history: '/api/history',    // 明细接口
+            // 独立 AI 接口时改为：
+            // stats: '/api/ai_stats',
+            // history: '/api/ai_history',
+        };
+
+        // AI 预测页面的跳转地址（用于卡片点击）
+        const AI_PAGE = '/ai_prediction';
+
         const judgmentMap = {
             'home_advantage': '主队占优',
             'away_advantage': '客队占优',
@@ -210,36 +239,26 @@
         let judgOffset = 0;
         let judgLimit = 10;
 
-        // ★ 新增：联赛统计状态
         let allLeagueItems = [];
         let leagueOffset = 0;
         let leagueLimit = 10;
 
-        /* ============================================================
-         * 循环分页拉取全部数据（供分组统计用）
-         *   1) 用「实际返回条数」推进 offset，避免服务端对 limit 有上限时丢数据
-         *   2) 用返回的 total 作为终止条件；空数组也终止
-         *   3) 用 id 去重并检测「无新数据」，防止死循环
-         * ============================================================ */
+        // ============ 循环分页拉全量数据 ============
         async function fetchAllMatches() {
             const limit = 200;
             const maxRounds = 2000;
             const seen = new Set();
 
-            let offset = 0;
-            let round = 0;
-            let all = [];
-            let total = null;
-            let stopped = '';
+            let offset = 0, round = 0, all = [], total = null, stopped = '';
 
             while (round++ < maxRounds) {
                 let data;
                 try {
-                    const res = await fetch(`/api/history?limit=${limit}&offset=${offset}`, { cache: 'no-store' });
+                    const res = await fetch(`${DATA_SOURCE.history}?limit=${limit}&offset=${offset}`, { cache: 'no-store' });
                     if (!res.ok) throw new Error('HTTP ' + res.status);
                     data = await res.json();
                 } catch (e) {
-                    console.error('拉取数据失败:', e);
+                    console.error('拉取失败:', e);
                     stopped = '请求失败，已加载部分数据';
                     break;
                 }
@@ -275,10 +294,11 @@
             return all;
         }
 
-        async function loadStats() {
+        // ============ 加载并渲染 ============
+        async function loadAIStats() {
             try {
                 const [statsRes, matches] = await Promise.all([
-                    fetch('/api/stats').then(r => r.json()),
+                    fetch(DATA_SOURCE.stats).then(r => r.json()),
                     fetchAllMatches()
                 ]);
                 const statsData = statsRes;
@@ -293,45 +313,47 @@
                 const draw = resultCounts.find(r => r.result === '走盘')?.cnt || 0;
                 const unset = total - red - black - draw;
 
-                // ★ 「总场次」卡片改为可点击，跳转到 /all_list
+                // ---- 概览卡片（点击跳转到 AI 预测页） ----
                 const overview = document.getElementById('overviewCards');
                 overview.innerHTML = `
-                    <div class="stat-card clickable" onclick="window.location.href='/all_list'">
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}'">
                         <div class="number">${total}</div>
-                        <div class="label">总场次 点击查看全部</div>
+                        <div class="label">总场次 点击查看</div>
                     </div>
-                    <div class="stat-card clickable" onclick="window.location.href='/red_list'">
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=红'">
                         <div class="number" style="color:#dc2626;">${red}</div>
-                        <div class="label">红 (命中) 点击查看</div>
+                        <div class="label">红 (命中)</div>
                     </div>
-                    <div class="stat-card clickable" onclick="window.location.href='/black_list'">
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=黑'">
                         <div class="number" style="color:#1f2937;">${black}</div>
-                        <div class="label">黑 (未中) 点击查看</div>
+                        <div class="label">黑 (未中)</div>
                     </div>
-                    <div class="stat-card clickable" onclick="window.location.href='/draw_list'">
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=走盘'">
                         <div class="number" style="color:#d97706;">${draw}</div>
-                        <div class="label">走盘 点击查看</div>
+                        <div class="label">走盘</div>
                     </div>
-                    <div class="stat-card clickable" onclick="window.location.href='/pending_list'">
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=待定'">
                         <div class="number" style="color:#6b7280;">${unset}</div>
-                        <div class="label">待定 点击查看</div>
+                        <div class="label">待定</div>
                     </div>
                 `;
 
+                // ---- 结果分布 ----
                 const distDiv = document.getElementById('resultDistribution');
-                const maxVal = Math.max(red, black, draw, 1);
+                const maxVal = Math.max(red, black, draw, unset, 1);
                 distDiv.innerHTML = `
                     <div class="bar-container"><div class="bar-label">红</div><div class="bar-track"><div class="bar-fill red" style="width:${(red/maxVal)*100}%;"></div></div><div class="bar-value">${red}</div></div>
                     <div class="bar-container"><div class="bar-label">黑</div><div class="bar-track"><div class="bar-fill black" style="width:${(black/maxVal)*100}%;"></div></div><div class="bar-value">${black}</div></div>
                     <div class="bar-container"><div class="bar-label">走盘</div><div class="bar-track"><div class="bar-fill draw" style="width:${(draw/maxVal)*100}%;"></div></div><div class="bar-value">${draw}</div></div>
+                    <div class="bar-container"><div class="bar-label">待定</div><div class="bar-track"><div class="bar-fill pending" style="width:${(unset/maxVal)*100}%;"></div></div><div class="bar-value">${unset}</div></div>
                 `;
 
-                // 分组统计（取每个 judgment 下最新的一条作为代表）
+                // ---- 基本面判断统计 ----
                 const latestMap = {};
                 matches.forEach(m => {
                     const key = m.judgment;
                     if (!key) return;
-                    if (!latestMap[key] || m.id > latestMap[key].id) {
+                    if (!latestMap[key] || (Number(m.id) > Number(latestMap[key].id))) {
                         latestMap[key] = {
                             id: m.id,
                             date: m.date || '',
@@ -372,7 +394,7 @@
                 renderJudgmentTable();
                 updateJudgmentPagination();
 
-                // ★ 新增：联赛统计（本地聚合）
+                // ---- 联赛统计（本地计算） ----
                 const leagueMap = {};
                 matches.forEach(m => {
                     const lg = m.league || '未知联赛';
@@ -393,12 +415,14 @@
                 leagueOffset = 0;
                 renderLeagueTable();
                 updateLeaguePagination();
+
             } catch (err) {
                 document.getElementById('statsLoading').textContent = '❌ 加载失败: ' + err;
                 console.error(err);
             }
         }
 
+        // ============ 基本面判断表格 ============
         function renderJudgmentTable() {
             const start = judgOffset;
             const end = Math.min(start + judgLimit, allJudgmentItems.length);
@@ -443,7 +467,7 @@
                     home: item.home_team,
                     away: item.away_team
                 });
-                const oddsUrl = `/odds?${params.toString()}`;
+                const oddsUrl = `${AI_PAGE}?${params.toString()}`;
                 const homeLink = `<a href="${oddsUrl}" class="team-link">${item.home_team}</a>`;
                 const awayLink = `<a href="${oddsUrl}" class="team-link">${item.away_team}</a>`;
                 const teamDisplay = `${homeLink} <span style="font-weight:600;color:#3b7cff;">VS</span> ${awayLink}`;
@@ -479,10 +503,7 @@
             const nextBtn = document.getElementById('judgNextBtn');
             const pagination = document.getElementById('judgmentPagination');
 
-            if (totalItems === 0) {
-                pagination.style.display = 'none';
-                return;
-            }
+            if (totalItems === 0) { pagination.style.display = 'none'; return; }
 
             let html = '';
             const maxVisible = 7;
@@ -505,7 +526,6 @@
                 html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
             }
             pageNumbers.innerHTML = html;
-
             pageNumbers.querySelectorAll('.page-num').forEach(el => {
                 el.addEventListener('click', function() {
                     const page = parseInt(this.dataset.page);
@@ -516,13 +536,12 @@
                     }
                 });
             });
-
             prevBtn.disabled = judgOffset === 0;
             nextBtn.disabled = judgOffset + judgLimit >= totalItems;
             pagination.style.display = 'flex';
         }
 
-        // ★ 新增：联赛统计表格渲染
+        // ============ 联赛统计表格 ============
         function renderLeagueTable() {
             const start = leagueOffset;
             const end = Math.min(start + leagueLimit, allLeagueItems.length);
@@ -568,7 +587,6 @@
             document.getElementById('leagueTotalCount').textContent = allLeagueItems.length;
         }
 
-        // ★ 新增：联赛统计分页
         function updateLeaguePagination() {
             const totalItems = allLeagueItems.length;
             const totalPages = Math.ceil(totalItems / leagueLimit) || 1;
@@ -579,10 +597,7 @@
             const nextBtn = document.getElementById('leagueNextBtn');
             const pagination = document.getElementById('leaguePagination');
 
-            if (totalItems === 0) {
-                pagination.style.display = 'none';
-                return;
-            }
+            if (totalItems === 0) { pagination.style.display = 'none'; return; }
 
             let html = '';
             const maxVisible = 7;
@@ -605,7 +620,6 @@
                 html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
             }
             pageNumbers.innerHTML = html;
-
             pageNumbers.querySelectorAll('.page-num').forEach(el => {
                 el.addEventListener('click', function() {
                     const page = parseInt(this.dataset.page);
@@ -616,12 +630,12 @@
                     }
                 });
             });
-
             prevBtn.disabled = leagueOffset === 0;
             nextBtn.disabled = leagueOffset + leagueLimit >= totalItems;
             pagination.style.display = 'flex';
         }
 
+        // ============ 事件绑定 ============
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('judgPrevBtn').addEventListener('click', function() {
                 if (judgOffset > 0) {
@@ -646,7 +660,6 @@
                 updateJudgmentPagination();
             });
 
-            // ★ 新增：联赛分页事件
             document.getElementById('leaguePrevBtn').addEventListener('click', function() {
                 if (leagueOffset > 0) {
                     leagueOffset = Math.max(0, leagueOffset - leagueLimit);
@@ -671,7 +684,7 @@
             });
         });
 
-        window.addEventListener('load', loadStats);
+        window.addEventListener('load', loadAIStats);
     </script>
 </body>
 </html>

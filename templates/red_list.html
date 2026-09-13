@@ -5,6 +5,106 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>红单明细</title>
     <link rel="stylesheet" href="/static/css/detail_list.css" />
+
+    <!-- ===== 复盘编辑框及表格布局美化 ===== -->
+    <style>
+        /* ===== 1. 表格整体布局优化 ===== */
+        .detail-table {
+            table-layout: fixed; /* 关键：固定表格布局，按比例分配列宽，防止复盘列撑爆表格 */
+            width: 100%;
+        }
+
+        /* 为每列分配合理宽度 */
+        .detail-table th:nth-child(1) { width: 40px; }  /* 复选框 */
+        .detail-table th:nth-child(2) { width: 50px; }  /* ID */
+        .detail-table th:nth-child(3) { width: 60px; }  /* 联赛 */
+        .detail-table th:nth-child(4) { width: 140px; } /* 主队 VS 客队 */
+        .detail-table th:nth-child(5),
+        .detail-table th:nth-child(6),
+        .detail-table th:nth-child(7),
+        .detail-table th:nth-child(8) { width: 80px; }  /* 初01, 初02, 亚初终, 初测 */
+        .detail-table th:nth-child(9) { width: 130px; } /* 基本面判断 */
+        .detail-table th:nth-child(10),
+        .detail-table th:nth-child(11) { width: 60px; }  /* 下注, 结果 */
+        .detail-table th:nth-child(12) { width: 220px; } /* 复盘列，限制在合理范围内 */
+
+        /* 单元格统一内边距和换行 */
+        .detail-table td {
+            vertical-align: top;
+            padding: 12px 8px;
+            word-break: break-all; /* 防止长文本撑破单元格 */
+            font-size: 13px;
+        }
+
+        /* ===== 2. 复盘编辑框美化 ===== */
+        .detail-table td textarea,
+        .detail-table td .review-input,
+        .review-input {
+            display: block;
+            width: 100%;
+            min-height: 60px;      /* 调低最小高度，更紧凑自然 */
+            max-height: 200px;     /* 限制最大高度 */
+            padding: 8px 10px;
+            box-sizing: border-box;
+
+            font-family: inherit;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #2c3e50;
+            letter-spacing: .2px;
+
+            /* 视觉上隐去边框，悬停/聚焦才显现，减少突兀感 */
+            background: #fafbfc;
+            border: 1px solid transparent; 
+            border-radius: 6px;
+            resize: vertical;
+            outline: none;
+            overflow-y: auto;
+
+            transition: background .2s ease, 
+                        border-color .2s ease, 
+                        box-shadow .2s ease;
+        }
+
+        /* 悬停反馈 */
+        .detail-table td textarea:hover,
+        .review-input:hover {
+            background: #f2f6f9;
+            border-color: #d0dce5;
+        }
+
+        /* 聚焦状态（重点优化：边框更细，阴影更柔和） */
+        .detail-table td textarea:focus,
+        .review-input:focus {
+            background: #ffffff;
+            border-color: #3b99fc;
+            box-shadow: 0 0 0 2px rgba(59, 153, 252, 0.1); /* 更细腻的聚焦光晕 */
+        }
+
+        /* 占位符颜色调浅，减少视觉干扰 */
+        .detail-table td textarea::placeholder,
+        .review-input::placeholder {
+            color: #b0bec5;
+        }
+
+        /* 精简滚动条样式 */
+        .detail-table td textarea::-webkit-scrollbar { width: 6px; }
+        .detail-table td textarea::-webkit-scrollbar-thumb {
+            background: #cbd8e1;
+            border-radius: 3px;
+        }
+        .detail-table td textarea::-webkit-scrollbar-thumb:hover { background: #a4b8c7; }
+
+        /* 外层表格横向滚动，防撑破 */
+        #tableWrap { overflow-x: auto; }
+
+        /* 小屏适配 */
+        @media (max-width: 768px) {
+            .detail-table td textarea,
+            .review-input { min-height: 50px; }
+            .detail-table { min-width: 900px; } /* 小屏下允许表格横向滚动 */
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -28,6 +128,7 @@
                         <th>亚初终</th>
                         <th>初测</th>
                         <th>基本面判断</th>
+                        <th>下注</th>
                         <th>结果</th>
                         <th>复盘</th>
                     </tr>
@@ -53,5 +154,33 @@
         window.RESULT_TYPE = '红';
     </script>
     <script src="/static/js/detail_list.js"></script>
+
+    <!-- ===== 复盘框自动增高 ===== -->
+    <script>
+    (function () {
+        const MAX_H = 180;   // 最大高度限制
+
+        function autoGrow(el) {
+            el.style.height = 'auto';
+            // 保证高度不低于 60，不超过最大值
+            el.style.height = Math.min(Math.max(el.scrollHeight, 60), MAX_H) + 'px';
+        }
+
+        // 事件委托：动态渲染出来的 textarea 也能生效
+        document.addEventListener('input', function (e) {
+            const el = e.target;
+            if (el.matches && el.matches('.detail-table textarea, .review-input')) {
+                autoGrow(el);
+            }
+        });
+
+        // 初次渲染完成后，把已有内容的框撑到合适高度
+        document.addEventListener('DOMContentLoaded', function () {
+            document
+                .querySelectorAll('.detail-table textarea, .review-input')
+                .forEach(autoGrow);
+        });
+    })();
+    </script>
 </body>
 </html>
