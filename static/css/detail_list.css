@@ -78,21 +78,35 @@ h1 { margin-bottom: 20px; }
 }
 .detail-table tr:hover { background: #f8fafc; }
 
-/* 列宽 */
-.detail-table th:nth-child(1) { width: 40px; }
-.detail-table th:nth-child(2) { width: 60px; }
-.detail-table th:nth-child(3) { width: 90px; }
-.detail-table th:nth-child(4) { width: 150px; }
-.detail-table th:nth-child(5) { width: 80px; }
-.detail-table th:nth-child(6) { width: 80px; }
-.detail-table th:nth-child(7) { width: 80px; text-align: center; }  /* 初测列头居中 */
-.detail-table th:nth-child(8) { width: 110px; }
-.detail-table th:nth-child(9) { width: 60px; }
-.detail-table th:nth-child(10) { width: 160px; }
+/* 列宽（共 11 列） */
+.detail-table th:nth-child(1) { width: 40px; }   /* 复选框 */
+.detail-table th:nth-child(2) { width: 60px; }   /* ID */
+.detail-table th:nth-child(3) { width: 90px; }   /* 联赛 */
+.detail-table th:nth-child(4) { width: 150px; }  /* 主客队 */
+.detail-table th:nth-child(5) { width: 80px; }   /* 初01 */
+.detail-table th:nth-child(6) { width: 80px; }   /* 初02 */
+.detail-table th:nth-child(7) { width: 80px; text-align: center; }  /* 亚初终 */
+.detail-table th:nth-child(8) { width: 80px; text-align: center; }  /* 初测 */
+.detail-table th:nth-child(9) { width: 110px; }  /* 基本面判断 */
+.detail-table th:nth-child(10) { width: 60px; }  /* 结果 */
+.detail-table th:nth-child(11) { width: 160px; } /* 复盘 */
 
-/* ★ 初测列内容居中 */
-.detail-table td:nth-child(7) {
+/* ★ 亚初终 和 初测 列内容居中 */
+.detail-table td:nth-child(7),
+.detail-table td:nth-child(8) {
     text-align: center;
+}
+
+/* 球队链接样式 */
+.team-link {
+    color: #1a3a6b;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+.team-link:hover {
+    text-decoration: underline;
+    color: #3b7cff;
 }
 
 .loading-text { padding: 30px; text-align: center; color: #6b7280; }

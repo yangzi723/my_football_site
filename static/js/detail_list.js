@@ -13,8 +13,8 @@
         'home_dominant': '主队绝对优势',
         'away_dominant': '客队绝对优势',
         'both_weak': '两队菜鸡',
-		'home_slight': '主队略占优',
-		'away_slight': '客队略占优'
+        'home_slight': '主队略占优',
+        'away_slight': '客队略占优'
     };
 
     let allMatches = [];
@@ -117,7 +117,7 @@
                 loading.style.display = 'none';
                 tableWrap.style.display = 'block';
                 if (totalItems === 0) {
-                    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:30px;">暂无${resultType}单记录</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:30px;">暂无${resultType}单记录</td></tr>`;
                     pagination.style.display = 'none';
                     return;
                 }
@@ -140,11 +140,11 @@
             const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '—';
             const pos1 = m.pos1 || '—';
             const pos2 = m.pos2 || '—';
+            const asianOdds = m.asian_odds || '—';   // ★ 亚初终
             const homeTeam = m.home_team || '?';
             const awayTeam = m.away_team || '?';
             const league = m.league || '—';
-            // ★ 初测显示（替代原来的基本面评分）
-            const predDisplay = getPredictionDisplay(m.initial_prediction);
+            const predDisplay = getPredictionDisplay(m.initial_prediction); // 初测
             const review = m.review || '';
             const color = resultType === '红' ? '#dc2626' : (resultType === '黑' ? '#1f2937' : '#d97706');
 
@@ -169,7 +169,8 @@
                     <td>${teamDisplay}</td>
                     <td>${pos1}</td>
                     <td>${pos2}</td>
-                    <td>${predDisplay}</td>   <!-- ★ 初测列 -->
+                    <td>${asianOdds}</td>   <!-- ★ 亚初终 -->
+                    <td>${predDisplay}</td> <!-- 初测 -->
                     <td>${judgmentDisplay}</td>
                     <td style="color:${color};font-weight:600;">${resultType}</td>
                     <td>
