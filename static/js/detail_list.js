@@ -112,16 +112,24 @@
             })
             .then(data => {
                 const matches = data.data || [];
+
                 if (resultType === '待定') {
                     allMatches = matches.filter(m => !m.result || m.result === '' || m.result === null);
+                } else if (resultType === 'ALL') {
+                    // ★ 全部已分析赛事：红 + 黑 + 走盘
+                    allMatches = matches.filter(m =>
+                        m.result === '红' || m.result === '黑' || m.result === '走盘'
+                    );
                 } else {
                     allMatches = matches.filter(m => m.result === resultType);
                 }
+
                 totalItems = allMatches.length;
                 loading.style.display = 'none';
                 tableWrap.style.display = 'block';
+
                 if (totalItems === 0) {
-                    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:30px;">暂无${resultType}单记录</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:30px;">暂无记录</td></tr>`;
                     pagination.style.display = 'none';
                     return;
                 }
@@ -140,6 +148,7 @@
         const end = Math.min(start + currentLimit, totalItems);
         const pageItems = allMatches.slice(start, end);
         let html = '';
+
         pageItems.forEach(m => {
             const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '—';
             const pos1 = m.pos1 || '—';
@@ -152,7 +161,20 @@
             const review = m.review || '';
             // 下注状态
             const bet = m.bet === '是' ? '是' : '否';
-            const color = resultType === '红' ? '#dc2626' : (resultType === '黑' ? '#1f2937' : (resultType === '走盘' ? '#d97706' : '#6b7280'));
+
+            // ★ 结果列：ALL 模式下显示每条记录自身的实际结果
+            let resultDisplay = resultType;
+            let color = '#6b7280';
+            if (resultType === 'ALL') {
+                resultDisplay = m.result || '—';
+                if (m.result === '红') color = '#dc2626';
+                else if (m.result === '黑') color = '#1f2937';
+                else if (m.result === '走盘') color = '#d97706';
+            } else {
+                color = resultType === '红' ? '#dc2626'
+                      : (resultType === '黑' ? '#1f2937'
+                      : (resultType === '走盘' ? '#d97706' : '#6b7280'));
+            }
 
             // 构造跳转到 odds 的链接
             const params = new URLSearchParams({
@@ -179,7 +201,7 @@
                     <td>${predDisplay}</td>
                     <td>${judgmentDisplay}</td>
                     <td>${bet}</td>
-                    <td style="color:${color};font-weight:600;">${resultType}</td>
+                    <td style="color:${color};font-weight:600;">${resultDisplay}</td>
                     <td>
                         <textarea class="review-input" data-id="${m.id}" placeholder="输入复盘..." title="${review}">${review}</textarea>
                         <span class="save-tag" id="review-tag-${m.id}">✓</span>

@@ -442,6 +442,12 @@ def api_odds_save():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/all_list')
+def all_list():
+    return render_template('all_list.html')
+    
+
+
 if __name__ == '__main__':
     print("🚀 启动 Flask 服务器...")
     app.run(debug=True, host='127.0.0.1', port=5000)
