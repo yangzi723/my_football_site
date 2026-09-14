@@ -65,12 +65,6 @@
             border-bottom: 1px solid #e2e8f0;
         }
         .stat-table tr:hover { background: #f8fafc; }
-        .stat-table .col-id { min-width: 60px; }
-        .stat-table .col-team { min-width: 120px; }
-        .stat-table .col-league { min-width: 80px; }
-        .stat-table .col-odds { min-width: 70px; }
-        .stat-table .col-analysis { min-width: 120px; }
-        .stat-table .col-judgment { min-width: 100px; }
         h2 { margin-top: 30px; font-size: 20px; }
         .bar-container {
             display: flex;
@@ -142,7 +136,6 @@
         }
         .pagination .count-info { font-size: 13px; color: #4b657a; margin-left: 8px; }
 
-        /* AI 徽章 */
         .ai-badge {
             display: inline-block;
             padding: 2px 8px;
@@ -173,21 +166,6 @@
             <h2>📊 AI预测结果分布</h2>
             <div id="resultDistribution"></div>
 
-            <h2>📋 各基本面判断下的结果统计</h2>
-            <div id="judgmentStats"></div>
-            <div class="pagination" id="judgmentPagination" style="display:none;">
-                <button id="judgPrevBtn" disabled>上一页</button>
-                <span id="judgPageNumbers"></span>
-                <button id="judgNextBtn" disabled>下一页</button>
-                <select id="judgPerPage">
-                    <option value="5">5条/页</option>
-                    <option value="10" selected>10条/页</option>
-                    <option value="20">20条/页</option>
-                    <option value="50">50条/页</option>
-                </select>
-                <span class="count-info">共 <span id="judgTotalCount">0</span> 条</span>
-            </div>
-
             <h2>🏆 各联赛下的结果统计</h2>
             <div id="leagueStats"></div>
             <div class="pagination" id="leaguePagination" style="display:none;">
@@ -208,36 +186,14 @@
     <script>
         /* ============================================================
          * AI 预测统计页面
-         *   - 数据来源：/api/stats 与 /api/history
-         *   - 若后续 AI 预测使用独立接口，只需替换下方 DATA_SOURCE
+         *   - 数据来源：/api/stats?source=ai 与 /api/history?source=ai
          * ============================================================ */
         const DATA_SOURCE = {
-            stats: '/api/stats',        // 汇总接口
-            history: '/api/history',    // 明细接口
-            // 独立 AI 接口时改为：
-            // stats: '/api/ai_stats',
-            // history: '/api/ai_history',
+            stats: '/api/stats?source=ai',
+            history: '/api/history?source=ai',
         };
 
-        // AI 预测页面的跳转地址（用于卡片点击）
         const AI_PAGE = '/ai_prediction';
-
-        const judgmentMap = {
-            'home_advantage': '主队占优',
-            'away_advantage': '客队占优',
-            'equal': '两队实力相当',
-            'home_strong': '主队较强优势',
-            'away_strong': '客队较强优势',
-            'home_dominant': '主队绝对优势',
-            'away_dominant': '客队绝对优势',
-            'both_weak': '两队菜鸡',
-            'home_slight': '主队略占优',
-            'away_slight': '客队略占优'
-        };
-
-        let allJudgmentItems = [];
-        let judgOffset = 0;
-        let judgLimit = 10;
 
         let allLeagueItems = [];
         let leagueOffset = 0;
@@ -254,7 +210,7 @@
             while (round++ < maxRounds) {
                 let data;
                 try {
-                    const res = await fetch(`${DATA_SOURCE.history}?limit=${limit}&offset=${offset}`, { cache: 'no-store' });
+                    const res = await fetch(`${DATA_SOURCE.history}&limit=${limit}&offset=${offset}`, { cache: 'no-store' });
                     if (!res.ok) throw new Error('HTTP ' + res.status);
                     data = await res.json();
                 } catch (e) {
@@ -313,7 +269,6 @@
                 const draw = resultCounts.find(r => r.result === '走盘')?.cnt || 0;
                 const unset = total - red - black - draw;
 
-                // ---- 概览卡片（点击跳转到 AI 预测页） ----
                 const overview = document.getElementById('overviewCards');
                 overview.innerHTML = `
                     <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}'">
@@ -338,7 +293,6 @@
                     </div>
                 `;
 
-                // ---- 结果分布 ----
                 const distDiv = document.getElementById('resultDistribution');
                 const maxVal = Math.max(red, black, draw, unset, 1);
                 distDiv.innerHTML = `
@@ -348,53 +302,6 @@
                     <div class="bar-container"><div class="bar-label">待定</div><div class="bar-track"><div class="bar-fill pending" style="width:${(unset/maxVal)*100}%;"></div></div><div class="bar-value">${unset}</div></div>
                 `;
 
-                // ---- 基本面判断统计 ----
-                const latestMap = {};
-                matches.forEach(m => {
-                    const key = m.judgment;
-                    if (!key) return;
-                    if (!latestMap[key] || (Number(m.id) > Number(latestMap[key].id))) {
-                        latestMap[key] = {
-                            id: m.id,
-                            date: m.date || '',
-                            time: m.time || '',
-                            league: m.league || '',
-                            initial_odds: m.pos2 || '',
-                            initial_analysis: m.initial_analysis || '',
-                            final_analysis: m.final_analysis || '',
-                            home_team: m.home_team || '',
-                            away_team: m.away_team || ''
-                        };
-                    }
-                });
-
-                const jStats = statsData.judgment_stats || [];
-                allJudgmentItems = jStats.map(item => {
-                    const key = item.judgment;
-                    const latest = latestMap[key] || {};
-                    return {
-                        judgment: item.judgment,
-                        total: item.total || 0,
-                        red: item.red || 0,
-                        black: item.black || 0,
-                        draw: item.draw || 0,
-                        id: (item.id !== undefined && item.id !== null && item.id !== '') ? item.id : latest.id || '-',
-                        date: latest.date || '',
-                        time: latest.time || '',
-                        league: (item.league && item.league !== '-') ? item.league : (latest.league || '-'),
-                        initial_odds: (item.initial_odds && item.initial_odds !== '-') ? item.initial_odds : (latest.initial_odds || '-'),
-                        initial_analysis: (item.initial_analysis && item.initial_analysis !== '-') ? item.initial_analysis : (latest.initial_analysis || '-'),
-                        final_analysis: (item.final_analysis && item.final_analysis !== '-') ? item.final_analysis : (latest.final_analysis || '-'),
-                        home_team: latest.home_team || '?',
-                        away_team: latest.away_team || '?'
-                    };
-                });
-
-                judgOffset = 0;
-                renderJudgmentTable();
-                updateJudgmentPagination();
-
-                // ---- 联赛统计（本地计算） ----
                 const leagueMap = {};
                 matches.forEach(m => {
                     const lg = m.league || '未知联赛';
@@ -422,126 +329,6 @@
             }
         }
 
-        // ============ 基本面判断表格 ============
-        function renderJudgmentTable() {
-            const start = judgOffset;
-            const end = Math.min(start + judgLimit, allJudgmentItems.length);
-            const pageItems = allJudgmentItems.slice(start, end);
-
-            if (allJudgmentItems.length === 0) {
-                document.getElementById('judgmentStats').innerHTML = '<p style="color:#6b7280;">暂无数据</p>';
-                return;
-            }
-
-            let html = `
-                <table class="stat-table">
-                    <thead>
-                        <tr>
-                            <th class="col-id">ID</th>
-                            <th class="col-team">主队 VS 客队</th>
-                            <th class="col-league">联赛</th>
-                            <th class="col-odds">初02</th>
-                            <th class="col-analysis">初盘分析</th>
-                            <th class="col-analysis">终盘分析</th>
-                            <th class="col-judgment">基本面判断</th>
-                            <th>总场次</th>
-                            <th>红</th>
-                            <th>黑</th>
-                            <th>走盘</th>
-                            <th>胜率 (红/总)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            pageItems.forEach(item => {
-                const label = judgmentMap[item.judgment] || item.judgment;
-                const totalJ = item.total;
-                const redJ = item.red;
-                const blackJ = item.black;
-                const drawJ = item.draw;
-                const rate = totalJ > 0 ? ((redJ / totalJ) * 100).toFixed(1) : '0.0';
-                const params = new URLSearchParams({
-                    date: item.date,
-                    time: item.time,
-                    league: item.league,
-                    home: item.home_team,
-                    away: item.away_team
-                });
-                const oddsUrl = `${AI_PAGE}?${params.toString()}`;
-                const homeLink = `<a href="${oddsUrl}" class="team-link">${item.home_team}</a>`;
-                const awayLink = `<a href="${oddsUrl}" class="team-link">${item.away_team}</a>`;
-                const teamDisplay = `${homeLink} <span style="font-weight:600;color:#3b7cff;">VS</span> ${awayLink}`;
-                html += `
-                    <tr>
-                        <td>${item.id}</td>
-                        <td>${teamDisplay}</td>
-                        <td>${item.league}</td>
-                        <td>${item.initial_odds}</td>
-                        <td>${item.initial_analysis}</td>
-                        <td>${item.final_analysis}</td>
-                        <td>${label}</td>
-                        <td>${totalJ}</td>
-                        <td style="color:#dc2626;">${redJ}</td>
-                        <td style="color:#1f2937;">${blackJ}</td>
-                        <td style="color:#d97706;">${drawJ}</td>
-                        <td>${rate}%</td>
-                    </tr>
-                `;
-            });
-            html += `</tbody></table>`;
-            document.getElementById('judgmentStats').innerHTML = html;
-            document.getElementById('judgTotalCount').textContent = allJudgmentItems.length;
-        }
-
-        function updateJudgmentPagination() {
-            const totalItems = allJudgmentItems.length;
-            const totalPages = Math.ceil(totalItems / judgLimit) || 1;
-            const currentPage = Math.floor(judgOffset / judgLimit) + 1;
-
-            const pageNumbers = document.getElementById('judgPageNumbers');
-            const prevBtn = document.getElementById('judgPrevBtn');
-            const nextBtn = document.getElementById('judgNextBtn');
-            const pagination = document.getElementById('judgmentPagination');
-
-            if (totalItems === 0) { pagination.style.display = 'none'; return; }
-
-            let html = '';
-            const maxVisible = 7;
-            let startPage = 1, endPage = totalPages;
-            if (totalPages > maxVisible) {
-                const half = Math.floor(maxVisible / 2);
-                if (currentPage <= half + 1) endPage = maxVisible;
-                else if (currentPage >= totalPages - half) startPage = totalPages - maxVisible + 1;
-                else { startPage = currentPage - half; endPage = currentPage + half; }
-            }
-            if (startPage > 1) {
-                html += `<span class="page-num" data-page="1">1</span>`;
-                if (startPage > 2) html += `<span class="ellipsis">…</span>`;
-            }
-            for (let i = startPage; i <= endPage; i++) {
-                html += `<span class="page-num ${i===currentPage?'active':''}" data-page="${i}">${i}</span>`;
-            }
-            if (endPage < totalPages) {
-                if (endPage < totalPages - 1) html += `<span class="ellipsis">…</span>`;
-                html += `<span class="page-num" data-page="${totalPages}">${totalPages}</span>`;
-            }
-            pageNumbers.innerHTML = html;
-            pageNumbers.querySelectorAll('.page-num').forEach(el => {
-                el.addEventListener('click', function() {
-                    const page = parseInt(this.dataset.page);
-                    if (page >= 1 && page <= totalPages) {
-                        judgOffset = (page - 1) * judgLimit;
-                        renderJudgmentTable();
-                        updateJudgmentPagination();
-                    }
-                });
-            });
-            prevBtn.disabled = judgOffset === 0;
-            nextBtn.disabled = judgOffset + judgLimit >= totalItems;
-            pagination.style.display = 'flex';
-        }
-
-        // ============ 联赛统计表格 ============
         function renderLeagueTable() {
             const start = leagueOffset;
             const end = Math.min(start + leagueLimit, allLeagueItems.length);
@@ -635,31 +422,7 @@
             pagination.style.display = 'flex';
         }
 
-        // ============ 事件绑定 ============
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('judgPrevBtn').addEventListener('click', function() {
-                if (judgOffset > 0) {
-                    judgOffset = Math.max(0, judgOffset - judgLimit);
-                    renderJudgmentTable();
-                    updateJudgmentPagination();
-                }
-            });
-            document.getElementById('judgNextBtn').addEventListener('click', function() {
-                if (judgOffset + judgLimit < allJudgmentItems.length) {
-                    const totalPages = Math.max(1, Math.ceil(allJudgmentItems.length / judgLimit));
-                    const currentPage = Math.floor(judgOffset / judgLimit) + 1;
-                    judgOffset = Math.min(totalPages - 1, currentPage) * judgLimit;
-                    renderJudgmentTable();
-                    updateJudgmentPagination();
-                }
-            });
-            document.getElementById('judgPerPage').addEventListener('change', function() {
-                judgLimit = parseInt(this.value);
-                judgOffset = 0;
-                renderJudgmentTable();
-                updateJudgmentPagination();
-            });
-
             document.getElementById('leaguePrevBtn').addEventListener('click', function() {
                 if (leagueOffset > 0) {
                     leagueOffset = Math.max(0, leagueOffset - leagueLimit);

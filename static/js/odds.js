@@ -1,6 +1,23 @@
 (function() {
     "use strict";
 
+    // HTML 转义（用于 textarea 内容安全输出）
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    // textarea 自动增高（最高 200px）
+    function autoResizeTextarea(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        const h = Math.min(el.scrollHeight, 200);
+        el.style.height = h + 'px';
+        el.style.overflowY = el.scrollHeight > 200 ? 'auto' : 'hidden';
+    }
+
     // ---------- 防抖工具 ----------
     function debounce(fn, delay) {
         let timer;
@@ -441,8 +458,8 @@
                     <div class="form-group"><span class="info-label" style="width:120px;">赔率结构</span><input type="text" id="analysis-odds-structure" class="analysis-input" value="${oddsStructureVal}" placeholder="如 胜平负" data-id="${data.id}" data-field="odds_structure"><span class="save-tag" id="analysis-saveTag-odds_structure-${data.id}">✓</span></div>
                     <div class="form-group" style="margin-top:10px;"><span class="info-label" style="width:120px;">初01</span><input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1"><span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">初02</span><input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2"><span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">初赔分析</span><input type="text" id="analysis-initial_analysis" class="analysis-input" value="${initialAnalysisVal}" placeholder="初赔分析" data-id="${data.id}" data-field="initial_analysis"><span class="save-tag" id="analysis-saveTag-initial_analysis-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">终赔分析</span><input type="text" id="analysis-final_analysis" class="analysis-input" value="${finalAnalysisVal}" placeholder="终赔分析" data-id="${data.id}" data-field="final_analysis"><span class="save-tag" id="analysis-saveTag-final_analysis-${data.id}">✓</span></div>
+                    <div class="form-group"><span class="info-label" style="width:120px;">初赔分析</span><textarea id="analysis-initial_analysis" class="analysis-input analysis-textarea" rows="1" placeholder="初赔分析" data-id="${data.id}" data-field="initial_analysis">${escapeHtml(initialAnalysisVal)}</textarea><span class="save-tag" id="analysis-saveTag-initial_analysis-${data.id}">✓</span></div>
+                    <div class="form-group"><span class="info-label" style="width:120px;">终赔分析</span><textarea id="analysis-final_analysis" class="analysis-input analysis-textarea" rows="1" placeholder="终赔分析" data-id="${data.id}" data-field="final_analysis">${escapeHtml(finalAnalysisVal)}</textarea><span class="save-tag" id="analysis-saveTag-final_analysis-${data.id}">✓</span></div>
                     <div class="form-group">
                         <span class="info-label" style="width:120px;">初测</span>
                         ${dropdownHtml}
@@ -451,6 +468,18 @@
                 `;
                 analysisInfoContainer.innerHTML = infoHtml;
                 analysisModal.style.display = 'flex';
+
+                // ★ 初始化时自动增高已填充内容的 textarea
+                analysisInfoContainer.querySelectorAll('.analysis-textarea').forEach(el => {
+                    autoResizeTextarea(el);
+                });
+
+                // ★ 输入时实时增高
+                analysisInfoContainer.addEventListener('input', function(e) {
+                    if (e.target.classList && e.target.classList.contains('analysis-textarea')) {
+                        autoResizeTextarea(e.target);
+                    }
+                });
 
                 // ========== 绑定自动保存（防抖） ==========
                 if (analysisInfoContainer._autoSaveHandler) {
@@ -738,6 +767,9 @@
                     if (judgmentInput) judgmentInput.value = oldJudgment;
                     if (divergenceInput) divergenceInput.checked = (oldDivergence === '是');
                     if (matchInput) matchInput.checked = (oldMatch === '是');
+                    // ★ 恢复后自动增高
+                    if (initialAnalysisInput) autoResizeTextarea(initialAnalysisInput);
+                    if (finalAnalysisInput) autoResizeTextarea(finalAnalysisInput);
                 })
                 .finally(() => {
                     saveAnalysisBtn.textContent = '💾 保存修改';

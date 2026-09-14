@@ -1,6 +1,23 @@
 (function() {
     "use strict";
 
+    // HTML 转义（用于 textarea 内容安全输出）
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    // textarea 自动增高（最高 200px）
+    function autoResizeTextarea(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        const h = Math.min(el.scrollHeight, 200);
+        el.style.height = h + 'px';
+        el.style.overflowY = el.scrollHeight > 200 ? 'auto' : 'hidden';
+    }
+
     function debounce(fn, delay) {
         let timer;
         return function(...args) {
@@ -14,7 +31,6 @@
      * ============================================================ */
     const urlParams = new URLSearchParams(window.location.search);
     const urlResultFilter = urlParams.get('result') || '';
-    // 客户端过滤缓存
     let clientFilterCache = { key: '', data: [] };
 
     const tbody = document.getElementById('historyBody');
@@ -25,11 +41,11 @@
     const filterBtn = document.getElementById('filterBtn');
     const clearFilterBtn = document.getElementById('clearFilterBtn');
 
-    const analysisModal = document.getElementById('analysisModal');
-    const analysisModalTitle = document.getElementById('analysisModalTitle');
-    const analysisInfoContainer = document.getElementById('analysisInfoContainer');
-    const closeAnalysisBtn = document.getElementById('closeAnalysisBtn');
-    const saveAnalysisBtn = document.getElementById('saveAnalysisBtn');
+    const analysisModal = document.getElementById('aiAnalysisModal');
+    const analysisModalTitle = document.getElementById('aiAnalysisModalTitle');
+    const analysisInfoContainer = document.getElementById('aiAnalysisInfoContainer');
+    const closeAnalysisBtn = document.getElementById('aiCloseAnalysisBtn');
+    const saveAnalysisBtn = document.getElementById('aiSaveAnalysisBtn');
 
     const editModal = document.getElementById('editModal');
     const editTitle = document.getElementById('editTitle');
@@ -99,12 +115,12 @@
     }
 
     function saveField(id, field, value) {
-        return fetch('/api/match/' + id)
+        return fetch('/api/match/' + id + '?source=ai')
             .then(res => { if (!res.ok) throw new Error('获取数据失败'); return res.json(); })
             .then(data => {
                 const payload = { ...data };
                 payload[field] = value;
-                return fetch('/api/match/' + id, {
+                return fetch('/api/match/' + id + '?source=ai', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -134,9 +150,6 @@
         }
     }
 
-    /* ============================================================
-     * 把行渲染提取出来，供两种模式共用
-     * ============================================================ */
     function renderRows(matches) {
         if (matches.length === 0) {
             tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
@@ -152,8 +165,6 @@
             else if (result === '走盘') resultHtml = `<span style="color:#d97706;font-weight:600;">走盘</span>`;
 
             const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
-            const homeScore = Math.round(parseFloat(m.home_score) || 0);
-            const awayScore = Math.round(parseFloat(m.away_score) || 0);
 
             let fundDisplay = [];
             if (m.fundamental_divergence === '是') fundDisplay.push('背离');
@@ -194,9 +205,6 @@
         bindEvents();
     }
 
-    /* ============================================================
-     * 客户端过滤模式（循环拉全量 + 本地过滤 + 本地分页）
-     * ============================================================ */
     async function loadWithClientFilter(date, league, limit, offset) {
         loading.style.display = 'block';
         tableWrap.style.display = 'none';
@@ -211,7 +219,7 @@
             const maxRounds = 500;
 
             while (round++ < maxRounds) {
-                let url = `/api/history?limit=${pageSize}&offset=${o}`;
+                let url = `/api/history?limit=${pageSize}&offset=${o}&source=ai`;
                 if (date) url += '&date=' + encodeURIComponent(date);
                 if (league) url += '&league=' + encodeURIComponent(league);
 
@@ -237,7 +245,6 @@
                 o += items.length;
             }
 
-            // ★ 待定 = result 为空 / null / undefined
             clientFilterCache.data = all.filter(m => {
                 if (urlResultFilter === '待定') {
                     return !m.result || m.result === '' || m.result === null || m.result === undefined;
@@ -275,15 +282,13 @@
         currentDateFilter = date;
         currentLeagueFilter = league;
 
-        // 有 result 参数时走客户端过滤模式
         if (urlResultFilter) {
             return loadWithClientFilter(date, league, limit, offset);
         }
 
-        // ---- 原有的服务器分页逻辑 ----
         loading.style.display = 'block';
         tableWrap.style.display = 'none';
-        let url = `/api/history?limit=${limit}&offset=${offset}`;
+        let url = `/api/history?limit=${limit}&offset=${offset}&source=ai`;
         if (date) url += '&date=' + date;
         if (league) url += '&league=' + encodeURIComponent(league);
 
@@ -318,7 +323,7 @@
             sel.addEventListener('change', function() {
                 const id = this.dataset.id;
                 const val = this.value;
-                fetch('/api/match/' + id + '/result', {
+                fetch('/api/match/' + id + '/result?source=ai', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ result: val || null })
@@ -337,7 +342,7 @@
             btn.addEventListener('click', function() {
                 const id = this.dataset.id;
                 if (confirm('确定删除该预测记录吗？')) {
-                    fetch('/api/match/' + id, { method: 'DELETE' })
+                    fetch('/api/match/' + id + '?source=ai', { method: 'DELETE' })
                         .then(res => res.json())
                         .then(res => {
                             if (res.success) {
@@ -361,7 +366,7 @@
             const ids = Array.from(selected).map(cb => parseInt(cb.dataset.id));
             let successCount = 0, failCount = 0;
             ids.forEach(id => {
-                fetch('/api/match/' + id, { method: 'DELETE' })
+                fetch('/api/match/' + id + '?source=ai', { method: 'DELETE' })
                     .then(res => res.json())
                     .then(res => {
                         res.success ? successCount++ : failCount++;
@@ -413,9 +418,8 @@
         });
     }
 
-    /* ========== 打开 AI 分析模态框（含自动保存） ========== */
     function openAnalysisModal(id) {
-        fetch('/api/match/' + id)
+        fetch('/api/match/' + id + '?source=ai')
             .then(res => { if (!res.ok) throw new Error('获取数据失败'); return res.json(); })
             .then(data => {
                 if (data.error) { alert(data.error); return; }
@@ -451,7 +455,6 @@
                 analysisModal.dataset.oldMatch = matchVal;
 
                 const options = ['胜', '平', '负', '上盘', '下盘', '让胜', '让平', '让负', '大球', '小球'];
-
 
                 let dropdownHtml = `
                     <div class="custom-dropdown" id="pred-dropdown-${id}">
@@ -525,8 +528,8 @@
                     <div class="form-group"><span class="info-label" style="width:120px;">赔率结构</span><input type="text" id="analysis-odds-structure" class="analysis-input" value="${oddsStructureVal}" placeholder="如 胜平负" data-id="${data.id}" data-field="odds_structure"><span class="save-tag" id="analysis-saveTag-odds_structure-${data.id}">✓</span></div>
                     <div class="form-group" style="margin-top:10px;"><span class="info-label" style="width:120px;">初01</span><input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1"><span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span></div>
                     <div class="form-group"><span class="info-label" style="width:120px;">初02</span><input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2"><span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">初赔分析</span><input type="text" id="analysis-initial_analysis" class="analysis-input" value="${initialAnalysisVal}" placeholder="初赔分析" data-id="${data.id}" data-field="initial_analysis"><span class="save-tag" id="analysis-saveTag-initial_analysis-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">终赔分析</span><input type="text" id="analysis-final_analysis" class="analysis-input" value="${finalAnalysisVal}" placeholder="终赔分析" data-id="${data.id}" data-field="final_analysis"><span class="save-tag" id="analysis-saveTag-final_analysis-${data.id}">✓</span></div>
+                    <div class="form-group"><span class="info-label" style="width:120px;">初赔分析</span><textarea id="analysis-initial_analysis" class="analysis-input analysis-textarea" rows="1" placeholder="初赔分析" data-id="${data.id}" data-field="initial_analysis">${escapeHtml(initialAnalysisVal)}</textarea><span class="save-tag" id="analysis-saveTag-initial_analysis-${data.id}">✓</span></div>
+                    <div class="form-group"><span class="info-label" style="width:120px;">终赔分析</span><textarea id="analysis-final_analysis" class="analysis-input analysis-textarea" rows="1" placeholder="终赔分析" data-id="${data.id}" data-field="final_analysis">${escapeHtml(finalAnalysisVal)}</textarea><span class="save-tag" id="analysis-saveTag-final_analysis-${data.id}">✓</span></div>
                     <div class="form-group">
                         <span class="info-label" style="width:120px;">初测</span>
                         ${dropdownHtml}
@@ -535,6 +538,16 @@
                 `;
                 analysisInfoContainer.innerHTML = infoHtml;
                 analysisModal.style.display = 'flex';
+
+                analysisInfoContainer.querySelectorAll('.analysis-textarea').forEach(el => {
+                    autoResizeTextarea(el);
+                });
+
+                analysisInfoContainer.addEventListener('input', function(e) {
+                    if (e.target.classList && e.target.classList.contains('analysis-textarea')) {
+                        autoResizeTextarea(e.target);
+                    }
+                });
 
                 if (analysisInfoContainer._autoSaveHandler) {
                     analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
@@ -718,7 +731,7 @@
             saveAnalysisBtn.textContent = '⏳ 保存中...';
             saveAnalysisBtn.disabled = true;
 
-            fetch('/api/match/' + id)
+            fetch('/api/match/' + id + '?source=ai')
                 .then(res => { if (!res.ok) throw new Error('获取当前数据失败'); return res.json(); })
                 .then(data => {
                     data.pos1 = pos1Val;
@@ -732,7 +745,7 @@
                     data.judgment = judgmentVal;
                     data.fundamental_divergence = divergenceVal;
                     data.fundamental_match = matchVal;
-                    return fetch('/api/match/' + id, {
+                    return fetch('/api/match/' + id + '?source=ai', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
@@ -744,6 +757,18 @@
                 })
                 .then(result => {
                     if (result.success) {
+                        analysisModal.dataset.oldPos1 = pos1Val;
+                        analysisModal.dataset.oldPos2 = pos2Val;
+                        analysisModal.dataset.oldAsian = asianVal;
+                        analysisModal.dataset.oldRange = rangeVal;
+                        analysisModal.dataset.oldInitialAnalysis = initialAnalysisVal;
+                        analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
+                        analysisModal.dataset.oldOddsStructure = oddsStructureVal;
+                        analysisModal.dataset.oldPred = initialPredictionVal;
+                        analysisModal.dataset.oldJudgment = judgmentVal;
+                        analysisModal.dataset.oldDivergence = divergenceVal;
+                        analysisModal.dataset.oldMatch = matchVal;
+
                         const fields = ['pos1', 'pos2', 'asian', 'range', 'initial_analysis', 'final_analysis', 'initial_prediction', 'odds_structure', 'judgment', 'fundamental_divergence', 'fundamental_match'];
                         fields.forEach(field => {
                             const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
@@ -758,6 +783,53 @@
                 })
                 .catch(err => {
                     showToast('❌ 保存失败: ' + err.message, true);
+                    console.error('保存错误:', err);
+                    const oldPos1 = analysisModal.dataset.oldPos1 || '';
+                    const oldPos2 = analysisModal.dataset.oldPos2 || '';
+                    const oldAsian = analysisModal.dataset.oldAsian || '';
+                    const oldRange = analysisModal.dataset.oldRange || '';
+                    const oldInitialAnalysis = analysisModal.dataset.oldInitialAnalysis || '';
+                    const oldFinalAnalysis = analysisModal.dataset.oldFinalAnalysis || '';
+                    const oldOddsStructure = analysisModal.dataset.oldOddsStructure || '';
+                    const oldJudgment = analysisModal.dataset.oldJudgment || 'equal';
+                    const oldDivergence = analysisModal.dataset.oldDivergence || '否';
+                    const oldMatch = analysisModal.dataset.oldMatch || '否';
+                    const oldPred = analysisModal.dataset.oldPred || '[]';
+                    try {
+                        const oldArr = JSON.parse(oldPred);
+                        const menu = document.getElementById(`pred-menu-${id}`);
+                        if (menu) {
+                            menu.querySelectorAll('.dropdown-item').forEach(item => {
+                                const cb = item.querySelector('input[type="checkbox"]');
+                                if (cb) {
+                                    cb.checked = oldArr.includes(cb.value);
+                                    item.classList.toggle('selected', cb.checked);
+                                }
+                            });
+                            const trigger = document.getElementById(`pred-trigger-${id}`);
+                            if (trigger) {
+                                const checked = menu.querySelectorAll('.dropdown-item input[type="checkbox"]:checked');
+                                const labels = Array.from(checked).map(cb => cb.value);
+                                const textSpan = trigger.querySelector('.selected-text');
+                                if (textSpan) {
+                                    textSpan.textContent = labels.length > 0 ? labels.join('、') : '请选择';
+                                    textSpan.classList.toggle('placeholder', labels.length === 0);
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                    if (pos1Input) pos1Input.value = oldPos1;
+                    if (pos2Input) pos2Input.value = oldPos2;
+                    if (asianInput) asianInput.value = oldAsian;
+                    if (rangeInput) rangeInput.value = oldRange;
+                    if (initialAnalysisInput) initialAnalysisInput.value = oldInitialAnalysis;
+                    if (finalAnalysisInput) finalAnalysisInput.value = oldFinalAnalysis;
+                    if (oddsStructureInput) oddsStructureInput.value = oldOddsStructure;
+                    if (judgmentInput) judgmentInput.value = oldJudgment;
+                    if (divergenceInput) divergenceInput.checked = (oldDivergence === '是');
+                    if (matchInput) matchInput.checked = (oldMatch === '是');
+                    if (initialAnalysisInput) autoResizeTextarea(initialAnalysisInput);
+                    if (finalAnalysisInput) autoResizeTextarea(finalAnalysisInput);
                 })
                 .finally(() => {
                     saveAnalysisBtn.textContent = '💾 保存修改';
@@ -765,6 +837,7 @@
                 });
         } catch (error) {
             showToast('❌ 保存过程中发生错误: ' + error.message, true);
+            console.error('手动保存异常:', error);
             saveAnalysisBtn.textContent = '💾 保存修改';
             saveAnalysisBtn.disabled = false;
         }
@@ -829,7 +902,7 @@
             fundamental_match: '否',
             bet: '否'
         };
-        fetch('/api/save', {
+        fetch('/api/save?source=ai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -890,7 +963,6 @@
     const filterHome = urlParams.get('home');
     const filterAway = urlParams.get('away');
 
-    // 如果 URL 携带 result 参数，直接在标题旁加一个提示
     if (urlResultFilter) {
         const h1 = document.querySelector('h1');
         if (h1) {
@@ -902,17 +974,15 @@
     }
 
     if (filterDateParam && filterHome && filterAway) {
-        // 与 result 过滤兼容：如果同时存在特定赛事定位，优先按赛事定位
         loading.style.display = 'block';
         tableWrap.style.display = 'none';
-        fetch(`/api/match/find?date=${encodeURIComponent(filterDateParam)}&home_team=${encodeURIComponent(filterHome)}&away_team=${encodeURIComponent(filterAway)}`)
+        fetch(`/api/match/find?date=${encodeURIComponent(filterDateParam)}&home_team=${encodeURIComponent(filterHome)}&away_team=${encodeURIComponent(filterAway)}&source=ai`)
             .then(res => res.json())
             .then(data => {
                 loading.style.display = 'none';
                 tableWrap.style.display = 'block';
                 if (data && data.id) {
                     const m = data;
-                    // 若指定了 result 且不匹配，则不显示
                     if (urlResultFilter) {
                         const isPending = !m.result || m.result === '' || m.result === null || m.result === undefined;
                         const matchesFilter = (urlResultFilter === '待定') ? isPending : (m.result === urlResultFilter);
@@ -934,7 +1004,6 @@
                 console.error('加载失败:', err);
             });
     } else {
-        // 初始化时带上 URL 参数
         loadHistory('', '', 20, 0);
     }
 })();
