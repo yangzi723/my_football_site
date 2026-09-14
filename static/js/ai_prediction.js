@@ -450,7 +450,8 @@
                 analysisModal.dataset.oldDivergence = divergenceVal;
                 analysisModal.dataset.oldMatch = matchVal;
 
-                const options = ['胜', '平', '负', '上盘', '下盘', '大球', '小球'];
+                const options = ['胜', '平', '负', '上盘', '下盘', '让胜', '让平', '让负', '大球', '小球'];
+
 
                 let dropdownHtml = `
                     <div class="custom-dropdown" id="pred-dropdown-${id}">

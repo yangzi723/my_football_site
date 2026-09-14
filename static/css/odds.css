@@ -324,3 +324,56 @@ body { background: #f5f7fb; }
 h1 { font-size: 26px; font-weight: 700; color: #1e293b; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
 h1::after { content: ''; flex: 1; height: 2px; background: linear-gradient(to right, #e2e8f0, transparent); }
 #loading { color: #475569; font-size: 14px; }F
+/* ============================================================
+ * 初测自定义下拉菜单修复
+ * 修复复选框与文字竖排、间距错乱、文字换行的问题
+ * 作用于 odds 与 ai_prediction 两个页面的模态框
+ * ============================================================ */
+.custom-dropdown .dropdown-menu .dropdown-item {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    padding: 8px 14px !important;
+    white-space: nowrap !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    cursor: pointer;
+}
+
+.custom-dropdown .dropdown-menu .dropdown-item input[type="checkbox"] {
+    flex: 0 0 auto !important;
+    width: 16px !important;
+    height: 16px !important;
+    margin: 0 !important;
+    cursor: pointer;
+    accent-color: #3b99fc;
+}
+
+.custom-dropdown .dropdown-menu .dropdown-item .label-text {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    display: inline-block !important;
+    font-size: 14px;
+    color: #2c3e50;
+    writing-mode: horizontal-tb !important;
+}
+
+.custom-dropdown .dropdown-menu .dropdown-item .check-mark {
+    margin-left: auto !important;
+    flex: 0 0 auto !important;
+    color: #3b99fc;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity .15s;
+}
+
+.custom-dropdown .dropdown-menu .dropdown-item.selected .check-mark {
+    opacity: 1;
+}
+
+/* 防止下拉菜单选项过窄时文字换行 */
+.custom-dropdown .dropdown-menu {
+    min-width: 180px;
+}
