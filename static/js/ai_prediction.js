@@ -418,266 +418,313 @@
         });
     }
 
-    function openAnalysisModal(id) {
-        fetch('/api/match/' + id + '?source=ai')
-            .then(res => { if (!res.ok) throw new Error('获取数据失败'); return res.json(); })
-            .then(data => {
-                if (data.error) { alert(data.error); return; }
+    /* ============================================================
+     * 打开 AI 分析模态框
+     *   1) 读取 AI 记录（初赔分析/终赔分析/初测 使用它的值）
+     *   2) 从同一条赛事的 odds 记录导入共享字段
+     * ============================================================ */
+    async function openAnalysisModal(id) {
+        try {
+            // 1) 读取 AI 记录
+            const aiRes = await fetch('/api/match/' + id + '?source=ai');
+            if (!aiRes.ok) throw new Error('获取数据失败');
+            const data = await aiRes.json();
+            if (data.error) { alert(data.error); return; }
 
-                analysisModal.dataset.id = id;
-                analysisModalTitle.textContent = `📊 AI分析 - ${data.home_team} vs ${data.away_team}`;
-                const pos1Val = data.pos1 || '';
-                const pos2Val = data.pos2 || '';
-                const asianVal = data.asian_odds || '';
-                const rangeVal = data.range || '';
-                const initialAnalysisVal = data.initial_analysis || '';
-                const finalAnalysisVal = data.final_analysis || '';
-                const oddsStructureVal = data.odds_structure || '';
-                const predArray = getInitialPredictionArray(data);
-                const divergenceVal = data.fundamental_divergence || '否';
-                const matchVal = data.fundamental_match || '否';
-
-                const homeScore = Math.round(parseFloat(data.home_score) || 0);
-                const awayScore = Math.round(parseFloat(data.away_score) || 0);
-                const homeProb = (parseFloat(data.home_prob) || 0) * 100;
-                const drawProb = (parseFloat(data.draw_prob) || 0) * 100;
-                const awayProb = (parseFloat(data.away_prob) || 0) * 100;
-
-                analysisModal.dataset.oldPos1 = pos1Val;
-                analysisModal.dataset.oldPos2 = pos2Val;
-                analysisModal.dataset.oldAsian = asianVal;
-                analysisModal.dataset.oldRange = rangeVal;
-                analysisModal.dataset.oldInitialAnalysis = initialAnalysisVal;
-                analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
-                analysisModal.dataset.oldOddsStructure = oddsStructureVal;
-                analysisModal.dataset.oldPred = JSON.stringify(predArray);
-                analysisModal.dataset.oldDivergence = divergenceVal;
-                analysisModal.dataset.oldMatch = matchVal;
-
-                const options = ['胜', '平', '负', '上盘', '下盘', '让胜', '让平', '让负', '大球', '小球'];
-
-                let dropdownHtml = `
-                    <div class="custom-dropdown" id="pred-dropdown-${id}">
-                        <button class="dropdown-trigger" id="pred-trigger-${id}" type="button">
-                            <span class="selected-text">${predArray.length > 0 ? predArray.join('、') : '请选择'}</span>
-                        </button>
-                        <div class="dropdown-menu" id="pred-menu-${id}">
-                            ${options.map(opt => `
-                                <label class="dropdown-item ${predArray.includes(opt) ? 'selected' : ''}" data-value="${opt}">
-                                    <input type="checkbox" value="${opt}" ${predArray.includes(opt) ? 'checked' : ''}>
-                                    <span class="label-text">${opt}</span>
-                                    <span class="check-mark">✓</span>
-                                </label>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-
-                const judgmentOptions = [
-                    {val:'home_advantage', label:'主队占优'},
-                    {val:'away_advantage', label:'客队占优'},
-                    {val:'equal', label:'两队实力相当'},
-                    {val:'home_strong', label:'主队较强优势'},
-                    {val:'away_strong', label:'客队较强优势'},
-                    {val:'home_dominant', label:'主队绝对优势'},
-                    {val:'away_dominant', label:'客队绝对优势'},
-                    {val:'both_weak', label:'两队菜鸡'},
-                    {val:'home_slight', label:'主队略占优'},
-                    {val:'away_slight', label:'客队略占优'}
-                ];
-
-                let infoHtml = `
-                    <div style="background:#f0f6ff; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
-                        <div style="font-weight:600; font-size:14px; color:#1a3a6b; margin-bottom:8px;">📊 基本面评分</div>
-                        <div style="display:flex; flex-wrap:wrap; gap:12px 20px;">
-                            <div><span style="color:#4b657a;">主队得分</span> <strong>${homeScore}</strong></div>
-                            <div><span style="color:#4b657a;">客队得分</span> <strong>${awayScore}</strong></div>
-                            <div><span style="color:#4b657a;">主胜概率</span> <strong>${homeProb.toFixed(1)}%</strong></div>
-                            <div><span style="color:#4b657a;">平局概率</span> <strong>${drawProb.toFixed(1)}%</strong></div>
-                            <div><span style="color:#4b657a;">客胜概率</span> <strong>${awayProb.toFixed(1)}%</strong></div>
-                        </div>
-                    </div>
-                    <div class="info-row"><span class="info-label">ID</span><span class="info-value">${data.id}</span></div>
-                    <div class="info-row"><span class="info-label">联赛</span><span class="info-value">${data.league || '—'}</span></div>
-                    <div class="info-row"><span class="info-label">基本面判断</span>
-                        <div class="info-value">
-                            <select id="analysis-judgment" class="analysis-input" data-id="${data.id}" data-field="judgment">
-                                ${judgmentOptions.map(opt => `
-                                    <option value="${opt.val}" ${data.judgment===opt.val?'selected':''}>${opt.label}</option>
-                                `).join('')}
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group" style="margin-top:10px;">
-                        <span class="info-label" style="width:120px;">基本面</span>
-                        <div style="display:flex; align-items:center; gap:16px; flex-wrap:nowrap;">
-                            <label style="display:flex; align-items:center; gap:4px; cursor:pointer; white-space:nowrap;">
-                                <span>背离</span>
-                                <input type="checkbox" id="analysis-divergence" data-id="${data.id}" data-field="fundamental_divergence" ${divergenceVal==='是'?'checked':''}>
-                            </label>
-                            <label style="display:flex; align-items:center; gap:4px; cursor:pointer; white-space:nowrap;">
-                                <span>相符</span>
-                                <input type="checkbox" id="analysis-match" data-id="${data.id}" data-field="fundamental_match" ${matchVal==='是'?'checked':''}>
-                            </label>
-                        </div>
-                        <span class="save-tag" id="analysis-saveTag-fundamental_divergence-${data.id}">✓</span>
-                        <span class="save-tag" id="analysis-saveTag-fundamental_match-${data.id}">✓</span>
-                    </div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">亚初终</span><input type="text" id="analysis-asian" class="analysis-input" value="${asianVal}" placeholder="如 0.85 半球 0.95" data-id="${data.id}" data-field="asian_odds"><span class="save-tag" id="analysis-saveTag-asian-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">区间</span><input type="text" id="analysis-range" class="analysis-input" value="${rangeVal}" placeholder="如 2.5-3" data-id="${data.id}" data-field="range"><span class="save-tag" id="analysis-saveTag-range-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">赔率结构</span><input type="text" id="analysis-odds-structure" class="analysis-input" value="${oddsStructureVal}" placeholder="如 胜平负" data-id="${data.id}" data-field="odds_structure"><span class="save-tag" id="analysis-saveTag-odds_structure-${data.id}">✓</span></div>
-                    <div class="form-group" style="margin-top:10px;"><span class="info-label" style="width:120px;">初01</span><input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1"><span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">初02</span><input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2"><span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">初赔分析</span><textarea id="analysis-initial_analysis" class="analysis-input analysis-textarea" rows="1" placeholder="初赔分析" data-id="${data.id}" data-field="initial_analysis">${escapeHtml(initialAnalysisVal)}</textarea><span class="save-tag" id="analysis-saveTag-initial_analysis-${data.id}">✓</span></div>
-                    <div class="form-group"><span class="info-label" style="width:120px;">终赔分析</span><textarea id="analysis-final_analysis" class="analysis-input analysis-textarea" rows="1" placeholder="终赔分析" data-id="${data.id}" data-field="final_analysis">${escapeHtml(finalAnalysisVal)}</textarea><span class="save-tag" id="analysis-saveTag-final_analysis-${data.id}">✓</span></div>
-                    <div class="form-group">
-                        <span class="info-label" style="width:120px;">初测</span>
-                        ${dropdownHtml}
-                        <span class="save-tag" id="analysis-saveTag-initial_prediction-${data.id}">✓</span>
-                    </div>
-                `;
-                analysisInfoContainer.innerHTML = infoHtml;
-                analysisModal.style.display = 'flex';
-
-                analysisInfoContainer.querySelectorAll('.analysis-textarea').forEach(el => {
-                    autoResizeTextarea(el);
-                });
-
-                analysisInfoContainer.addEventListener('input', function(e) {
-                    if (e.target.classList && e.target.classList.contains('analysis-textarea')) {
-                        autoResizeTextarea(e.target);
+            // 2) 从 odds 记录导入共享字段
+            //    导入字段：pos1, pos2, asian_odds, range, odds_structure,
+            //             judgment, fundamental_divergence, fundamental_match
+            //    保留字段：initial_analysis, final_analysis, initial_prediction
+            let oddsData = null;
+            if (data.date && data.home_team && data.away_team) {
+                try {
+                    const oddsUrl = `/api/match/find?date=${encodeURIComponent(data.date)}&home_team=${encodeURIComponent(data.home_team)}&away_team=${encodeURIComponent(data.away_team)}&source=odds`;
+                    const oddsRes = await fetch(oddsUrl, { cache: 'no-store' });
+                    if (oddsRes.ok) {
+                        const od = await oddsRes.json();
+                        if (od && od.id) oddsData = od;
                     }
-                });
-
-                if (analysisInfoContainer._autoSaveHandler) {
-                    analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
+                } catch (e) {
+                    console.warn('获取赔率记录失败（将使用 AI 记录中的原值）:', e);
                 }
+            }
 
-                const autoSave = debounce(function(field, value) {
-                    const oldKey = `old${field.charAt(0).toUpperCase() + field.slice(1)}`;
-                    let oldVal = analysisModal.dataset[oldKey];
-                    if (field === 'initial_prediction') {
-                        oldVal = analysisModal.dataset.oldPred || '[]';
-                    }
-                    if (value === oldVal) return;
+            if (oddsData) {
+                // 仅在 odds 记录有对应值时覆盖，避免把空值带过来
+                if (oddsData.pos1 !== undefined && oddsData.pos1 !== null && oddsData.pos1 !== '')
+                    data.pos1 = oddsData.pos1;
+                if (oddsData.pos2 !== undefined && oddsData.pos2 !== null && oddsData.pos2 !== '')
+                    data.pos2 = oddsData.pos2;
+                if (oddsData.asian_odds !== undefined && oddsData.asian_odds !== null && oddsData.asian_odds !== '')
+                    data.asian_odds = oddsData.asian_odds;
+                if (oddsData.range !== undefined && oddsData.range !== null && oddsData.range !== '')
+                    data.range = oddsData.range;
+                if (oddsData.odds_structure !== undefined && oddsData.odds_structure !== null && oddsData.odds_structure !== '')
+                    data.odds_structure = oddsData.odds_structure;
+                if (oddsData.judgment !== undefined && oddsData.judgment !== null && oddsData.judgment !== '')
+                    data.judgment = oddsData.judgment;
+                if (oddsData.fundamental_divergence !== undefined && oddsData.fundamental_divergence !== null && oddsData.fundamental_divergence !== '')
+                    data.fundamental_divergence = oddsData.fundamental_divergence;
+                if (oddsData.fundamental_match !== undefined && oddsData.fundamental_match !== null && oddsData.fundamental_match !== '')
+                    data.fundamental_match = oddsData.fundamental_match;
+            }
 
-                    saveField(id, field, value)
-                        .then(res => {
-                            if (res.success) {
-                                if (field === 'initial_prediction') {
-                                    analysisModal.dataset.oldPred = value;
-                                } else {
-                                    analysisModal.dataset[oldKey] = value;
-                                }
-                                const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
-                                if (tag) tag.classList.add('show');
-                                analysisModal.dataset.changed = 'true';
-                                if (urlResultFilter) clientFilterCache.key = '';
+            // 3) 渲染模态框
+            analysisModal.dataset.id = id;
+            analysisModalTitle.textContent = `📊 AI分析 - ${data.home_team} vs ${data.away_team}`;
+            const pos1Val = data.pos1 || '';
+            const pos2Val = data.pos2 || '';
+            const asianVal = data.asian_odds || '';
+            const rangeVal = data.range || '';
+            const initialAnalysisVal = data.initial_analysis || '';
+            const finalAnalysisVal = data.final_analysis || '';
+            const oddsStructureVal = data.odds_structure || '';
+            const predArray = getInitialPredictionArray(data);
+            const divergenceVal = data.fundamental_divergence || '否';
+            const matchVal = data.fundamental_match || '否';
+
+            const homeScore = Math.round(parseFloat(data.home_score) || 0);
+            const awayScore = Math.round(parseFloat(data.away_score) || 0);
+            const homeProb = (parseFloat(data.home_prob) || 0) * 100;
+            const drawProb = (parseFloat(data.draw_prob) || 0) * 100;
+            const awayProb = (parseFloat(data.away_prob) || 0) * 100;
+
+            analysisModal.dataset.oldPos1 = pos1Val;
+            analysisModal.dataset.oldPos2 = pos2Val;
+            analysisModal.dataset.oldAsian = asianVal;
+            analysisModal.dataset.oldRange = rangeVal;
+            analysisModal.dataset.oldInitialAnalysis = initialAnalysisVal;
+            analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
+            analysisModal.dataset.oldOddsStructure = oddsStructureVal;
+            analysisModal.dataset.oldPred = JSON.stringify(predArray);
+            analysisModal.dataset.oldDivergence = divergenceVal;
+            analysisModal.dataset.oldMatch = matchVal;
+
+            const options = ['胜', '平', '负', '上盘', '下盘', '让胜', '让平', '让负', '大球', '小球'];
+
+            let dropdownHtml = `
+                <div class="custom-dropdown" id="pred-dropdown-${id}">
+                    <button class="dropdown-trigger" id="pred-trigger-${id}" type="button">
+                        <span class="selected-text">${predArray.length > 0 ? predArray.join('、') : '请选择'}</span>
+                    </button>
+                    <div class="dropdown-menu" id="pred-menu-${id}">
+                        ${options.map(opt => `
+                            <label class="dropdown-item ${predArray.includes(opt) ? 'selected' : ''}" data-value="${opt}">
+                                <input type="checkbox" value="${opt}" ${predArray.includes(opt) ? 'checked' : ''}>
+                                <span class="label-text">${opt}</span>
+                                <span class="check-mark">✓</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            const judgmentOptions = [
+                {val:'home_advantage', label:'主队占优'},
+                {val:'away_advantage', label:'客队占优'},
+                {val:'equal', label:'两队实力相当'},
+                {val:'home_strong', label:'主队较强优势'},
+                {val:'away_strong', label:'客队较强优势'},
+                {val:'home_dominant', label:'主队绝对优势'},
+                {val:'away_dominant', label:'客队绝对优势'},
+                {val:'both_weak', label:'两队菜鸡'},
+                {val:'home_slight', label:'主队略占优'},
+                {val:'away_slight', label:'客队略占优'}
+            ];
+
+            let infoHtml = `
+                <div style="background:#f0f6ff; border-radius:8px; padding:12px 16px; margin-bottom:12px;">
+                    <div style="font-weight:600; font-size:14px; color:#1a3a6b; margin-bottom:8px;">📊 基本面评分</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:12px 20px;">
+                        <div><span style="color:#4b657a;">主队得分</span> <strong>${homeScore}</strong></div>
+                        <div><span style="color:#4b657a;">客队得分</span> <strong>${awayScore}</strong></div>
+                        <div><span style="color:#4b657a;">主胜概率</span> <strong>${homeProb.toFixed(1)}%</strong></div>
+                        <div><span style="color:#4b657a;">平局概率</span> <strong>${drawProb.toFixed(1)}%</strong></div>
+                        <div><span style="color:#4b657a;">客胜概率</span> <strong>${awayProb.toFixed(1)}%</strong></div>
+                    </div>
+                </div>
+                <div class="info-row"><span class="info-label">ID</span><span class="info-value">${data.id}</span></div>
+                <div class="info-row"><span class="info-label">联赛</span><span class="info-value">${data.league || '—'}</span></div>
+                <div class="info-row"><span class="info-label">基本面判断</span>
+                    <div class="info-value">
+                        <select id="analysis-judgment" class="analysis-input" data-id="${data.id}" data-field="judgment">
+                            ${judgmentOptions.map(opt => `
+                                <option value="${opt.val}" ${data.judgment===opt.val?'selected':''}>${opt.label}</option>
+                            `).join('')}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:10px;">
+                    <span class="info-label" style="width:120px;">基本面</span>
+                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:nowrap;">
+                        <label style="display:flex; align-items:center; gap:4px; cursor:pointer; white-space:nowrap;">
+                            <span>背离</span>
+                            <input type="checkbox" id="analysis-divergence" data-id="${data.id}" data-field="fundamental_divergence" ${divergenceVal==='是'?'checked':''}>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:4px; cursor:pointer; white-space:nowrap;">
+                            <span>相符</span>
+                            <input type="checkbox" id="analysis-match" data-id="${data.id}" data-field="fundamental_match" ${matchVal==='是'?'checked':''}>
+                        </label>
+                    </div>
+                    <span class="save-tag" id="analysis-saveTag-fundamental_divergence-${data.id}">✓</span>
+                    <span class="save-tag" id="analysis-saveTag-fundamental_match-${data.id}">✓</span>
+                </div>
+                <div class="form-group"><span class="info-label" style="width:120px;">亚初终</span><input type="text" id="analysis-asian" class="analysis-input" value="${asianVal}" placeholder="如 0.85 半球 0.95" data-id="${data.id}" data-field="asian_odds"><span class="save-tag" id="analysis-saveTag-asian-${data.id}">✓</span></div>
+                <div class="form-group"><span class="info-label" style="width:120px;">区间</span><input type="text" id="analysis-range" class="analysis-input" value="${rangeVal}" placeholder="如 2.5-3" data-id="${data.id}" data-field="range"><span class="save-tag" id="analysis-saveTag-range-${data.id}">✓</span></div>
+                <div class="form-group"><span class="info-label" style="width:120px;">赔率结构</span><input type="text" id="analysis-odds-structure" class="analysis-input" value="${oddsStructureVal}" placeholder="如 胜平负" data-id="${data.id}" data-field="odds_structure"><span class="save-tag" id="analysis-saveTag-odds_structure-${data.id}">✓</span></div>
+                <div class="form-group" style="margin-top:10px;"><span class="info-label" style="width:120px;">初01</span><input type="text" id="analysis-pos1" class="analysis-input" value="${pos1Val}" placeholder="—" data-id="${data.id}" data-field="pos1"><span class="save-tag" id="analysis-saveTag-pos1-${data.id}">✓</span></div>
+                <div class="form-group"><span class="info-label" style="width:120px;">初02</span><input type="text" id="analysis-pos2" class="analysis-input" value="${pos2Val}" placeholder="—" data-id="${data.id}" data-field="pos2"><span class="save-tag" id="analysis-saveTag-pos2-${data.id}">✓</span></div>
+                <div class="form-group"><span class="info-label" style="width:120px;">初赔分析</span><textarea id="analysis-initial_analysis" class="analysis-input analysis-textarea" rows="1" placeholder="初赔分析" data-id="${data.id}" data-field="initial_analysis">${escapeHtml(initialAnalysisVal)}</textarea><span class="save-tag" id="analysis-saveTag-initial_analysis-${data.id}">✓</span></div>
+                <div class="form-group"><span class="info-label" style="width:120px;">终赔分析</span><textarea id="analysis-final_analysis" class="analysis-input analysis-textarea" rows="1" placeholder="终赔分析" data-id="${data.id}" data-field="final_analysis">${escapeHtml(finalAnalysisVal)}</textarea><span class="save-tag" id="analysis-saveTag-final_analysis-${data.id}">✓</span></div>
+                <div class="form-group">
+                    <span class="info-label" style="width:120px;">初测</span>
+                    ${dropdownHtml}
+                    <span class="save-tag" id="analysis-saveTag-initial_prediction-${data.id}">✓</span>
+                </div>
+            `;
+            analysisInfoContainer.innerHTML = infoHtml;
+            analysisModal.style.display = 'flex';
+
+            // ★ 初始化时自动增高已填充内容的 textarea
+            analysisInfoContainer.querySelectorAll('.analysis-textarea').forEach(el => {
+                autoResizeTextarea(el);
+            });
+
+            // ★ 输入时实时增高
+            analysisInfoContainer.addEventListener('input', function(e) {
+                if (e.target.classList && e.target.classList.contains('analysis-textarea')) {
+                    autoResizeTextarea(e.target);
+                }
+            });
+
+            if (analysisInfoContainer._autoSaveHandler) {
+                analysisInfoContainer.removeEventListener('input', analysisInfoContainer._autoSaveHandler);
+            }
+
+            const autoSave = debounce(function(field, value) {
+                const oldKey = `old${field.charAt(0).toUpperCase() + field.slice(1)}`;
+                let oldVal = analysisModal.dataset[oldKey];
+                if (field === 'initial_prediction') {
+                    oldVal = analysisModal.dataset.oldPred || '[]';
+                }
+                if (value === oldVal) return;
+
+                saveField(id, field, value)
+                    .then(res => {
+                        if (res.success) {
+                            if (field === 'initial_prediction') {
+                                analysisModal.dataset.oldPred = value;
                             } else {
-                                showToast(`❌ 保存失败 (${field}): ${res.error || '未知错误'}`, true);
+                                analysisModal.dataset[oldKey] = value;
                             }
-                        })
-                        .catch(err => showToast(`❌ 请求出错: ${err.message}`, true));
-                }, 600);
+                            const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
+                            if (tag) tag.classList.add('show');
+                            analysisModal.dataset.changed = 'true';
+                            if (urlResultFilter) clientFilterCache.key = '';
+                        } else {
+                            showToast(`❌ 保存失败 (${field}): ${res.error || '未知错误'}`, true);
+                        }
+                    })
+                    .catch(err => showToast(`❌ 请求出错: ${err.message}`, true));
+            }, 600);
 
-                const autoSaveHandler = function(e) {
-                    const target = e.target;
-                    if (!target.classList.contains('analysis-input') && !target.classList.contains('pred-checkbox') && target.id !== 'analysis-divergence' && target.id !== 'analysis-match') {
-                        return;
-                    }
-                    let field = target.dataset.field;
-                    let value;
-                    if (target.classList.contains('pred-checkbox')) {
-                        const checkedBoxes = analysisInfoContainer.querySelectorAll('.pred-checkbox:checked');
-                        const selected = Array.from(checkedBoxes).map(cb => cb.value);
-                        value = JSON.stringify(selected);
-                        field = 'initial_prediction';
-                    } else if (target.id === 'analysis-divergence') {
-                        value = target.checked ? '是' : '否';
-                        field = 'fundamental_divergence';
-                    } else if (target.id === 'analysis-match') {
-                        value = target.checked ? '是' : '否';
-                        field = 'fundamental_match';
-                    } else {
-                        value = target.value.trim();
-                    }
-                    if (!field) return;
+            const autoSaveHandler = function(e) {
+                const target = e.target;
+                if (!target.classList.contains('analysis-input') && !target.classList.contains('pred-checkbox') && target.id !== 'analysis-divergence' && target.id !== 'analysis-match') {
+                    return;
+                }
+                let field = target.dataset.field;
+                let value;
+                if (target.classList.contains('pred-checkbox')) {
+                    const checkedBoxes = analysisInfoContainer.querySelectorAll('.pred-checkbox:checked');
+                    const selected = Array.from(checkedBoxes).map(cb => cb.value);
+                    value = JSON.stringify(selected);
+                    field = 'initial_prediction';
+                } else if (target.id === 'analysis-divergence') {
+                    value = target.checked ? '是' : '否';
+                    field = 'fundamental_divergence';
+                } else if (target.id === 'analysis-match') {
+                    value = target.checked ? '是' : '否';
+                    field = 'fundamental_match';
+                } else {
+                    value = target.value.trim();
+                }
+                if (!field) return;
 
-                    const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
-                    if (tag) tag.classList.remove('show');
+                const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
+                if (tag) tag.classList.remove('show');
 
-                    autoSave(field, value);
-                };
+                autoSave(field, value);
+            };
 
-                analysisInfoContainer._autoSaveHandler = autoSaveHandler;
-                analysisInfoContainer.addEventListener('input', autoSaveHandler);
+            analysisInfoContainer._autoSaveHandler = autoSaveHandler;
+            analysisInfoContainer.addEventListener('input', autoSaveHandler);
 
-                const allCheckboxes = analysisInfoContainer.querySelectorAll('input[type="checkbox"]');
-                allCheckboxes.forEach(cb => {
-                    cb.addEventListener('change', function() {
+            const allCheckboxes = analysisInfoContainer.querySelectorAll('input[type="checkbox"]');
+            allCheckboxes.forEach(cb => {
+                cb.addEventListener('change', function() {
+                    this.dispatchEvent(new Event('input', { bubbles: true }));
+                });
+            });
+
+            const trigger = document.getElementById(`pred-trigger-${id}`);
+            const menu = document.getElementById(`pred-menu-${id}`);
+            const dropdown = document.getElementById(`pred-dropdown-${id}`);
+
+            function updateTriggerText() {
+                if (!trigger || !menu) return;
+                const checked = menu.querySelectorAll('.dropdown-item input[type="checkbox"]:checked');
+                const labels = Array.from(checked).map(cb => cb.value);
+                const textSpan = trigger.querySelector('.selected-text');
+                if (textSpan) {
+                    textSpan.textContent = labels.length > 0 ? labels.join('、') : '请选择';
+                    textSpan.classList.toggle('placeholder', labels.length === 0);
+                }
+            }
+
+            if (trigger && menu) {
+                trigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    menu.classList.toggle('open');
+                });
+
+                menu.querySelectorAll('.dropdown-item').forEach(item => {
+                    const checkbox = item.querySelector('input[type="checkbox"]');
+                    item.addEventListener('click', function(e) {
+                        if (e.target.tagName !== 'INPUT') {
+                            checkbox.checked = !checkbox.checked;
+                        }
+                        item.classList.toggle('selected', checkbox.checked);
+                        updateTriggerText();
+                        checkbox.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                    checkbox.addEventListener('change', function() {
+                        item.classList.toggle('selected', this.checked);
+                        updateTriggerText();
                         this.dispatchEvent(new Event('input', { bubbles: true }));
                     });
+                    if (checkbox.checked) item.classList.add('selected');
                 });
 
-                const trigger = document.getElementById(`pred-trigger-${id}`);
-                const menu = document.getElementById(`pred-menu-${id}`);
-                const dropdown = document.getElementById(`pred-dropdown-${id}`);
-
-                function updateTriggerText() {
-                    if (!trigger || !menu) return;
-                    const checked = menu.querySelectorAll('.dropdown-item input[type="checkbox"]:checked');
-                    const labels = Array.from(checked).map(cb => cb.value);
-                    const textSpan = trigger.querySelector('.selected-text');
-                    if (textSpan) {
-                        textSpan.textContent = labels.length > 0 ? labels.join('、') : '请选择';
-                        textSpan.classList.toggle('placeholder', labels.length === 0);
+                document.addEventListener('click', function closeDropdown(e) {
+                    if (dropdown && !dropdown.contains(e.target)) {
+                        menu.classList.remove('open');
                     }
-                }
-
-                if (trigger && menu) {
-                    trigger.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        menu.classList.toggle('open');
-                    });
-
-                    menu.querySelectorAll('.dropdown-item').forEach(item => {
-                        const checkbox = item.querySelector('input[type="checkbox"]');
-                        item.addEventListener('click', function(e) {
-                            if (e.target.tagName !== 'INPUT') {
-                                checkbox.checked = !checkbox.checked;
-                            }
-                            item.classList.toggle('selected', checkbox.checked);
-                            updateTriggerText();
-                            checkbox.dispatchEvent(new Event('input', { bubbles: true }));
-                        });
-                        checkbox.addEventListener('change', function() {
-                            item.classList.toggle('selected', this.checked);
-                            updateTriggerText();
-                            this.dispatchEvent(new Event('input', { bubbles: true }));
-                        });
-                        if (checkbox.checked) item.classList.add('selected');
-                    });
-
-                    document.addEventListener('click', function closeDropdown(e) {
-                        if (dropdown && !dropdown.contains(e.target)) {
-                            menu.classList.remove('open');
-                        }
-                    });
-                }
-
-                document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-odds-structure, #analysis-judgment, #analysis-divergence, #analysis-match').forEach(el => {
-                    el.addEventListener('input', function() {
-                        const id = this.dataset.id;
-                        const field = this.dataset.field;
-                        const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
-                        if (tag) tag.classList.remove('show');
-                    });
                 });
-            })
-            .catch(err => {
-                showToast('❌ 加载数据失败: ' + err.message, true);
-                console.error('加载数据失败:', err);
+            }
+
+            document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-odds-structure, #analysis-judgment, #analysis-divergence, #analysis-match').forEach(el => {
+                el.addEventListener('input', function() {
+                    const id = this.dataset.id;
+                    const field = this.dataset.field;
+                    const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
+                    if (tag) tag.classList.remove('show');
+                });
             });
+        } catch (err) {
+            showToast('❌ 加载数据失败: ' + err.message, true);
+            console.error('加载数据失败:', err);
+        }
     }
 
     function closeAnalysisModal() {
@@ -962,6 +1009,9 @@
     const filterDateParam = urlParams.get('date');
     const filterHome = urlParams.get('home');
     const filterAway = urlParams.get('away');
+    const filterTime = urlParams.get('time') || '';
+    const filterLeagueParam = urlParams.get('league') || '';
+    const autoCreate = urlParams.get('auto_create') === '1';
 
     if (urlResultFilter) {
         const h1 = document.querySelector('h1');
@@ -976,12 +1026,13 @@
     if (filterDateParam && filterHome && filterAway) {
         loading.style.display = 'block';
         tableWrap.style.display = 'none';
+
         fetch(`/api/match/find?date=${encodeURIComponent(filterDateParam)}&home_team=${encodeURIComponent(filterHome)}&away_team=${encodeURIComponent(filterAway)}&source=ai`)
             .then(res => res.json())
             .then(data => {
-                loading.style.display = 'none';
-                tableWrap.style.display = 'block';
                 if (data && data.id) {
+                    loading.style.display = 'none';
+                    tableWrap.style.display = 'block';
                     const m = data;
                     if (urlResultFilter) {
                         const isPending = !m.result || m.result === '' || m.result === null || m.result === undefined;
@@ -994,10 +1045,68 @@
                     }
                     renderRows([m]);
                     pagination.style.display = 'none';
-                } else {
-                    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">该赛事暂无预测记录。</td></tr>`;
-                    pagination.style.display = 'none';
+                    return;
                 }
+
+                if (autoCreate) {
+                    const payload = {
+                        date: filterDateParam,
+                        time: filterTime,
+                        league: filterLeagueParam,
+                        home_team: filterHome,
+                        away_team: filterAway,
+                        home_score: 0,
+                        away_score: 0,
+                        home_prob: 0.33,
+                        draw_prob: 0.34,
+                        away_prob: 0.33,
+                        judgment: 'equal',
+                        asian_odds: '',
+                        range: '',
+                        pos1: '',
+                        pos2: '',
+                        initial_analysis: '',
+                        final_analysis: '',
+                        initial_prediction: '[]',
+                        odds_structure: '',
+                        fundamental_divergence: '否',
+                        fundamental_match: '否',
+                        bet: '否'
+                    };
+
+                    fetch('/api/save?source=ai', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(res => res.json())
+                    .then(res => {
+                        if (res.success && res.id) {
+                            showToast('✅ 已自动创建 AI 预测记录');
+                            const newRecord = { ...payload, id: res.id, result: '' };
+                            renderRows([newRecord]);
+                            pagination.style.display = 'none';
+                            loading.style.display = 'none';
+                            tableWrap.style.display = 'block';
+                            const clean = new URLSearchParams(window.location.search);
+                            clean.delete('auto_create');
+                            history.replaceState(null, '', '?' + clean.toString());
+                        } else {
+                            loading.textContent = '❌ 自动创建失败: ' + (res.error || '未知错误');
+                        }
+                    })
+                    .catch(err => {
+                        loading.textContent = '❌ 自动创建失败: ' + err.message;
+                        console.error(err);
+                    });
+
+                    return;
+                }
+
+                loading.style.display = 'none';
+                tableWrap.style.display = 'block';
+                tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">该赛事暂无 AI 预测记录。</td></tr>`;
+                pagination.style.display = 'none';
             })
             .catch(err => {
                 loading.textContent = '❌ 加载失败: ' + err.message;

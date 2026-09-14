@@ -133,6 +133,12 @@
                 const vsSymbol = '<span class="vs-large">VS</span>';
                 const analyzed = item.analyzed || 0;
 
+                // 数据属性便于 AI 预测按钮读取
+                const safeLeague = (item.league || '').replace(/"/g, '&quot;');
+                const safeHome = (item.home_team || '').replace(/"/g, '&quot;');
+                const safeAway = (item.away_team || '').replace(/"/g, '&quot;');
+                const safeTime = (item.time || '').replace(/"/g, '&quot;');
+
                 html += `<tr>
                     <td>${item.id}</td>
                     <td>${item.date}</td>
@@ -154,6 +160,13 @@
                         <button class="action-btn save-score-btn" data-id="${item.id}">修改比分</button>
                         <button class="action-btn analysis-btn" data-id="${item.id}">基本面分析</button>
                         <button class="action-btn odds-analysis-btn" data-id="${item.id}">赔率分析</button>
+                        <button class="action-btn ai-predict-btn"
+                                data-id="${item.id}"
+                                data-date="${item.date}"
+                                data-time="${safeTime}"
+                                data-league="${safeLeague}"
+                                data-home="${safeHome}"
+                                data-away="${safeAway}">🤖 AI预测</button>
                         <button class="action-btn edit-btn" data-id="${item.id}">编辑</button>
                         <button class="action-btn delete-btn" data-id="${item.id}">删除</button>
                     </td>
@@ -178,7 +191,7 @@
             });
         });
 
-        // ★ 修改：基本面分析 -> 导入到历史预测，然后跳转到 /history
+        // 基本面分析 -> 导入到历史预测，然后跳转到 /history
         document.querySelectorAll('.analysis-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -191,7 +204,6 @@
                 let home = homeAwayText.substring(0, vsIndex).trim();
                 let away = homeAwayText.substring(vsIndex + 2).trim();
 
-                // 构造 payload（空预测记录）
                 const payload = {
                     date: date,
                     time: time,
@@ -237,7 +249,6 @@
                 .then(res => {
                     if (res.success) {
                         showToast('✅ 已导入到历史预测！');
-                        // 延迟跳转，让用户看到提示
                         setTimeout(() => {
                             window.location.href = '/history';
                         }, 500);
@@ -249,6 +260,7 @@
             });
         });
 
+        // 赔率分析
         document.querySelectorAll('.odds-analysis-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -273,6 +285,22 @@
                     away: away
                 });
                 window.location.href = '/odds?' + params.toString();
+            });
+        });
+
+        // ★ 新增：AI预测按钮
+        document.querySelectorAll('.ai-predict-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const params = new URLSearchParams({
+                    date:   this.dataset.date   || '',
+                    time:   this.dataset.time   || '',
+                    league: this.dataset.league || '',
+                    home:   this.dataset.home   || '',
+                    away:   this.dataset.away   || '',
+                    auto_create: '1'   // ★ 告诉 AI 页面若无记录则自动创建
+                });
+                window.location.href = '/ai_prediction?' + params.toString();
             });
         });
 
@@ -493,34 +521,34 @@
     }
 
     function fetchMatches() {
-    const date = fetchDate.value;
-    if (!date) {
-        alert('请选择日期');
-        return;
-    }
-    const finished = includeFinished.checked;
-    const force = document.getElementById('force-refresh').checked;
-    const btn = fetchBtn;
-    btn.textContent = '⏳ 抓取中...';
-    btn.disabled = true;
-
-    fetch(`/api/fetch_matches?date=${date}&include_finished=${finished}&force=${force}`)
-    .then(res => res.json())
-    .then(data => {
-        if (data.error) {
-            alert('❌ 抓取失败: ' + data.error);
-        } else {
-            alert(`✅ 抓取成功，共 ${data.length} 场比赛`);
-            currentOffset = 0;
-            loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, 0);
+        const date = fetchDate.value;
+        if (!date) {
+            alert('请选择日期');
+            return;
         }
-    })
-    .catch(err => alert('❌ 请求出错: ' + err.message))
-    .finally(() => {
-        btn.textContent = '📡 抓取';
-        btn.disabled = false;
-    });
-}
+        const finished = includeFinished.checked;
+        const force = document.getElementById('force-refresh').checked;
+        const btn = fetchBtn;
+        btn.textContent = '⏳ 抓取中...';
+        btn.disabled = true;
+
+        fetch(`/api/fetch_matches?date=${date}&include_finished=${finished}&force=${force}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert('❌ 抓取失败: ' + data.error);
+            } else {
+                alert(`✅ 抓取成功，共 ${data.length} 场比赛`);
+                currentOffset = 0;
+                loadFixtures(currentDateFilter, currentLeagueFilter, currentLimit, 0);
+            }
+        })
+        .catch(err => alert('❌ 请求出错: ' + err.message))
+        .finally(() => {
+            btn.textContent = '📡 抓取';
+            btn.disabled = false;
+        });
+    }
 
     function setDefaultDate() {
         const today = new Date().toISOString().split('T')[0];
