@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI预测统计</title>
+    <title>AI价值统计</title>
     <link rel="stylesheet" href="/static/style.css" />
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -136,10 +136,11 @@
         }
         .pagination .count-info { font-size: 13px; color: #4b657a; margin-left: 8px; }
 
-        .ai-badge {
+        /* ★ 价值统计徽章（金色风格，区分 AI 徽章） */
+        .value-badge {
             display: inline-block;
             padding: 2px 8px;
-            background: linear-gradient(135deg, #6366f1, #3b82f6);
+            background: linear-gradient(135deg, #f59e0b, #d97706);
             color: white;
             border-radius: 20px;
             font-size: 12px;
@@ -158,15 +159,15 @@
 <body>
     <div class="container">
         {% include '_navbar.html' %}
-        <h1>🤖 AI预测统计 <span class="ai-badge">AI</span></h1>
+        <h1>💰 AI价值统计 <span class="value-badge">VALUE</span></h1>
         <div id="statsLoading" style="padding:20px; text-align:center;">加载中...</div>
         <div id="statsContent" style="display:none;">
             <div class="stats-grid" id="overviewCards"></div>
 
-            <h2>📊 AI预测结果分布</h2>
-            <div id="resultDistribution"></div>
+            <h2>📊 价值分布</h2>
+            <div id="valueDistribution"></div>
 
-            <h2>🏆 各联赛下的结果统计</h2>
+            <h2>🏆 各联赛下的价值统计</h2>
             <div id="leagueStats"></div>
             <div class="pagination" id="leaguePagination" style="display:none;">
                 <button id="leaguePrevBtn" disabled>上一页</button>
@@ -185,11 +186,10 @@
 
     <script>
         /* ============================================================
-         * AI 预测统计页面
-         *   - 数据来源：/api/stats?source=ai 与 /api/history?source=ai
+         * AI 价值统计页面
+         *   - 数据来源：/api/history?source=ai 拉全量后本地统计 value 字段
          * ============================================================ */
         const DATA_SOURCE = {
-            stats: '/api/stats?source=ai',
             history: '/api/history?source=ai',
         };
 
@@ -251,22 +251,21 @@
         }
 
         // ============ 加载并渲染 ============
-        async function loadAIStats() {
+        async function loadValueStats() {
             try {
-                const [statsRes, matches] = await Promise.all([
-                    fetch(DATA_SOURCE.stats).then(r => r.json()),
-                    fetchAllMatches()
-                ]);
-                const statsData = statsRes;
+                const matches = await fetchAllMatches();
 
                 document.getElementById('statsLoading').style.display = 'none';
                 document.getElementById('statsContent').style.display = 'block';
 
-                const total = statsData.total || 0;
-                const resultCounts = statsData.result_counts || [];
-                const red = resultCounts.find(r => r.result === '红')?.cnt || 0;
-                const black = resultCounts.find(r => r.result === '黑')?.cnt || 0;
-                const draw = resultCounts.find(r => r.result === '走盘')?.cnt || 0;
+                // ---- 本地统计 value 分布 ----
+                const total = matches.length;
+                let red = 0, black = 0, draw = 0;
+                matches.forEach(m => {
+                    if (m.value === '红') red++;
+                    else if (m.value === '黑') black++;
+                    else if (m.value === '走盘') draw++;
+                });
                 const unset = total - red - black - draw;
 
                 const overview = document.getElementById('overviewCards');
@@ -275,25 +274,25 @@
                         <div class="number">${total}</div>
                         <div class="label">总场次 点击查看</div>
                     </div>
-                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=红'">
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}'">
                         <div class="number" style="color:#dc2626;">${red}</div>
-                        <div class="label">红 (命中)</div>
+                        <div class="label">价值红</div>
                     </div>
-                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=黑'">
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}'">
                         <div class="number" style="color:#1f2937;">${black}</div>
-                        <div class="label">黑 (未中)</div>
+                        <div class="label">价值黑</div>
                     </div>
-                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=走盘'">
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}'">
                         <div class="number" style="color:#d97706;">${draw}</div>
-                        <div class="label">走盘</div>
+                        <div class="label">价值走盘</div>
                     </div>
-                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=待定'">
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}'">
                         <div class="number" style="color:#6b7280;">${unset}</div>
-                        <div class="label">待定</div>
+                        <div class="label">价值待定</div>
                     </div>
                 `;
 
-                const distDiv = document.getElementById('resultDistribution');
+                const distDiv = document.getElementById('valueDistribution');
                 const maxVal = Math.max(red, black, draw, unset, 1);
                 distDiv.innerHTML = `
                     <div class="bar-container"><div class="bar-label">红</div><div class="bar-track"><div class="bar-fill red" style="width:${(red/maxVal)*100}%;"></div></div><div class="bar-value">${red}</div></div>
@@ -302,14 +301,15 @@
                     <div class="bar-container"><div class="bar-label">待定</div><div class="bar-track"><div class="bar-fill pending" style="width:${(unset/maxVal)*100}%;"></div></div><div class="bar-value">${unset}</div></div>
                 `;
 
+                // ---- 联赛维度统计 ----
                 const leagueMap = {};
                 matches.forEach(m => {
                     const lg = m.league || '未知联赛';
                     if (!leagueMap[lg]) leagueMap[lg] = { total: 0, red: 0, black: 0, draw: 0 };
                     leagueMap[lg].total++;
-                    if (m.result === '红') leagueMap[lg].red++;
-                    else if (m.result === '黑') leagueMap[lg].black++;
-                    else if (m.result === '走盘') leagueMap[lg].draw++;
+                    if (m.value === '红') leagueMap[lg].red++;
+                    else if (m.value === '黑') leagueMap[lg].black++;
+                    else if (m.value === '走盘') leagueMap[lg].draw++;
                 });
                 allLeagueItems = Object.entries(leagueMap).map(([league, v]) => ({
                     league,
@@ -345,11 +345,11 @@
                         <tr>
                             <th>联赛</th>
                             <th>总场次</th>
-                            <th>红</th>
-                            <th>黑</th>
-                            <th>走盘</th>
-                            <th>待定</th>
-                            <th>胜率 (红/总)</th>
+                            <th>价值红</th>
+                            <th>价值黑</th>
+                            <th>价值走盘</th>
+                            <th>价值待定</th>
+                            <th>价值率 (红/总)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -447,7 +447,7 @@
             });
         });
 
-        window.addEventListener('load', loadAIStats);
+        window.addEventListener('load', loadValueStats);
     </script>
 </body>
 </html>

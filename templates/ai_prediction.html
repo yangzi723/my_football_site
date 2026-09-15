@@ -42,8 +42,6 @@
                                 </label>
                             </th>
                             <th>ID</th>
-                            <th>日期</th>
-                            <th>时间</th>
                             <th>联赛</th>
                             <th>主队 VS 客队</th>
                             <th>基本面</th>
@@ -51,6 +49,7 @@
                             <th>亚初终</th>
                             <th style="min-width:100px; text-align:center;">初测</th>
                             <th style="width:55px; text-align:center;">下注</th>
+                            <th>价值</th>
                             <th>结果</th>
                             <th>操作</th>
                         </tr>
@@ -73,13 +72,13 @@
         </div>
 
         <!-- AI分析模态框 -->
-        <div id="analysisModal" class="modal-edit">
+        <div id="aiAnalysisModal" class="modal-edit">
             <div class="modal-edit-content">
-                <h3 id="analysisModalTitle">📊 AI分析 - 赛事信息</h3>
-                <div id="analysisInfoContainer"></div>
+                <h3 id="aiAnalysisModalTitle">📊 AI分析 - 赛事信息</h3>
+                <div id="aiAnalysisInfoContainer"></div>
                 <div class="btn-group">
-                    <button class="btn" id="saveAnalysisBtn">💾 保存修改</button>
-                    <button class="btn btn-secondary" id="closeAnalysisBtn">关闭</button>
+                    <button class="btn" id="aiSaveAnalysisBtn">💾 保存修改</button>
+                    <button class="btn btn-secondary" id="aiCloseAnalysisBtn">关闭</button>
                 </div>
             </div>
         </div>
@@ -99,7 +98,6 @@
         <div id="toast" class="toast"></div>
     </div>
 
-    <!-- 引用外部 JavaScript -->
     <script src="/static/js/ai_prediction.js"></script>
 </body>
 </html>
