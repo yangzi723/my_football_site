@@ -152,7 +152,7 @@
 
     function renderRows(matches) {
         if (matches.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
             return;
         }
 
@@ -183,6 +183,7 @@
                     <td><span class="pred-display">${predDisplay}</span></td>
                     <td style="text-align:center;"><input type="checkbox" class="bet-checkbox" data-id="${m.id}" ${betChecked ? 'checked' : ''}></td>
                     <td style="text-align:center;"><input type="number" class="stake-input" data-id="${m.id}" value="${m.stake || 0}" step="0.1" min="0" style="width:70px;padding:4px 6px;border:1px solid #cdd8e6;border-radius:4px;font-size:13px;text-align:center;"></td>
+                    <td style="text-align:center;"><input type="number" class="odds-input" data-id="${m.id}" value="${m.odds || 0}" step="0.01" min="0" style="width:70px;padding:4px 6px;border:1px solid #cdd8e6;border-radius:4px;font-size:13px;text-align:center;"></td>
                     <td>
                         <select class="value-select" data-id="${m.id}">
                             <option value="">未定</option>
@@ -465,6 +466,38 @@
                     if (res.success) {
                         this.defaultValue = val;
                         showToast('✅ 下注额已更新');
+                    } else {
+                        showToast('❌ 更新失败: ' + (res.error || '未知错误'), true);
+                        this.value = oldVal;
+                    }
+                })
+                .catch(err => {
+                    showToast('❌ 请求出错: ' + err.message, true);
+                    this.value = oldVal;
+                });
+            });
+            inp.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
+            });
+        });
+
+        // ★ 赔率输入框：失焦或回车时自动保存
+        document.querySelectorAll('.odds-input').forEach(inp => {
+            inp.addEventListener('blur', function() {
+                const id = this.dataset.id;
+                const val = parseFloat(this.value) || 0;
+                const oldVal = parseFloat(this.defaultValue) || 0;
+                if (val === oldVal) return;
+                fetch('/api/match/' + id + '/result?source=ai', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ odds: val })
+                })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success) {
+                        this.defaultValue = val;
+                        showToast('✅ 赔率已更新');
                     } else {
                         showToast('❌ 更新失败: ' + (res.error || '未知错误'), true);
                         this.value = oldVal;
@@ -1005,7 +1038,9 @@
             fundamental_divergence: '否',
             fundamental_match: '否',
             bet: '否',
-            value: ''
+            value: '',
+            stake: 0,
+            odds: 0
         };
         fetch('/api/save?source=ai', {
             method: 'POST',
@@ -1096,7 +1131,7 @@
                         const isPending = !m.result || m.result === '' || m.result === null || m.result === undefined;
                         const matchesFilter = (urlResultFilter === '待定') ? isPending : (m.result === urlResultFilter);
                         if (!matchesFilter) {
-                            tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">该赛事的结果不是「${urlResultFilter}」</td></tr>`;
+                            tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:30px;">该赛事的结果不是「${urlResultFilter}」</td></tr>`;
                             pagination.style.display = 'none';
                             return;
                         }
@@ -1130,7 +1165,9 @@
                         fundamental_divergence: '否',
                         fundamental_match: '否',
                         bet: '否',
-                        value: ''
+                        value: '',
+                        stake: 0,
+                        odds: 0
                     };
 
                     fetch('/api/save?source=ai', {
@@ -1164,7 +1201,7 @@
 
                 loading.style.display = 'none';
                 tableWrap.style.display = 'block';
-                tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">该赛事暂无 AI 预测记录。</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:30px;">该赛事暂无 AI 预测记录。</td></tr>`;
                 pagination.style.display = 'none';
             })
             .catch(err => {

@@ -66,6 +66,20 @@ def migrate_add_stake():
             print("ℹ️ matches 表 stake 字段已存在")
 
 migrate_add_stake()
+def migrate_add_odds():
+    """给 matches 表添加 odds 字段（如果不存在），默认 0"""
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(matches)")
+        cols = [row[1] for row in cur.fetchall()]
+        if 'odds' not in cols:
+            conn.execute("ALTER TABLE matches ADD COLUMN odds REAL DEFAULT 0")
+            conn.commit()
+            print("✅ matches 表已添加 odds 字段")
+        else:
+            print("ℹ️ matches 表 odds 字段已存在")
+
+migrate_add_odds()
 
 # ---------- 页面路由 ----------
 
@@ -177,6 +191,7 @@ def api_save():
             'judgment': data.get('judgment', 'equal'),
             'value': data.get('value', ''),   # ★ 新增
             'stake': float(data.get('stake', 0)),   # ★ 新增：下注额
+            'odds': float(data.get('odds', 0)),
             'source': src,   # ★ 关键：标记数据来源
         }
 
@@ -305,6 +320,17 @@ def api_update_result(match_id):
                 (stake, match_id, src)
             )
             conn.commit()
+    if 'odds' in data:
+        try:
+            odds = float(data.get('odds') or 0)
+        except (ValueError, TypeError):
+            odds = 0
+        with get_db() as conn:
+            conn.execute(
+                'UPDATE matches SET odds = ? WHERE id = ? AND source = ?',
+                (odds, match_id, src)
+            )
+            conn.commit()
 
     return jsonify({'success': True})
 
@@ -338,6 +364,7 @@ def api_update_match(match_id):
     data.setdefault('result', '')
     data.setdefault('value', '')   # ★ 新增
     data.setdefault('stake', 0)    # ★ 新增：下注额
+    data.setdefault('odds', 0)
     data.setdefault('judgment', 'equal')
     data.setdefault('pos1', '')
     data.setdefault('pos2', '')
