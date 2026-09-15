@@ -52,7 +52,20 @@ def get_source():
     """获取当前请求的数据来源：'odds'（默认）或 'ai'"""
     src = request.args.get('source', 'odds')
     return 'ai' if src == 'ai' else 'odds'
+def migrate_add_stake():
+    """给 matches 表添加 stake 字段（如果不存在），默认 0"""
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(matches)")
+        cols = [row[1] for row in cur.fetchall()]
+        if 'stake' not in cols:
+            conn.execute("ALTER TABLE matches ADD COLUMN stake REAL DEFAULT 0")
+            conn.commit()
+            print("✅ matches 表已添加 stake 字段")
+        else:
+            print("ℹ️ matches 表 stake 字段已存在")
 
+migrate_add_stake()
 
 # ---------- 页面路由 ----------
 
@@ -109,6 +122,11 @@ def ai_stats():
 def ai_value_stats():
     return render_template('ai_value_stats.html')
 
+# ★ 新增
+@app.route('/ai_profit_stats')
+def ai_profit_stats():
+    return render_template('ai_profit_stats.html')
+
 # ---------- API：保存预测记录 ----------
 @app.route('/api/save', methods=['POST'])
 def api_save():
@@ -158,6 +176,7 @@ def api_save():
             'away_prob': float(data.get('away_prob', 0)),
             'judgment': data.get('judgment', 'equal'),
             'value': data.get('value', ''),   # ★ 新增
+            'stake': float(data.get('stake', 0)),   # ★ 新增：下注额
             'source': src,   # ★ 关键：标记数据来源
         }
 
@@ -274,6 +293,18 @@ def api_update_result(match_id):
                 (value, match_id, src)
             )
             conn.commit()
+        # ★ 新增：处理 stake 字段
+    if 'stake' in data:
+        try:
+            stake = float(data.get('stake') or 0)
+        except (ValueError, TypeError):
+            stake = 0
+        with get_db() as conn:
+            conn.execute(
+                'UPDATE matches SET stake = ? WHERE id = ? AND source = ?',
+                (stake, match_id, src)
+            )
+            conn.commit()
 
     return jsonify({'success': True})
 
@@ -306,6 +337,7 @@ def api_update_match(match_id):
     data.setdefault('away_unexpected', '')
     data.setdefault('result', '')
     data.setdefault('value', '')   # ★ 新增
+    data.setdefault('stake', 0)    # ★ 新增：下注额
     data.setdefault('judgment', 'equal')
     data.setdefault('pos1', '')
     data.setdefault('pos2', '')

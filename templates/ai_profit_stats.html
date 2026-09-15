@@ -41,7 +41,7 @@
             display: block;
             cursor: pointer;
         }
-        .stat-card .number { font-size: 28px; font-weight: 700; color: #0a2540; line-height: 1.2; }
+        .stat-card .number { font-size: 30px; font-weight: 700; color: #0a2540; line-height: 1.2; }
         .stat-card .label { font-size: 14px; color: #4b657a; margin-top: 4px; }
         .stat-card.clickable:hover {
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -67,6 +67,7 @@
         .stat-table tr:hover { background: #f8fafc; }
         h2 { margin-top: 30px; font-size: 20px; }
 
+        /* 盈利设置区 */
         .settings-row {
             display: flex;
             gap: 16px;
@@ -128,6 +129,7 @@
         }
         .pagination .count-info { font-size: 13px; color: #4b657a; margin-left: 8px; }
 
+        /* 盈利徽章（绿色） */
         .profit-badge {
             display: inline-block;
             padding: 2px 8px;
@@ -140,6 +142,7 @@
             vertical-align: middle;
         }
 
+        /* 盈利数字样式 */
         .profit-pos { color: #059669; font-weight: 700; }
         .profit-neg { color: #dc2626; font-weight: 700; }
         .profit-zero { color: #6b7280; font-weight: 700; }
@@ -158,16 +161,15 @@
         <div id="statsLoading" style="padding:20px; text-align:center;">加载中...</div>
         <div id="statsContent" style="display:none;">
 
+            <!-- 盈利计算参数设置 -->
             <div class="settings-row">
-                <label>红单赔率：
+                <label>红单收益倍数：
                     <input type="number" id="redMultiplier" value="1.00" step="0.05" min="0">
                 </label>
-                <label>黑单赔率：
+                <label>黑单损失倍数：
                     <input type="number" id="blackMultiplier" value="1.00" step="0.05" min="0">
                 </label>
-                <span style="font-size:13px;color:#6b7280;">
-                    （盈利 = 红单下注额×红赔率 − 黑单下注额×黑赔率；默认 1 赔 1）
-                </span>
+                <span style="font-size:13px;color:#6b7280;">（默认红 +1，黑 -1，走盘 0，可调整赔率）</span>
             </div>
 
             <div class="stats-grid" id="overviewCards"></div>
@@ -200,28 +202,43 @@
                 </select>
                 <span class="count-info">共 <span id="dateTotalCount">0</span> 条</span>
             </div>
+
         </div>
     </div>
 
     <script>
+        /* ============================================================
+         * AI 投注盈利统计
+         *   数据源：/api/history?source=ai
+         *   盈利口径：
+         *     - 只统计 bet === '是' 的记录
+         *     - 红: +1 * 红倍数（默认 1）
+         *     - 黑: -1 * 黑倍数（默认 1）
+         *     - 走盘: 0
+         * ============================================================ */
         const DATA_SOURCE = {
             history: '/api/history?source=ai',
         };
+
         const AI_PAGE = '/ai_prediction';
 
         let allMatches = [];
+
         let allLeagueItems = [];
         let leagueOffset = 0;
         let leagueLimit = 10;
+
         let allDateItems = [];
         let dateOffset = 0;
         let dateLimit = 10;
 
+        // ============ 循环分页拉全量数据 ============
         async function fetchAllMatches() {
             const limit = 200;
             const maxRounds = 2000;
             const seen = new Set();
-            let offset = 0, round = 0, all = [], total = null;
+
+            let offset = 0, round = 0, all = [], total = null, stopped = '';
 
             while (round++ < maxRounds) {
                 let data;
@@ -231,12 +248,13 @@
                     data = await res.json();
                 } catch (e) {
                     console.error('拉取失败:', e);
+                    stopped = '请求失败，已加载部分数据';
                     break;
                 }
 
                 const items = Array.isArray(data.data) ? data.data
                             : (Array.isArray(data) ? data : []);
-                if (items.length === 0) break;
+                if (items.length === 0) { stopped = '已到达数据末尾'; break; }
 
                 let added = 0;
                 for (const m of items) {
@@ -248,28 +266,36 @@
                     all.push(m);
                     added++;
                 }
-                if (added === 0) break;
+                if (added === 0) { stopped = '服务端未返回新数据，已停止加载'; break; }
 
                 offset += items.length;
+
                 const t = Number(data && data.total);
                 if (Number.isFinite(t) && t > 0) {
                     total = t;
-                    if (all.length >= total) break;
+                    if (all.length >= total) { stopped = '已加载全部数据'; break; }
                 }
             }
+            if (round >= maxRounds) stopped = '达到最大请求次数，已停止加载';
             if (Number.isFinite(total) && total > 0 && all.length > total) {
                 all = all.slice(0, total);
             }
             return all;
         }
 
+        // ============ 根据当前倍数设置，计算盈利 ============
         function getMultipliers() {
-            const r = parseFloat(document.getElementById('redMultiplier').value);
-            const b = parseFloat(document.getElementById('blackMultiplier').value);
+            const red = parseFloat(document.getElementById('redMultiplier').value);
+            const black = parseFloat(document.getElementById('blackMultiplier').value);
             return {
-                red: Number.isFinite(r) ? r : 1,
-                black: Number.isFinite(b) ? b : 1
+                red: Number.isFinite(red) ? red : 1,
+                black: Number.isFinite(black) ? black : 1
             };
+        }
+
+        function calcProfit(red, black, draw, mult) {
+            // 走盘按 0 计算，不计盈亏
+            return red * mult.red - black * mult.black;
         }
 
         function formatProfit(v) {
@@ -279,11 +305,28 @@
             return `<span class="${cls}">${sign}${n.toFixed(2)}</span>`;
         }
 
-        function formatMoney(v) {
-            const n = Number(v) || 0;
-            return n.toFixed(2);
+        // ============ 统计核心 ============
+        function computeStats(matches, mult) {
+            let total = 0;       // 所有 AI 记录数
+            let betCount = 0;    // 已下注数
+            let red = 0, black = 0, draw = 0, unset = 0;
+            let profit = 0;
+
+            matches.forEach(m => {
+                total++;
+                if (m.bet !== '是') return;
+                betCount++;
+                if (m.result === '红') { red++; profit += mult.red; }
+                else if (m.result === '黑') { black++; profit -= mult.black; }
+                else if (m.result === '走盘') { draw++; /* 走盘不盈亏 */ }
+                else { unset++; }
+            });
+
+            const winRate = betCount > 0 ? ((red / betCount) * 100).toFixed(1) : '0.0';
+            return { total, betCount, red, black, draw, unset, profit, winRate };
         }
 
+        // ============ 加载并渲染 ============
         async function loadProfitStats() {
             try {
                 if (allMatches.length === 0) {
@@ -295,71 +338,38 @@
                 document.getElementById('statsLoading').style.display = 'none';
                 document.getElementById('statsContent').style.display = 'block';
 
-                // ---- 总体统计 ----
-                let total = 0, betCount = 0;
-                let red = 0, black = 0, draw = 0, unset = 0;
-                let totalStake = 0;
-                let redStake = 0, blackStake = 0;
-                let profit = 0;
+                const overview = computeStats(allMatches, mult);
 
-                allMatches.forEach(m => {
-                    total++;
-                    if (m.bet !== '是') return;
-                    betCount++;
-                    const stake = parseFloat(m.stake) || 0;
-                    totalStake += stake;
-
-                    if (m.result === '红') {
-                        red++;
-                        redStake += stake;
-                        profit += stake * mult.red;
-                    } else if (m.result === '黑') {
-                        black++;
-                        blackStake += stake;
-                        profit -= stake * mult.black;
-                    } else if (m.result === '走盘') {
-                        draw++;   // 走盘不盈亏
-                    } else {
-                        unset++;
-                    }
-                });
-
-                const winRate = betCount > 0 ? ((red / betCount) * 100).toFixed(1) : '0.0';
-                const roi = totalStake > 0 ? ((profit / totalStake) * 100).toFixed(1) : '0.0';
-
+                // ---- 概览卡片 ----
                 const overviewCards = document.getElementById('overviewCards');
                 overviewCards.innerHTML = `
                     <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}'">
-                        <div class="number">${total}</div>
+                        <div class="number">${overview.total}</div>
                         <div class="label">总场次</div>
                     </div>
                     <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}'">
-                        <div class="number">${betCount}</div>
+                        <div class="number">${overview.betCount}</div>
                         <div class="label">已下注</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="number">${formatMoney(totalStake)}</div>
-                        <div class="label">总下注额</div>
-                    </div>
                     <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=红'">
-                        <div class="number" style="color:#dc2626;">${red}</div>
+                        <div class="number" style="color:#dc2626;">${overview.red}</div>
                         <div class="label">命中 (红)</div>
                     </div>
                     <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=黑'">
-                        <div class="number" style="color:#1f2937;">${black}</div>
+                        <div class="number" style="color:#1f2937;">${overview.black}</div>
                         <div class="label">未中 (黑)</div>
                     </div>
+                    <div class="stat-card clickable" onclick="window.location.href='${AI_PAGE}?result=走盘'">
+                        <div class="number" style="color:#d97706;">${overview.draw}</div>
+                        <div class="label">走盘</div>
+                    </div>
                     <div class="stat-card">
-                        <div class="number" style="color:#2563eb;">${winRate}%</div>
+                        <div class="number" style="color:#2563eb;">${overview.winRate}%</div>
                         <div class="label">命中率</div>
                     </div>
                     <div class="stat-card">
-                        <div class="number">${formatProfit(profit)}</div>
+                        <div class="number">${formatProfit(overview.profit)}</div>
                         <div class="label">净盈利</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="number" style="color:${profit >= 0 ? '#059669' : '#dc2626'};">${roi}%</div>
-                        <div class="label">回报率 ROI</div>
                     </div>
                 `;
 
@@ -368,26 +378,18 @@
                 allMatches.forEach(m => {
                     if (m.bet !== '是') return;
                     const lg = m.league || '未知联赛';
-                    if (!leagueMap[lg]) leagueMap[lg] = { total: 0, red: 0, black: 0, draw: 0, unset: 0, totalStake: 0, profit: 0 };
-                    const stake = parseFloat(m.stake) || 0;
+                    if (!leagueMap[lg]) leagueMap[lg] = { total: 0, red: 0, black: 0, draw: 0, unset: 0 };
                     leagueMap[lg].total++;
-                    leagueMap[lg].totalStake += stake;
-                    if (m.result === '红') {
-                        leagueMap[lg].red++;
-                        leagueMap[lg].profit += stake * mult.red;
-                    } else if (m.result === '黑') {
-                        leagueMap[lg].black++;
-                        leagueMap[lg].profit -= stake * mult.black;
-                    } else if (m.result === '走盘') {
-                        leagueMap[lg].draw++;
-                    } else {
-                        leagueMap[lg].unset++;
-                    }
+                    if (m.result === '红') leagueMap[lg].red++;
+                    else if (m.result === '黑') leagueMap[lg].black++;
+                    else if (m.result === '走盘') leagueMap[lg].draw++;
+                    else leagueMap[lg].unset++;
                 });
-                allLeagueItems = Object.entries(leagueMap).map(([league, v]) => ({
-                    league, ...v,
-                    rate: v.total > 0 ? ((v.red / v.total) * 100).toFixed(1) : '0.0'
-                })).sort((a, b) => b.profit - a.profit);
+                allLeagueItems = Object.entries(leagueMap).map(([league, v]) => {
+                    const profit = calcProfit(v.red, v.black, v.draw, mult);
+                    const rate = v.total > 0 ? ((v.red / v.total) * 100).toFixed(1) : '0.0';
+                    return { league, ...v, profit, rate };
+                }).sort((a, b) => b.profit - a.profit);
 
                 leagueOffset = 0;
                 renderLeagueTable();
@@ -398,26 +400,18 @@
                 allMatches.forEach(m => {
                     if (m.bet !== '是') return;
                     const d = m.date || '未知日期';
-                    if (!dateMap[d]) dateMap[d] = { total: 0, red: 0, black: 0, draw: 0, unset: 0, totalStake: 0, profit: 0 };
-                    const stake = parseFloat(m.stake) || 0;
+                    if (!dateMap[d]) dateMap[d] = { total: 0, red: 0, black: 0, draw: 0, unset: 0 };
                     dateMap[d].total++;
-                    dateMap[d].totalStake += stake;
-                    if (m.result === '红') {
-                        dateMap[d].red++;
-                        dateMap[d].profit += stake * mult.red;
-                    } else if (m.result === '黑') {
-                        dateMap[d].black++;
-                        dateMap[d].profit -= stake * mult.black;
-                    } else if (m.result === '走盘') {
-                        dateMap[d].draw++;
-                    } else {
-                        dateMap[d].unset++;
-                    }
+                    if (m.result === '红') dateMap[d].red++;
+                    else if (m.result === '黑') dateMap[d].black++;
+                    else if (m.result === '走盘') dateMap[d].draw++;
+                    else dateMap[d].unset++;
                 });
-                allDateItems = Object.entries(dateMap).map(([date, v]) => ({
-                    date, ...v,
-                    rate: v.total > 0 ? ((v.red / v.total) * 100).toFixed(1) : '0.0'
-                })).sort((a, b) => b.date.localeCompare(a.date));
+                allDateItems = Object.entries(dateMap).map(([date, v]) => {
+                    const profit = calcProfit(v.red, v.black, v.draw, mult);
+                    const rate = v.total > 0 ? ((v.red / v.total) * 100).toFixed(1) : '0.0';
+                    return { date, ...v, profit, rate };
+                }).sort((a, b) => b.date.localeCompare(a.date));  // 按日期倒序
 
                 dateOffset = 0;
                 renderDateTable();
@@ -429,8 +423,12 @@
             }
         }
 
+        // ============ 联赛表格 ============
         function renderLeagueTable() {
-            const pageItems = allLeagueItems.slice(leagueOffset, leagueOffset + leagueLimit);
+            const start = leagueOffset;
+            const end = Math.min(start + leagueLimit, allLeagueItems.length);
+            const pageItems = allLeagueItems.slice(start, end);
+
             if (allLeagueItems.length === 0) {
                 document.getElementById('leagueStats').innerHTML = '<p style="color:#6b7280;">暂无数据</p>';
                 return;
@@ -442,7 +440,6 @@
                         <tr>
                             <th>联赛</th>
                             <th>下注数</th>
-                            <th>总下注额</th>
                             <th>红</th>
                             <th>黑</th>
                             <th>走盘</th>
@@ -457,7 +454,6 @@
                     <tr>
                         <td><strong>${item.league}</strong></td>
                         <td>${item.total}</td>
-                        <td>${formatMoney(item.totalStake)}</td>
                         <td style="color:#dc2626;">${item.red}</td>
                         <td style="color:#1f2937;">${item.black}</td>
                         <td style="color:#d97706;">${item.draw}</td>
@@ -471,8 +467,12 @@
             document.getElementById('leagueTotalCount').textContent = allLeagueItems.length;
         }
 
+        // ============ 日期表格 ============
         function renderDateTable() {
-            const pageItems = allDateItems.slice(dateOffset, dateOffset + dateLimit);
+            const start = dateOffset;
+            const end = Math.min(start + dateLimit, allDateItems.length);
+            const pageItems = allDateItems.slice(start, end);
+
             if (allDateItems.length === 0) {
                 document.getElementById('dateStats').innerHTML = '<p style="color:#6b7280;">暂无数据</p>';
                 return;
@@ -484,7 +484,6 @@
                         <tr>
                             <th>日期</th>
                             <th>下注数</th>
-                            <th>总下注额</th>
                             <th>红</th>
                             <th>黑</th>
                             <th>走盘</th>
@@ -499,7 +498,6 @@
                     <tr>
                         <td><strong>${item.date}</strong></td>
                         <td>${item.total}</td>
-                        <td>${formatMoney(item.totalStake)}</td>
                         <td style="color:#dc2626;">${item.red}</td>
                         <td style="color:#1f2937;">${item.black}</td>
                         <td style="color:#d97706;">${item.draw}</td>
@@ -513,6 +511,7 @@
             document.getElementById('dateTotalCount').textContent = allDateItems.length;
         }
 
+        // ============ 分页：联赛 ============
         function updateLeaguePagination() {
             const totalItems = allLeagueItems.length;
             const totalPages = Math.ceil(totalItems / leagueLimit) || 1;
@@ -561,6 +560,7 @@
             pagination.style.display = 'flex';
         }
 
+        // ============ 分页：日期 ============
         function updateDatePagination() {
             const totalItems = allDateItems.length;
             const totalPages = Math.ceil(totalItems / dateLimit) || 1;
@@ -609,7 +609,9 @@
             pagination.style.display = 'flex';
         }
 
+        // ============ 事件绑定 ============
         document.addEventListener('DOMContentLoaded', function() {
+            // 联赛分页
             document.getElementById('leaguePrevBtn').addEventListener('click', function() {
                 if (leagueOffset > 0) {
                     leagueOffset = Math.max(0, leagueOffset - leagueLimit);
@@ -633,6 +635,7 @@
                 updateLeaguePagination();
             });
 
+            // 日期分页
             document.getElementById('datePrevBtn').addEventListener('click', function() {
                 if (dateOffset > 0) {
                     dateOffset = Math.max(0, dateOffset - dateLimit);
@@ -656,6 +659,7 @@
                 updateDatePagination();
             });
 
+            // ★ 盈利倍数变化时重新计算
             document.getElementById('redMultiplier').addEventListener('change', loadProfitStats);
             document.getElementById('blackMultiplier').addEventListener('change', loadProfitStats);
         });
