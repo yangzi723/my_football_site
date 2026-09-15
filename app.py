@@ -33,7 +33,20 @@ def migrate_add_source():
             print("ℹ️ matches 表 source 字段已存在")
 
 migrate_add_source()
+def migrate_add_value():
+    """给 matches 表添加 value 字段（如果不存在）"""
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(matches)")
+        cols = [row[1] for row in cur.fetchall()]
+        if 'value' not in cols:
+            conn.execute("ALTER TABLE matches ADD COLUMN value TEXT DEFAULT ''")
+            conn.commit()
+            print("✅ matches 表已添加 value 字段")
+        else:
+            print("ℹ️ matches 表 value 字段已存在")
 
+migrate_add_value()
 
 def get_source():
     """获取当前请求的数据来源：'odds'（默认）或 'ai'"""
@@ -140,6 +153,7 @@ def api_save():
             'draw_prob': float(data.get('draw_prob', 0)),
             'away_prob': float(data.get('away_prob', 0)),
             'judgment': data.get('judgment', 'equal'),
+            'value': data.get('value', ''),   # ★ 新增
             'source': src,   # ★ 关键：标记数据来源
         }
 
@@ -230,9 +244,6 @@ def api_update_result(match_id):
     data = request.get_json()
     if not data:
         return jsonify({'error': '请求体不是JSON'}), 400
-    result = data.get('result')
-    if result not in ('红', '黑', '走盘', None):
-        return jsonify({'error': '结果必须是 红/黑/走盘 或 null'}), 400
 
     # 校验记录存在且属于当前 source
     with get_db() as conn:
@@ -241,7 +252,25 @@ def api_update_result(match_id):
         if not cur.fetchone():
             return jsonify({'error': '记录不存在或无权修改'}), 403
 
-    update_match_result(match_id, result)
+    # 处理 result 字段（兼容旧调用）
+    if 'result' in data:
+        result = data.get('result')
+        if result not in ('红', '黑', '走盘', None):
+            return jsonify({'error': '结果必须是 红/黑/走盘 或 null'}), 400
+        update_match_result(match_id, result)
+
+    # ★ 新增：处理 value 字段
+    if 'value' in data:
+        value = data.get('value')
+        if value not in ('红', '黑', '走盘', None):
+            return jsonify({'error': '价值必须是 红/黑/走盘 或 null'}), 400
+        with get_db() as conn:
+            conn.execute(
+                'UPDATE matches SET value = ? WHERE id = ? AND source = ?',
+                (value, match_id, src)
+            )
+            conn.commit()
+
     return jsonify({'success': True})
 
 
@@ -272,6 +301,7 @@ def api_update_match(match_id):
     data.setdefault('home_unexpected', '')
     data.setdefault('away_unexpected', '')
     data.setdefault('result', '')
+    data.setdefault('value', '')   # ★ 新增
     data.setdefault('judgment', 'equal')
     data.setdefault('pos1', '')
     data.setdefault('pos2', '')

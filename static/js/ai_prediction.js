@@ -152,17 +152,14 @@
 
     function renderRows(matches) {
         if (matches.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
             return;
         }
 
         let html = '';
         matches.forEach(m => {
-            const result = m.result || '未定';
-            let resultHtml = result;
-            if (result === '红') resultHtml = `<span style="color:#dc2626;font-weight:600;">红</span>`;
-            else if (result === '黑') resultHtml = `<span style="color:#1f2937;font-weight:600;">黑</span>`;
-            else if (result === '走盘') resultHtml = `<span style="color:#d97706;font-weight:600;">走盘</span>`;
+            const result = m.result || '';
+            const value = m.value || '';
 
             const judgmentDisplay = judgmentMap[m.judgment] || m.judgment || '';
 
@@ -185,6 +182,14 @@
                     <td>${asianOdds}</td>
                     <td><span class="pred-display">${predDisplay}</span></td>
                     <td style="text-align:center;"><input type="checkbox" class="bet-checkbox" data-id="${m.id}" ${betChecked ? 'checked' : ''}></td>
+                    <td>
+                        <select class="value-select" data-id="${m.id}">
+                            <option value="">未定</option>
+                            <option value="红" ${value==='红'?'selected':''}>红</option>
+                            <option value="黑" ${value==='黑'?'selected':''}>黑</option>
+                            <option value="走盘" ${value==='走盘'?'selected':''}>走盘</option>
+                        </select>
+                    </td>
                     <td>
                         <select class="result-select" data-id="${m.id}">
                             <option value="">未定</option>
@@ -317,6 +322,7 @@
     }
 
     function bindEvents() {
+        // 结果下拉框
         document.querySelectorAll('.result-select').forEach(sel => {
             sel.addEventListener('change', function() {
                 const id = this.dataset.id;
@@ -332,6 +338,32 @@
                         if (urlResultFilter) clientFilterCache.key = '';
                         loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                     } else alert('更新失败: ' + (res.error || '未知错误'));
+                });
+            });
+        });
+
+        // ★ 价值下拉框（新增）
+        document.querySelectorAll('.value-select').forEach(sel => {
+            sel.addEventListener('change', function() {
+                const id = this.dataset.id;
+                const val = this.value;
+                fetch('/api/match/' + id + '/result?source=ai', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ value: val || null })
+                })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success) {
+                        showToast('✅ 价值已更新');
+                    } else {
+                        alert('更新失败: ' + (res.error || '未知错误'));
+                        loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
+                    }
+                })
+                .catch(err => {
+                    alert('请求出错: ' + err.message);
+                    loadHistory(currentDateFilter, currentLeagueFilter, currentLimit, currentOffset);
                 });
             });
         });
@@ -939,7 +971,8 @@
             odds_structure: '',
             fundamental_divergence: '否',
             fundamental_match: '否',
-            bet: '否'
+            bet: '否',
+            value: ''
         };
         fetch('/api/save?source=ai', {
             method: 'POST',
@@ -1030,7 +1063,7 @@
                         const isPending = !m.result || m.result === '' || m.result === null || m.result === undefined;
                         const matchesFilter = (urlResultFilter === '待定') ? isPending : (m.result === urlResultFilter);
                         if (!matchesFilter) {
-                            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:30px;">该赛事的结果不是「${urlResultFilter}」</td></tr>`;
+                            tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:30px;">该赛事的结果不是「${urlResultFilter}」</td></tr>`;
                             pagination.style.display = 'none';
                             return;
                         }
@@ -1063,7 +1096,8 @@
                         odds_structure: '',
                         fundamental_divergence: '否',
                         fundamental_match: '否',
-                        bet: '否'
+                        bet: '否',
+                        value: ''
                     };
 
                     fetch('/api/save?source=ai', {
@@ -1097,7 +1131,7 @@
 
                 loading.style.display = 'none';
                 tableWrap.style.display = 'block';
-                tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:30px;">该赛事暂无 AI 预测记录。</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:30px;">该赛事暂无 AI 预测记录。</td></tr>`;
                 pagination.style.display = 'none';
             })
             .catch(err => {
