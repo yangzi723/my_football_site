@@ -104,6 +104,10 @@ def ai_prediction():
 def ai_stats():
     return render_template('ai_stats.html')
 
+# ★ 新增路由
+@app.route('/ai_value_stats')
+def ai_value_stats():
+    return render_template('ai_value_stats.html')
 
 # ---------- API：保存预测记录 ----------
 @app.route('/api/save', methods=['POST'])
@@ -590,6 +594,7 @@ def api_odds_save():
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
 
 
 if __name__ == '__main__':
