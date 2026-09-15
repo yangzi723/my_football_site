@@ -152,7 +152,7 @@
 
     function renderRows(matches) {
         if (matches.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
             return;
         }
 
@@ -178,8 +178,6 @@
             html += `<tr>
                     <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
                     <td>${m.id}</td>
-                    <td>${m.date || ''}</td>
-                    <td>${m.time || ''}</td>
                     <td>${m.league || ''}</td>
                     <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
                     <td>${fundText}</td>
@@ -432,9 +430,6 @@
             if (data.error) { alert(data.error); return; }
 
             // 2) 从 odds 记录导入共享字段
-            //    导入字段：pos1, pos2, asian_odds, range, odds_structure,
-            //             judgment, fundamental_divergence, fundamental_match
-            //    保留字段：initial_analysis, final_analysis, initial_prediction
             let oddsData = null;
             if (data.date && data.home_team && data.away_team) {
                 try {
@@ -450,7 +445,6 @@
             }
 
             if (oddsData) {
-                // 仅在 odds 记录有对应值时覆盖，避免把空值带过来
                 if (oddsData.pos1 !== undefined && oddsData.pos1 !== null && oddsData.pos1 !== '')
                     data.pos1 = oddsData.pos1;
                 if (oddsData.pos2 !== undefined && oddsData.pos2 !== null && oddsData.pos2 !== '')
@@ -585,12 +579,10 @@
             analysisInfoContainer.innerHTML = infoHtml;
             analysisModal.style.display = 'flex';
 
-            // ★ 初始化时自动增高已填充内容的 textarea
             analysisInfoContainer.querySelectorAll('.analysis-textarea').forEach(el => {
                 autoResizeTextarea(el);
             });
 
-            // ★ 输入时实时增高
             analysisInfoContainer.addEventListener('input', function(e) {
                 if (e.target.classList && e.target.classList.contains('analysis-textarea')) {
                     autoResizeTextarea(e.target);
@@ -1038,7 +1030,7 @@
                         const isPending = !m.result || m.result === '' || m.result === null || m.result === undefined;
                         const matchesFilter = (urlResultFilter === '待定') ? isPending : (m.result === urlResultFilter);
                         if (!matchesFilter) {
-                            tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">该赛事的结果不是「${urlResultFilter}」</td></tr>`;
+                            tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:30px;">该赛事的结果不是「${urlResultFilter}」</td></tr>`;
                             pagination.style.display = 'none';
                             return;
                         }
@@ -1105,7 +1097,7 @@
 
                 loading.style.display = 'none';
                 tableWrap.style.display = 'block';
-                tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">该赛事暂无 AI 预测记录。</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:30px;">该赛事暂无 AI 预测记录。</td></tr>`;
                 pagination.style.display = 'none';
             })
             .catch(err => {
