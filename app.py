@@ -629,6 +629,31 @@ def api_find_match():
         else:
             return jsonify(None), 200
 
+# ---------- AI 预测初测映射接口 ----------
+@app.route('/api/ai_predictions')
+def api_ai_predictions():
+    """返回所有 AI 记录的 (date, home_team, away_team, initial_prediction) 列表"""
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                '''SELECT date, home_team, away_team, initial_prediction
+                   FROM matches WHERE source = ?''',
+                ('ai',)
+            )
+            rows = cur.fetchall()
+        result = []
+        for row in rows:
+            result.append({
+                'date': row['date'] or '',
+                'home_team': row['home_team'] or '',
+                'away_team': row['away_team'] or '',
+                'initial_prediction': row['initial_prediction'] or ''
+            })
+        return jsonify(result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 # ---------- odds API（保持不变） ----------
 @app.route('/api/odds/save', methods=['POST'])
