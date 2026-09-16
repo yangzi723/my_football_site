@@ -141,6 +141,7 @@ def ai_value_stats():
 def ai_profit_stats():
     return render_template('ai_profit_stats.html')
 
+
 # ---------- API：保存预测记录 ----------
 @app.route('/api/save', methods=['POST'])
 def api_save():
