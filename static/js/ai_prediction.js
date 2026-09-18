@@ -152,7 +152,7 @@
 
     function renderRows(matches) {
         if (matches.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
             return;
         }
 
@@ -183,6 +183,7 @@
                     <td><span class="pred-display">${predDisplay}</span></td>
                     <td style="text-align:center;"><input type="checkbox" class="bet-checkbox" data-id="${m.id}" ${betChecked ? 'checked' : ''}></td>
                     <td style="text-align:center;"><input type="number" class="stake-input" data-id="${m.id}" value="${m.stake || 0}" step="0.1" min="0" style="width:70px;padding:4px 6px;border:1px solid #cdd8e6;border-radius:4px;font-size:13px;text-align:center;"></td>
+                    <td style="text-align:center;"><input type="number" class="odds-input" data-id="${m.id}" value="${m.odds || 0}" step="0.01" min="0" style="width:70px;padding:4px 6px;border:1px solid #cdd8e6;border-radius:4px;font-size:13px;text-align:center;"></td>
                     <td>
                         <select class="value-select" data-id="${m.id}">
                             <option value="">未定</option>
@@ -343,7 +344,7 @@
             });
         });
 
-        // ★ 价值下拉框（新增）
+        // 价值下拉框
         document.querySelectorAll('.value-select').forEach(sel => {
             sel.addEventListener('change', function() {
                 const id = this.dataset.id;
@@ -448,7 +449,7 @@
             });
         });
 
-        // ★ 下注额输入框：失焦或回车时自动保存
+        // 下注额输入框：失焦或回车时自动保存
         document.querySelectorAll('.stake-input').forEach(inp => {
             inp.addEventListener('blur', function() {
                 const id = this.dataset.id;
@@ -479,11 +480,43 @@
                 if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
             });
         });
+
+        // 赔率输入框：失焦或回车时自动保存
+        document.querySelectorAll('.odds-input').forEach(inp => {
+            inp.addEventListener('blur', function() {
+                const id = this.dataset.id;
+                const val = parseFloat(this.value) || 0;
+                const oldVal = parseFloat(this.defaultValue) || 0;
+                if (val === oldVal) return;
+                fetch('/api/match/' + id + '/result?source=ai', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ odds: val })
+                })
+                .then(res => res.json())
+                .then(res => {
+                    if (res.success) {
+                        this.defaultValue = val;
+                        showToast('✅ 赔率已更新');
+                    } else {
+                        showToast('❌ 更新失败: ' + (res.error || '未知错误'), true);
+                        this.value = oldVal;
+                    }
+                })
+                .catch(err => {
+                    showToast('❌ 请求出错: ' + err.message, true);
+                    this.value = oldVal;
+                });
+            });
+            inp.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
+            });
+        });
     }
 
     /* ============================================================
      * 打开 AI 分析模态框
-     *   1) 读取 AI 记录（初赔分析/终赔分析/初测 使用它的值）
+     *   1) 读取 AI 记录（初赔分析/终赔分析/初测/复盘 使用它的值）
      *   2) 从同一条赛事的 odds 记录导入共享字段
      * ============================================================ */
     async function openAnalysisModal(id) {
@@ -538,6 +571,7 @@
             const initialAnalysisVal = data.initial_analysis || '';
             const finalAnalysisVal = data.final_analysis || '';
             const oddsStructureVal = data.odds_structure || '';
+            const reviewVal = data.review || '';    // ★ 新增：复盘字段
             const predArray = getInitialPredictionArray(data);
             const divergenceVal = data.fundamental_divergence || '否';
             const matchVal = data.fundamental_match || '否';
@@ -555,6 +589,7 @@
             analysisModal.dataset.oldInitialAnalysis = initialAnalysisVal;
             analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
             analysisModal.dataset.oldOddsStructure = oddsStructureVal;
+            analysisModal.dataset.oldReview = reviewVal;    // ★ 新增
             analysisModal.dataset.oldPred = JSON.stringify(predArray);
             analysisModal.dataset.oldDivergence = divergenceVal;
             analysisModal.dataset.oldMatch = matchVal;
@@ -640,6 +675,7 @@
                     ${dropdownHtml}
                     <span class="save-tag" id="analysis-saveTag-initial_prediction-${data.id}">✓</span>
                 </div>
+                <div class="form-group"><span class="info-label" style="width:120px;">复盘</span><textarea id="analysis-review" class="analysis-input analysis-textarea" rows="1" placeholder="输入复盘..." data-id="${data.id}" data-field="review">${escapeHtml(reviewVal)}</textarea><span class="save-tag" id="analysis-saveTag-review-${data.id}">✓</span></div>
             `;
             analysisInfoContainer.innerHTML = infoHtml;
             analysisModal.style.display = 'flex';
@@ -770,7 +806,7 @@
                 });
             }
 
-            document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-odds-structure, #analysis-judgment, #analysis-divergence, #analysis-match').forEach(el => {
+            document.querySelectorAll('#analysis-pos1, #analysis-pos2, #analysis-asian, #analysis-range, #analysis-initial_analysis, #analysis-final_analysis, #analysis-odds-structure, #analysis-judgment, #analysis-divergence, #analysis-match, #analysis-review').forEach(el => {
                 el.addEventListener('input', function() {
                     const id = this.dataset.id;
                     const field = this.dataset.field;
@@ -812,6 +848,7 @@
             const judgmentInput = document.getElementById('analysis-judgment');
             const divergenceInput = document.getElementById('analysis-divergence');
             const matchInput = document.getElementById('analysis-match');
+            const reviewInput = document.getElementById('analysis-review');    // ★ 新增
 
             const pos1Val = pos1Input ? pos1Input.value.trim() : '';
             const pos2Val = pos2Input ? pos2Input.value.trim() : '';
@@ -823,6 +860,7 @@
             const judgmentVal = judgmentInput ? judgmentInput.value : 'equal';
             const divergenceVal = divergenceInput ? (divergenceInput.checked ? '是' : '否') : '否';
             const matchVal = matchInput ? (matchInput.checked ? '是' : '否') : '否';
+            const reviewVal = reviewInput ? reviewInput.value.trim() : '';    // ★ 新增
 
             const menu = document.getElementById(`pred-menu-${id}`);
             let selectedOptions = [];
@@ -849,6 +887,7 @@
                     data.judgment = judgmentVal;
                     data.fundamental_divergence = divergenceVal;
                     data.fundamental_match = matchVal;
+                    data.review = reviewVal;    // ★ 新增
                     return fetch('/api/match/' + id + '?source=ai', {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -868,12 +907,13 @@
                         analysisModal.dataset.oldInitialAnalysis = initialAnalysisVal;
                         analysisModal.dataset.oldFinalAnalysis = finalAnalysisVal;
                         analysisModal.dataset.oldOddsStructure = oddsStructureVal;
+                        analysisModal.dataset.oldReview = reviewVal;    // ★ 新增
                         analysisModal.dataset.oldPred = initialPredictionVal;
                         analysisModal.dataset.oldJudgment = judgmentVal;
                         analysisModal.dataset.oldDivergence = divergenceVal;
                         analysisModal.dataset.oldMatch = matchVal;
 
-                        const fields = ['pos1', 'pos2', 'asian', 'range', 'initial_analysis', 'final_analysis', 'initial_prediction', 'odds_structure', 'judgment', 'fundamental_divergence', 'fundamental_match'];
+                        const fields = ['pos1', 'pos2', 'asian', 'range', 'initial_analysis', 'final_analysis', 'initial_prediction', 'odds_structure', 'judgment', 'fundamental_divergence', 'fundamental_match', 'review'];
                         fields.forEach(field => {
                             const tag = document.getElementById(`analysis-saveTag-${field}-${id}`);
                             if (tag) tag.classList.add('show');
@@ -898,6 +938,7 @@
                     const oldJudgment = analysisModal.dataset.oldJudgment || 'equal';
                     const oldDivergence = analysisModal.dataset.oldDivergence || '否';
                     const oldMatch = analysisModal.dataset.oldMatch || '否';
+                    const oldReview = analysisModal.dataset.oldReview || '';    // ★ 新增
                     const oldPred = analysisModal.dataset.oldPred || '[]';
                     try {
                         const oldArr = JSON.parse(oldPred);
@@ -932,8 +973,10 @@
                     if (judgmentInput) judgmentInput.value = oldJudgment;
                     if (divergenceInput) divergenceInput.checked = (oldDivergence === '是');
                     if (matchInput) matchInput.checked = (oldMatch === '是');
+                    if (reviewInput) reviewInput.value = oldReview;    // ★ 新增
                     if (initialAnalysisInput) autoResizeTextarea(initialAnalysisInput);
                     if (finalAnalysisInput) autoResizeTextarea(finalAnalysisInput);
+                    if (reviewInput) autoResizeTextarea(reviewInput);    // ★ 新增
                 })
                 .finally(() => {
                     saveAnalysisBtn.textContent = '💾 保存修改';
@@ -1005,7 +1048,10 @@
             fundamental_divergence: '否',
             fundamental_match: '否',
             bet: '否',
-            value: ''
+            value: '',
+            stake: 0,
+            odds: 0,
+            review: ''
         };
         fetch('/api/save?source=ai', {
             method: 'POST',
@@ -1096,7 +1142,7 @@
                         const isPending = !m.result || m.result === '' || m.result === null || m.result === undefined;
                         const matchesFilter = (urlResultFilter === '待定') ? isPending : (m.result === urlResultFilter);
                         if (!matchesFilter) {
-                            tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">该赛事的结果不是「${urlResultFilter}」</td></tr>`;
+                            tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:30px;">该赛事的结果不是「${urlResultFilter}」</td></tr>`;
                             pagination.style.display = 'none';
                             return;
                         }
@@ -1130,7 +1176,10 @@
                         fundamental_divergence: '否',
                         fundamental_match: '否',
                         bet: '否',
-                        value: ''
+                        value: '',
+                        stake: 0,
+                        odds: 0,
+                        review: ''
                     };
 
                     fetch('/api/save?source=ai', {
@@ -1164,7 +1213,7 @@
 
                 loading.style.display = 'none';
                 tableWrap.style.display = 'block';
-                tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">该赛事暂无 AI 预测记录。</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" style="text-align:center;padding:30px;">该赛事暂无 AI 预测记录。</td></tr>`;
                 pagination.style.display = 'none';
             })
             .catch(err => {

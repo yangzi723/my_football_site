@@ -73,6 +73,7 @@
         'home_slight': '主队略占优',
         'away_slight': '客队略占优'
     };
+    let aiPredictionMap = {};   // ★ 缓存 AI 初测: key = date|home|away
 
     let toastTimer;
 
@@ -110,6 +111,20 @@
             }
         }
         return [];
+    }
+
+    // ★ 根据当前赔率记录，查找对应 AI 记录的初测
+    function getAiPrediction(m) {
+        const key = [m.date || '', m.home_team || '', m.away_team || ''].join('|');
+        const val = aiPredictionMap[key];
+        if (!val) return '—';
+        try {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed)) return parsed.join('、') || '—';
+            return val;
+        } catch (e) {
+            return val;
+        }
     }
 
     function saveField(id, field, value) {
@@ -153,11 +168,32 @@
         }
     }
 
+    // ★ 加载所有 AI 记录的初测字段，构建映射
+    function loadAiPredictionMap() {
+        return fetch('/api/ai_predictions', { cache: 'no-store' })
+            .then(res => { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+            .then(list => {
+                const map = {};
+                (list || []).forEach(item => {
+                    const key = [item.date, item.home_team, item.away_team].join('|');
+                    map[key] = item.initial_prediction || '';
+                });
+                aiPredictionMap = map;
+                console.log('✅ AI 初测映射已加载:', Object.keys(map).length, '条');
+            })
+            .catch(err => {
+                console.error('❌ 加载 AI 初测映射失败:', err);
+            });
+    }
+
     function loadHistory(date, league, limit, offset) {
         if (date === undefined) date = currentDateFilter;
         if (league === undefined) league = currentLeagueFilter;
         if (limit === undefined) limit = currentLimit;
         if (offset === undefined) offset = currentOffset;
+
+        // ★ 每次加载列表前刷新 AI 初测映射
+        loadAiPredictionMap();
 
         loading.style.display = 'block';
         tableWrap.style.display = 'none';
@@ -183,7 +219,7 @@
                 }
 
                 if (matches.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:30px;">暂无预测记录</td></tr>';
                     pagination.style.display = 'none';
                     return;
                 }
@@ -207,6 +243,7 @@
 
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const asianOdds = m.asian_odds || '';
+                    const aiPredDisplay = getAiPrediction(m);
 
                     // ★ 下注状态
                     const betChecked = m.bet === '是';
@@ -214,14 +251,13 @@
                     html += `<tr>
                             <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
                             <td>${m.id}</td>
-                            <td>${m.date || ''}</td>
-                            <td>${m.time || ''}</td>
                             <td>${m.league || ''}</td>
                             <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
                             <td>${fundText}</td>
                             <td>${judgmentDisplay}</td>
                             <td>${asianOdds}</td>
                             <td><span class="pred-display">${predDisplay}</span></td>
+                            <td><span class="ai-pred-display">${aiPredDisplay}</span></td>
                             <td style="text-align:center;"><input type="checkbox" class="bet-checkbox" data-id="${m.id}" ${betChecked ? 'checked' : ''}></td>
                             <td>
                                 <select class="result-select" data-id="${m.id}">
@@ -908,6 +944,8 @@
     if (filterDateParam && filterHome && filterAway) {
         loading.style.display = 'block';
         tableWrap.style.display = 'none';
+        // ★ 先加载 AI 初测映射
+        loadAiPredictionMap();
         fetch(`/api/match/find?date=${encodeURIComponent(filterDateParam)}&home_team=${encodeURIComponent(filterHome)}&away_team=${encodeURIComponent(filterAway)}`)
             .then(res => res.json())
             .then(data => {
@@ -930,18 +968,18 @@
                     const predDisplay = getPredictionDisplay(m.initial_prediction) || '—';
                     const asianOdds = m.asian_odds || '';
                     const betChecked = m.bet === '是';
+                    const aiPredDisplay = getAiPrediction(m);
 
                     const rowHtml = `<tr>
                         <td class="checkbox-cell"><input type="checkbox" class="row-checkbox" data-id="${m.id}"></td>
                         <td>${m.id}</td>
-                        <td>${m.date || ''}</td>
-                        <td>${m.time || ''}</td>
                         <td>${m.league || ''}</td>
                         <td><a href="/index?id=${m.id}" class="team-link">${m.home_team}</a> <span class="vs-large">VS</span> <a href="/index?id=${m.id}" class="team-link">${m.away_team}</a></td>
                         <td>${fundText}</td>
                         <td>${judgmentDisplay}</td>
                         <td>${asianOdds}</td>
                         <td><span class="pred-display">${predDisplay}</span></td>
+                        <td><span class="ai-pred-display">${aiPredDisplay}</span></td>
                         <td style="text-align:center;"><input type="checkbox" class="bet-checkbox" data-id="${m.id}" ${betChecked ? 'checked' : ''}></td>
                         <td>
                             <select class="result-select" data-id="${m.id}">
@@ -962,7 +1000,7 @@
                 } else {
                     const params = new URLSearchParams(window.location.search);
                     const createUrl = `/index?date=${encodeURIComponent(params.get('date'))}&home=${encodeURIComponent(params.get('home'))}&away=${encodeURIComponent(params.get('away'))}`;
-                    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;padding:30px;">
+                    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:30px;">
                         该赛事暂无预测记录。
                         <br><br>
                         <a href="${createUrl}" class="btn btn-primary" style="display:inline-block;padding:8px 20px;background:#1a3a6b;color:white;border-radius:30px;text-decoration:none;">📝 去创建预测</a>

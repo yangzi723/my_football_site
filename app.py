@@ -66,6 +66,20 @@ def migrate_add_stake():
             print("ℹ️ matches 表 stake 字段已存在")
 
 migrate_add_stake()
+def migrate_add_odds():
+    """给 matches 表添加 odds 字段（如果不存在），默认 0"""
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("PRAGMA table_info(matches)")
+        cols = [row[1] for row in cur.fetchall()]
+        if 'odds' not in cols:
+            conn.execute("ALTER TABLE matches ADD COLUMN odds REAL DEFAULT 0")
+            conn.commit()
+            print("✅ matches 表已添加 odds 字段")
+        else:
+            print("ℹ️ matches 表 odds 字段已存在")
+
+migrate_add_odds()
 
 # ---------- 页面路由 ----------
 
@@ -127,6 +141,7 @@ def ai_value_stats():
 def ai_profit_stats():
     return render_template('ai_profit_stats.html')
 
+
 # ---------- API：保存预测记录 ----------
 @app.route('/api/save', methods=['POST'])
 def api_save():
@@ -177,6 +192,7 @@ def api_save():
             'judgment': data.get('judgment', 'equal'),
             'value': data.get('value', ''),   # ★ 新增
             'stake': float(data.get('stake', 0)),   # ★ 新增：下注额
+            'odds': float(data.get('odds', 0)),
             'source': src,   # ★ 关键：标记数据来源
         }
 
@@ -305,6 +321,17 @@ def api_update_result(match_id):
                 (stake, match_id, src)
             )
             conn.commit()
+    if 'odds' in data:
+        try:
+            odds = float(data.get('odds') or 0)
+        except (ValueError, TypeError):
+            odds = 0
+        with get_db() as conn:
+            conn.execute(
+                'UPDATE matches SET odds = ? WHERE id = ? AND source = ?',
+                (odds, match_id, src)
+            )
+            conn.commit()
 
     return jsonify({'success': True})
 
@@ -338,6 +365,7 @@ def api_update_match(match_id):
     data.setdefault('result', '')
     data.setdefault('value', '')   # ★ 新增
     data.setdefault('stake', 0)    # ★ 新增：下注额
+    data.setdefault('odds', 0)
     data.setdefault('judgment', 'equal')
     data.setdefault('pos1', '')
     data.setdefault('pos2', '')
@@ -601,6 +629,31 @@ def api_find_match():
         else:
             return jsonify(None), 200
 
+# ---------- AI 预测初测映射接口 ----------
+@app.route('/api/ai_predictions')
+def api_ai_predictions():
+    """返回所有 AI 记录的 (date, home_team, away_team, initial_prediction) 列表"""
+    try:
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                '''SELECT date, home_team, away_team, initial_prediction
+                   FROM matches WHERE source = ?''',
+                ('ai',)
+            )
+            rows = cur.fetchall()
+        result = []
+        for row in rows:
+            result.append({
+                'date': row['date'] or '',
+                'home_team': row['home_team'] or '',
+                'away_team': row['away_team'] or '',
+                'initial_prediction': row['initial_prediction'] or ''
+            })
+        return jsonify(result)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 # ---------- odds API（保持不变） ----------
 @app.route('/api/odds/save', methods=['POST'])
