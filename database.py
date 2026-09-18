@@ -10,7 +10,6 @@ def get_db():
 
 def init_db():
     with closing(get_db()) as conn:
-        # 创建 matches 表（如果不存在）
         conn.execute('''
             CREATE TABLE IF NOT EXISTS matches (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,11 +51,9 @@ def init_db():
             )
         ''')
 
-        # 获取现有列名
         cur = conn.execute("PRAGMA table_info(matches)")
         existing_cols = [row[1] for row in cur.fetchall()]
 
-        # 添加缺失的列（包括新增的 fundamental_divergence 和 fundamental_match）
         cols_to_add = [
             ('date', 'TEXT'),
             ('time', 'TEXT'),
@@ -72,18 +69,21 @@ def init_db():
             ('review', 'TEXT'),
             ('odds_structure', 'TEXT'),
             ('fundamental_divergence', 'TEXT'),
-            ('fundamental_match', 'TEXT'),      # ★ 新增
-            ('bet', 'TEXT')   # ★ 新增
+            ('fundamental_match', 'TEXT'),
+            ('bet', 'TEXT'),
+            ('h2h_home_wins', 'INTEGER'),   # ★ 新增：两队交战历史 - 主队胜
+            ('h2h_draws', 'INTEGER'),       # ★ 新增：两队交战历史 - 平局
+            ('h2h_away_wins', 'INTEGER'),   # ★ 新增：两队交战历史 - 客队胜
         ]
         for col, col_type in cols_to_add:
             if col not in existing_cols:
                 conn.execute(f'ALTER TABLE matches ADD COLUMN {col} {col_type}')
         conn.commit()
 
-    # 初始化其他表
     init_fixtures_table()
     init_odds_table()
     init_user_table()
+
 
 # ---------- matches 表操作 ----------
 def save_match(data):
@@ -102,7 +102,8 @@ def save_match(data):
                 home_unexpected, away_unexpected,
                 home_score, away_score,
                 home_prob, draw_prob, away_prob,
-                judgment
+                judgment,
+                h2h_home_wins, h2h_draws, h2h_away_wins
             ) VALUES (
                 :date, :time, :league,
                 :home_team, :away_team,
@@ -115,7 +116,8 @@ def save_match(data):
                 :home_unexpected, :away_unexpected,
                 :home_score, :away_score,
                 :home_prob, :draw_prob, :away_prob,
-                :judgment
+                :judgment,
+                :h2h_home_wins, :h2h_draws, :h2h_away_wins
             )
         ''', data)
         conn.commit()
@@ -174,7 +176,6 @@ def delete_match(match_id):
         conn.commit()
 
 def update_match_full(match_id, data):
-    # 为可能缺失的字段设置默认值，避免参数绑定错误
     data.setdefault('pos1', '')
     data.setdefault('pos2', '')
     data.setdefault('asian_odds', '')
@@ -186,8 +187,11 @@ def update_match_full(match_id, data):
     data.setdefault('review', '')
     data.setdefault('odds_structure', '')
     data.setdefault('fundamental_divergence', '否')
-    data.setdefault('fundamental_match', '否')      # ★ 新增
-    data.setdefault('bet', '否')   # ★ 新增
+    data.setdefault('fundamental_match', '否')
+    data.setdefault('bet', '否')
+    data.setdefault('h2h_home_wins', 0)     # ★ 新增
+    data.setdefault('h2h_draws', 0)         # ★ 新增
+    data.setdefault('h2h_away_wins', 0)     # ★ 新增
 
     with closing(get_db()) as conn:
         conn.execute('''
@@ -237,8 +241,11 @@ def update_match_full(match_id, data):
                 review = :review,
                 odds_structure = :odds_structure,
                 fundamental_divergence = :fundamental_divergence,
-                fundamental_match = :fundamental_match,     -- ★ 新增
-                bet = :bet   -- ★ 新增
+                fundamental_match = :fundamental_match,
+                bet = :bet,
+                h2h_home_wins = :h2h_home_wins,     -- ★ 新增
+                h2h_draws = :h2h_draws,             -- ★ 新增
+                h2h_away_wins = :h2h_away_wins      -- ★ 新增
             WHERE id = :id
         ''', {**data, 'id': match_id})
         conn.commit()
@@ -271,6 +278,7 @@ def get_statistics():
             'result_counts': result_counts,
             'judgment_stats': judgment_stats
         }
+
 
 # ---------- fixtures 表 ----------
 def init_fixtures_table():
@@ -385,6 +393,7 @@ def add_fixture(data):
         conn.commit()
         return cur.lastrowid
 
+
 # ---------- odds 表 ----------
 def init_odds_table():
     with closing(get_db()) as conn:
@@ -412,6 +421,7 @@ def save_odds(data):
         ''', data)
         conn.commit()
         return cur.lastrowid
+
 
 # ---------- 用户表 ----------
 def init_user_table():

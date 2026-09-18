@@ -12,7 +12,7 @@
 
     <h1>⚽ 球队基本面评分与预测</h1>
     <div class="subtitle">
-        六因子模型：实力 · 近3场状态 · 近3场主客场 · 人员 · 战意 · 身价 &nbsp;|&nbsp; 英冠平均身价基准 70M €
+        七因子模型：实力 · 近3场状态 · 近3场主客场 · 人员 · 战意 · 身价 · 交战历史 &nbsp;|&nbsp; 英冠平均身价基准 70M €
     </div>
 
     <!-- 日期、时间、联赛（可编辑） -->
@@ -35,12 +35,13 @@
     <div style="background:#f1f5f9; border-radius:12px; padding:12px 18px; margin-bottom:20px;">
         <div style="font-weight:600; font-size:14px; margin-bottom:8px;">⚙️ 权重调节 (总和自动归一化)</div>
         <div class="flex-row" id="weight-sliders">
-            <div class="weight-group"><label>实力</label><input type="range" min="0" max="100" value="30" class="w-slider" data-key="strength"><span class="weight-val">30</span></div>
-            <div class="weight-group"><label>状态</label><input type="range" min="0" max="100" value="25" class="w-slider" data-key="form"><span class="weight-val">25</span></div>
+            <div class="weight-group"><label>实力</label><input type="range" min="0" max="100" value="25" class="w-slider" data-key="strength"><span class="weight-val">25</span></div>
+            <div class="weight-group"><label>状态</label><input type="range" min="0" max="100" value="20" class="w-slider" data-key="form"><span class="weight-val">20</span></div>
             <div class="weight-group"><label>主客场</label><input type="range" min="0" max="100" value="15" class="w-slider" data-key="home_away"><span class="weight-val">15</span></div>
             <div class="weight-group"><label>人员</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="personnel"><span class="weight-val">10</span></div>
             <div class="weight-group"><label>战意</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="motivation"><span class="weight-val">10</span></div>
             <div class="weight-group"><label>身价</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="value"><span class="weight-val">10</span></div>
+            <div class="weight-group"><label>交战</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="h2h"><span class="weight-val">10</span></div>
         </div>
         <div style="font-size:13px; color:#475569; margin-top:4px;">拖动滑块调整权重，系统自动归一化</div>
     </div>
@@ -108,6 +109,31 @@
         </div>
     </div>
 
+    <!-- ★ 新增：两队交战历史 -->
+    <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:14px 20px; margin-bottom:20px;">
+        <div style="font-weight:600; font-size:14px; margin-bottom:10px; color:#9a3412;">⚔️ 两队交战历史（近 N 次交手，可选）</div>
+        <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:center;">
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:14px; color:#7c2d12;">主队胜</label>
+                <input type="number" id="h2h-home-wins" min="0" value="0"
+                       style="width:80px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:14px; color:#7c2d12;">平局</label>
+                <input type="number" id="h2h-draws" min="0" value="0"
+                       style="width:80px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <label style="font-size:14px; color:#7c2d12;">客队胜</label>
+                <input type="number" id="h2h-away-wins" min="0" value="0"
+                       style="width:80px; padding:6px 10px; border:1px solid #cdd8e6; border-radius:6px;">
+            </div>
+            <span style="font-size:13px; color:#9a3412; margin-left:auto;">
+                （胜=3分，平=1分，负=0分，作为独立因子按权重计入）
+            </span>
+        </div>
+    </div>
+
     <!-- 按钮组（全部显示） -->
     <div class="btn-group">
         <button class="btn btn-success" id="fetchBtn">📡 抓取比赛</button>
@@ -155,7 +181,7 @@
     </div>
 
     <div class="footer-note">
-        所有数据均手动输入，评分模型基于六因子加权。身价基准：英冠平均 70M€。
+        所有数据均手动输入，评分模型基于七因子加权。身价基准：英冠平均 70M€。
     </div>
 </div>
 
@@ -226,6 +252,11 @@
     const awayValue = $('away-value');
     const awayUnexpected = $('away-unexpected');
 
+    // ★ 新增：H2H 输入
+    const h2hHomeWins = $('h2h-home-wins');
+    const h2hDraws = $('h2h-draws');
+    const h2hAwayWins = $('h2h-away-wins');
+
     const resultArea = $('resultArea');
     const resultHomeName = $('result-home-name');
     const resultAwayName = $('result-away-name');
@@ -263,7 +294,6 @@
         return norm;
     }
 
-    // 更新权重显示
     sliders.forEach(s => {
         s.addEventListener('input', function() {
             const val = this.value;
@@ -298,7 +328,18 @@
     function motivationScore(level) { return Math.min(100, level * 20); }
     function valueScore(v) { const avg = Math.max(LEAGUE_AVG_VALUE, 0.1); return Math.min(100, (v / avg) * 50); }
 
-    function calculateTeamScore(data, isHome) {
+    // ★ 新增：H2H 得分（从某队视角计算）
+    //   胜=3分，平=1分，负=0分；按满分归一化到 0-100
+    function h2hScore(wins, draws, losses) {
+        const total = wins + draws + losses;
+        if (total === 0) return 50;   // 无数据时中性分
+        const points = wins * 3 + draws * 1;
+        const maxPoints = total * 3;
+        return (points / maxPoints) * 100;
+    }
+
+    // ★ 修改：calculateTeamScore 增加 h2h 参数
+    function calculateTeamScore(data, isHome, h2h) {
         const rank = data.rank || 10;
         const strength = 0.5 * rankScore(rank) + 0.5 * goalScore(data.goalsScored || 0, data.goalsConceded || 0);
         const form = formScore(data.recentPoints || 0, 3);
@@ -309,14 +350,26 @@
         const pers = personnelScore(data.keyInjuries||0);
         const mot = motivationScore(data.motivation||3);
         const val = valueScore(data.teamValue||0);
+
+        // ★ H2H 因子
+        const h2hData = h2h || { homeWins: 0, draws: 0, awayWins: 0 };
+        let h2hSc;
+        if (isHome) {
+            h2hSc = h2hScore(h2hData.homeWins, h2hData.draws, h2hData.awayWins);
+        } else {
+            h2hSc = h2hScore(h2hData.awayWins, h2hData.draws, h2hData.homeWins);
+        }
+
         const weights = getWeights();
         return weights.strength * strength + weights.form * form + weights.home_away * ha +
-               weights.personnel * pers + weights.motivation * mot + weights.value * val;
+               weights.personnel * pers + weights.motivation * mot + weights.value * val +
+               (weights.h2h || 0) * h2hSc;
     }
 
-    function predictMatch(homeData, awayData) {
-        const hs = calculateTeamScore(homeData, true);
-        const as = calculateTeamScore(awayData, false);
+    // ★ 修改：predictMatch 增加 h2h 参数
+    function predictMatch(homeData, awayData, h2h) {
+        const hs = calculateTeamScore(homeData, true, h2h);
+        const as = calculateTeamScore(awayData, false, h2h);
         const diff = hs - as;
         const pDraw = 0.35 * Math.exp(-(diff*diff)/2000);
         const pHomeRaw = 1 / (1 + Math.exp(-diff/20));
@@ -367,6 +420,15 @@
         return data;
     }
 
+    // ★ 新增：读取 H2H 数据
+    function readH2H() {
+        return {
+            homeWins: parseInt(h2hHomeWins.value) || 0,
+            draws: parseInt(h2hDraws.value) || 0,
+            awayWins: parseInt(h2hAwayWins.value) || 0
+        };
+    }
+
     function displayResult(homeStr, awayStr, homeData, awayData, result) {
         resultArea.style.display = 'block';
         resultHomeName.textContent = homeStr;
@@ -399,7 +461,8 @@
         const aName = awayName.value.trim() || '客队';
         const homeData = readTeamData('home');
         const awayData = readTeamData('away');
-        const result = predictMatch(homeData, awayData);
+        const h2h = readH2H();   // ★ 新增
+        const result = predictMatch(homeData, awayData, h2h);
         displayResult(hName, aName, homeData, awayData, result);
     }
 
@@ -419,7 +482,8 @@
         const aName = awayName.value.trim() || '客队';
         const homeData = readTeamData('home');
         const awayData = readTeamData('away');
-        const result = predictMatch(homeData, awayData);
+        const h2h = readH2H();   // ★ 新增
+        const result = predictMatch(homeData, awayData, h2h);
 
         const payload = {
             date: matchDate.value || '',
@@ -454,7 +518,11 @@
             home_prob: result.homeProb,
             draw_prob: result.drawProb,
             away_prob: result.awayProb,
-            judgment: basicJudge.value
+            judgment: basicJudge.value,
+            // ★ 新增：H2H
+            h2h_home_wins: h2h.homeWins,
+            h2h_draws: h2h.draws,
+            h2h_away_wins: h2h.awayWins
         };
 
         fetch('/api/save', {
@@ -466,7 +534,6 @@
         .then(res => {
             if (res.success) {
                 showToast('✅ 预测保存成功！ID: ' + res.id);
-                // 更新URL参数以便刷新后仍显示该记录
                 const url = new URL(window.location);
                 url.searchParams.set('id', res.id);
                 window.history.replaceState({}, '', url);
@@ -481,20 +548,26 @@
     function resetForm() {
         document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]').forEach(inp => inp.value = '');
         document.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
+
+        // ★ 重置 H2H
+        h2hHomeWins.value = 0;
+        h2hDraws.value = 0;
+        h2hAwayWins.value = 0;
+
         resultArea.style.display = 'none';
-        // 重置权重滑块到默认
-        const defaults = { strength:30, form:25, home_away:15, personnel:10, motivation:10, value:10 };
+
+        // ★ 重置权重滑块到新的默认（含 h2h）
+        const defaults = { strength:25, form:20, home_away:15, personnel:10, motivation:10, value:10, h2h:10 };
         sliders.forEach(s => {
-            s.value = defaults[s.dataset.key] || 30;
+            s.value = defaults[s.dataset.key] || 10;
             s.parentElement.querySelector('.weight-val').textContent = s.value;
         });
         showToast('已重置');
     }
 
-    // ---------- 抓取比赛（占位，需实现后端） ----------
+    // ---------- 抓取比赛（占位） ----------
     function fetchMatches() {
         modal.style.display = 'flex';
-        // 模拟抓取进度，实际应调用后端
         loaderArea.style.display = 'block';
         tableContainer.style.display = 'none';
         let progress = 0;
@@ -508,7 +581,6 @@
                 setTimeout(() => {
                     loaderArea.style.display = 'none';
                     tableContainer.style.display = 'block';
-                    // 填充示例数据
                     matchListBody.innerHTML = `
                         <tr><td>2026-09-06</td><td>19:30</td><td>Premier League</td><td>Arsenal</td><td>Chelsea</td><td>2-1</td></tr>
                         <tr><td>2026-09-06</td><td>20:00</td><td>La Liga</td><td>Barcelona</td><td>Real Madrid</td><td>1-1</td></tr>
@@ -562,6 +634,11 @@
         awayMotivation.value = m.away_motivation;
         awayValue.value = m.away_value;
         awayUnexpected.value = m.away_unexpected || '';
+
+        // ★ 回填 H2H
+        h2hHomeWins.value = (m.h2h_home_wins !== undefined && m.h2h_home_wins !== null) ? m.h2h_home_wins : 0;
+        h2hDraws.value = (m.h2h_draws !== undefined && m.h2h_draws !== null) ? m.h2h_draws : 0;
+        h2hAwayWins.value = (m.h2h_away_wins !== undefined && m.h2h_away_wins !== null) ? m.h2h_away_wins : 0;
 
         resultArea.style.display = 'block';
         resultHomeName.textContent = m.home_team;
@@ -639,7 +716,6 @@
                 if (data && data.id) {
                     fillMatchData(data);
                 } else {
-                    // 仅填充基本信息
                     matchDate.value = date;
                     matchTime.value = time || '';
                     leagueName.value = league || '';
@@ -670,7 +746,6 @@
         if (e.target === modal) modal.style.display = 'none';
     });
 
-    // 页面初始化
     window.addEventListener('load', fillFromUrlParams);
 })();
 </script>

@@ -190,10 +190,13 @@ def api_save():
             'draw_prob': float(data.get('draw_prob', 0)),
             'away_prob': float(data.get('away_prob', 0)),
             'judgment': data.get('judgment', 'equal'),
-            'value': data.get('value', ''),   # ★ 新增
-            'stake': float(data.get('stake', 0)),   # ★ 新增：下注额
+            'value': data.get('value', ''),
+            'stake': float(data.get('stake', 0)),
             'odds': float(data.get('odds', 0)),
-            'source': src,   # ★ 关键：标记数据来源
+            'h2h_home_wins': int(data.get('h2h_home_wins', 0)),   # ★ 新增
+            'h2h_draws': int(data.get('h2h_draws', 0)),           # ★ 新增
+            'h2h_away_wins': int(data.get('h2h_away_wins', 0)),   # ★ 新增
+            'source': src,
         }
 
         # 删除同一 source 下可能存在的重复记录
@@ -363,8 +366,8 @@ def api_update_match(match_id):
     data.setdefault('home_unexpected', '')
     data.setdefault('away_unexpected', '')
     data.setdefault('result', '')
-    data.setdefault('value', '')   # ★ 新增
-    data.setdefault('stake', 0)    # ★ 新增：下注额
+    data.setdefault('value', '')
+    data.setdefault('stake', 0)
     data.setdefault('odds', 0)
     data.setdefault('judgment', 'equal')
     data.setdefault('pos1', '')
@@ -378,13 +381,17 @@ def api_update_match(match_id):
     data.setdefault('ai_result', '')
     data.setdefault('review', '')
     data.setdefault('bet', '否')
+    data.setdefault('h2h_home_wins', 0)     # ★ 新增
+    data.setdefault('h2h_draws', 0)         # ★ 新增
+    data.setdefault('h2h_away_wins', 0)     # ★ 新增
 
     numeric_fields = ['home_rank', 'home_scored', 'home_conceded', 'home_recent',
                       'home_wins', 'home_draws', 'home_losses', 'home_injuries',
                       'home_motivation', 'home_value', 'away_rank', 'away_scored',
                       'away_conceded', 'away_recent', 'away_wins', 'away_draws',
                       'away_losses', 'away_injuries', 'away_motivation', 'away_value',
-                      'home_score', 'away_score', 'home_prob', 'draw_prob', 'away_prob']
+                      'home_score', 'away_score', 'home_prob', 'draw_prob', 'away_prob',
+                      'h2h_home_wins', 'h2h_draws', 'h2h_away_wins']    # ★ 新增
     for field in numeric_fields:
         if field in data and data[field] is not None:
             try:
