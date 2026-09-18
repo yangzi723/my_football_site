@@ -131,12 +131,10 @@ def ai_prediction():
 def ai_stats():
     return render_template('ai_stats.html')
 
-# ★ 新增路由
 @app.route('/ai_value_stats')
 def ai_value_stats():
     return render_template('ai_value_stats.html')
 
-# ★ 新增
 @app.route('/ai_profit_stats')
 def ai_profit_stats():
     return render_template('ai_profit_stats.html')
@@ -193,13 +191,14 @@ def api_save():
             'value': data.get('value', ''),
             'stake': float(data.get('stake', 0)),
             'odds': float(data.get('odds', 0)),
-            'h2h_home_wins': int(data.get('h2h_home_wins', 0)),   # ★ 新增
-            'h2h_draws': int(data.get('h2h_draws', 0)),           # ★ 新增
-            'h2h_away_wins': int(data.get('h2h_away_wins', 0)),   # ★ 新增
+            'h2h_home_wins': int(data.get('h2h_home_wins', 0)),
+            'h2h_draws': int(data.get('h2h_draws', 0)),
+            'h2h_away_wins': int(data.get('h2h_away_wins', 0)),
+            'home_injury_info': data.get('home_injury_info', ''),   # ★ 新增
+            'away_injury_info': data.get('away_injury_info', ''),   # ★ 新增
             'source': src,
         }
 
-        # 删除同一 source 下可能存在的重复记录
         with get_db() as conn:
             conn.execute(
                 'DELETE FROM matches WHERE date = ? AND home_team = ? AND away_team = ? AND source = ?',
@@ -207,7 +206,6 @@ def api_save():
             )
             conn.commit()
 
-        # 直接用 SQL 插入（保证 source 字段被写入）
         with get_db() as conn:
             cols = ', '.join(match_data.keys())
             placeholders = ', '.join('?' for _ in match_data)
@@ -287,21 +285,18 @@ def api_update_result(match_id):
     if not data:
         return jsonify({'error': '请求体不是JSON'}), 400
 
-    # 校验记录存在且属于当前 source
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute('SELECT id FROM matches WHERE id = ? AND source = ?', (match_id, src))
         if not cur.fetchone():
             return jsonify({'error': '记录不存在或无权修改'}), 403
 
-    # 处理 result 字段（兼容旧调用）
     if 'result' in data:
         result = data.get('result')
         if result not in ('红', '黑', '走盘', None):
             return jsonify({'error': '结果必须是 红/黑/走盘 或 null'}), 400
         update_match_result(match_id, result)
 
-    # ★ 新增：处理 value 字段
     if 'value' in data:
         value = data.get('value')
         if value not in ('红', '黑', '走盘', None):
@@ -312,7 +307,7 @@ def api_update_result(match_id):
                 (value, match_id, src)
             )
             conn.commit()
-        # ★ 新增：处理 stake 字段
+
     if 'stake' in data:
         try:
             stake = float(data.get('stake') or 0)
@@ -324,6 +319,7 @@ def api_update_result(match_id):
                 (stake, match_id, src)
             )
             conn.commit()
+
     if 'odds' in data:
         try:
             odds = float(data.get('odds') or 0)
@@ -348,18 +344,15 @@ def api_update_match(match_id):
     if 'home_team' not in data or 'away_team' not in data:
         return jsonify({'error': '缺少 home_team 或 away_team'}), 400
 
-    # 校验记录存在且属于当前 source
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute('SELECT id FROM matches WHERE id = ? AND source = ?', (match_id, src))
         if not cur.fetchone():
             return jsonify({'error': '记录不存在或无权修改'}), 403
 
-    # 禁止修改 id / source
     data.pop('id', None)
     data.pop('source', None)
 
-    # 为可能缺失的字段设置默认值，避免SQL绑定错误
     data.setdefault('date', '')
     data.setdefault('time', '')
     data.setdefault('league', '')
@@ -381,9 +374,11 @@ def api_update_match(match_id):
     data.setdefault('ai_result', '')
     data.setdefault('review', '')
     data.setdefault('bet', '否')
-    data.setdefault('h2h_home_wins', 0)     # ★ 新增
-    data.setdefault('h2h_draws', 0)         # ★ 新增
-    data.setdefault('h2h_away_wins', 0)     # ★ 新增
+    data.setdefault('h2h_home_wins', 0)
+    data.setdefault('h2h_draws', 0)
+    data.setdefault('h2h_away_wins', 0)
+    data.setdefault('home_injury_info', '')     # ★ 新增
+    data.setdefault('away_injury_info', '')     # ★ 新增
 
     numeric_fields = ['home_rank', 'home_scored', 'home_conceded', 'home_recent',
                       'home_wins', 'home_draws', 'home_losses', 'home_injuries',
@@ -391,7 +386,7 @@ def api_update_match(match_id):
                       'away_conceded', 'away_recent', 'away_wins', 'away_draws',
                       'away_losses', 'away_injuries', 'away_motivation', 'away_value',
                       'home_score', 'away_score', 'home_prob', 'draw_prob', 'away_prob',
-                      'h2h_home_wins', 'h2h_draws', 'h2h_away_wins']    # ★ 新增
+                      'h2h_home_wins', 'h2h_draws', 'h2h_away_wins']
     for field in numeric_fields:
         if field in data and data[field] is not None:
             try:
@@ -413,7 +408,6 @@ def api_update_match(match_id):
 def api_delete_match(match_id):
     src = get_source()
     try:
-        # 只删除属于当前 source 的记录
         with get_db() as conn:
             conn.execute('DELETE FROM matches WHERE id = ? AND source = ?', (match_id, src))
             conn.commit()
@@ -444,14 +438,14 @@ def api_stats():
         return jsonify({
             'total': total,
             'result_counts': result_counts,
-            'judgment_stats': []   # 兼容旧版前端，不再使用
+            'judgment_stats': []
         })
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
-# ---------- fixtures API（保持不变） ----------
+# ---------- fixtures API ----------
 
 @app.route('/api/fetch_matches', methods=['GET'])
 def api_fetch_matches():
@@ -636,7 +630,6 @@ def api_find_match():
         else:
             return jsonify(None), 200
 
-# ---------- AI 预测初测映射接口 ----------
 @app.route('/api/ai_predictions')
 def api_ai_predictions():
     """返回所有 AI 记录的 (date, home_team, away_team, initial_prediction) 列表"""
@@ -662,7 +655,7 @@ def api_ai_predictions():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-# ---------- odds API（保持不变） ----------
+# ---------- odds API ----------
 @app.route('/api/odds/save', methods=['POST'])
 def api_odds_save():
     try:
@@ -686,7 +679,6 @@ def api_odds_save():
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
-
 
 
 if __name__ == '__main__':

@@ -71,9 +71,11 @@ def init_db():
             ('fundamental_divergence', 'TEXT'),
             ('fundamental_match', 'TEXT'),
             ('bet', 'TEXT'),
-            ('h2h_home_wins', 'INTEGER'),   # ★ 新增：两队交战历史 - 主队胜
-            ('h2h_draws', 'INTEGER'),       # ★ 新增：两队交战历史 - 平局
-            ('h2h_away_wins', 'INTEGER'),   # ★ 新增：两队交战历史 - 客队胜
+            ('h2h_home_wins', 'INTEGER'),
+            ('h2h_draws', 'INTEGER'),
+            ('h2h_away_wins', 'INTEGER'),
+            ('home_injury_info', 'TEXT'),   # ★ 新增：主队伤停详情
+            ('away_injury_info', 'TEXT'),   # ★ 新增：客队伤停详情
         ]
         for col, col_type in cols_to_add:
             if col not in existing_cols:
@@ -103,7 +105,8 @@ def save_match(data):
                 home_score, away_score,
                 home_prob, draw_prob, away_prob,
                 judgment,
-                h2h_home_wins, h2h_draws, h2h_away_wins
+                h2h_home_wins, h2h_draws, h2h_away_wins,
+                home_injury_info, away_injury_info
             ) VALUES (
                 :date, :time, :league,
                 :home_team, :away_team,
@@ -117,7 +120,8 @@ def save_match(data):
                 :home_score, :away_score,
                 :home_prob, :draw_prob, :away_prob,
                 :judgment,
-                :h2h_home_wins, :h2h_draws, :h2h_away_wins
+                :h2h_home_wins, :h2h_draws, :h2h_away_wins,
+                :home_injury_info, :away_injury_info
             )
         ''', data)
         conn.commit()
@@ -189,9 +193,11 @@ def update_match_full(match_id, data):
     data.setdefault('fundamental_divergence', '否')
     data.setdefault('fundamental_match', '否')
     data.setdefault('bet', '否')
-    data.setdefault('h2h_home_wins', 0)     # ★ 新增
-    data.setdefault('h2h_draws', 0)         # ★ 新增
-    data.setdefault('h2h_away_wins', 0)     # ★ 新增
+    data.setdefault('h2h_home_wins', 0)
+    data.setdefault('h2h_draws', 0)
+    data.setdefault('h2h_away_wins', 0)
+    data.setdefault('home_injury_info', '')     # ★ 新增
+    data.setdefault('away_injury_info', '')     # ★ 新增
 
     with closing(get_db()) as conn:
         conn.execute('''
@@ -243,9 +249,11 @@ def update_match_full(match_id, data):
                 fundamental_divergence = :fundamental_divergence,
                 fundamental_match = :fundamental_match,
                 bet = :bet,
-                h2h_home_wins = :h2h_home_wins,     -- ★ 新增
-                h2h_draws = :h2h_draws,             -- ★ 新增
-                h2h_away_wins = :h2h_away_wins      -- ★ 新增
+                h2h_home_wins = :h2h_home_wins,
+                h2h_draws = :h2h_draws,
+                h2h_away_wins = :h2h_away_wins,
+                home_injury_info = :home_injury_info,       -- ★ 新增
+                away_injury_info = :away_injury_info        -- ★ 新增
             WHERE id = :id
         ''', {**data, 'id': match_id})
         conn.commit()

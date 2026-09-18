@@ -35,6 +35,7 @@
             home_motivation: homeData.motivation,
             home_value: homeData.teamValue,
             home_unexpected: homeData.unexpected,
+            home_injury_info: homeData.injuryInfo || '',   // ★ 新增
             away_rank: awayData.rank,
             away_scored: awayData.goalsScored,
             away_conceded: awayData.goalsConceded,
@@ -46,6 +47,7 @@
             away_motivation: awayData.motivation,
             away_value: awayData.teamValue,
             away_unexpected: awayData.unexpected,
+            away_injury_info: awayData.injuryInfo || '',   // ★ 新增
             home_score: result.homeScore,
             away_score: result.awayScore,
             home_prob: result.homeProb,
@@ -82,6 +84,7 @@
         document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]')
             .forEach(inp => inp.value = '');
         document.querySelectorAll('select').forEach(sel => sel.selectedIndex = 0);
+        document.querySelectorAll('textarea').forEach(t => t.value = '');   // ★ 新增
 
         d.h2hHomeWins.value = 0;
         d.h2hDraws.value = 0;

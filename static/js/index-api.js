@@ -26,6 +26,7 @@
         d.homeMotivation.value = m.home_motivation;
         d.homeValue.value = m.home_value;
         d.homeUnexpected.value = m.home_unexpected || '';
+        d.homeInjuryInfo.value = m.home_injury_info || '';   // ★ 新增
 
         d.awayRank.value = m.away_rank;
         d.awayScored.value = m.away_scored;
@@ -38,6 +39,7 @@
         d.awayMotivation.value = m.away_motivation;
         d.awayValue.value = m.away_value;
         d.awayUnexpected.value = m.away_unexpected || '';
+        d.awayInjuryInfo.value = m.away_injury_info || '';   // ★ 新增
 
         // H2H 回填
         d.h2hHomeWins.value = (m.h2h_home_wins != null) ? m.h2h_home_wins : 0;

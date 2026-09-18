@@ -6,16 +6,12 @@
 
     const App = window.IndexApp = window.IndexApp || {};
 
-    // ---- 基础评分函数 ----
-
-    // 联赛排名得分（假设联赛 20 队）
     function rankScore(rank, totalTeams) {
         totalTeams = totalTeams || 20;
         if (totalTeams <= 1) return 100;
         return Math.max(0, 100 - (rank - 1) * (100 / (totalTeams - 1)));
     }
 
-    // 攻防得分
     function goalScore(gs, gc) {
         const avgS = Math.max(App.LEAGUE_AVG_GOALS_SCORED, 0.1);
         const avgC = Math.max(App.LEAGUE_AVG_GOALS_CONCEDED, 0.1);
@@ -25,7 +21,6 @@
         return (attack + defense) / 2;
     }
 
-    // 近期状态得分
     function formScore(recent, games) {
         games = games || 3;
         const maxP = games * 3;
@@ -33,30 +28,25 @@
         return Math.min(100, (recent / maxP) * 100);
     }
 
-    // 主客场得分
     function homeAwayScore(w, d, l) {
         const total = w + d + l;
         if (total === 0) return 50;
         return (w / total) * 100;
     }
 
-    // 人员得分
     function personnelScore(inj) {
         return Math.max(0, 100 - Math.min(100, inj * 10));
     }
 
-    // 战意得分
     function motivationScore(level) {
         return Math.min(100, level * 20);
     }
 
-    // 身价得分
     function valueScore(v) {
         const avg = Math.max(App.LEAGUE_AVG_VALUE, 0.1);
         return Math.min(100, (v / avg) * 50);
     }
 
-    // H2H 得分（胜 3 分、平 1 分、负 0 分，归一化到 0-100）
     function h2hScore(wins, draws, losses) {
         const total = wins + draws + losses;
         if (total === 0) return 50;
@@ -65,7 +55,6 @@
         return (points / maxPoints) * 100;
     }
 
-    // ---- 权重归一化 ----
     function getWeights() {
         const raw = {};
         App.dom.sliders.forEach(s => {
@@ -79,7 +68,6 @@
         return norm;
     }
 
-    // ---- 单队综合得分 ----
     function calculateTeamScore(data, isHome, h2h) {
         const rank = data.rank || 10;
         const strength = 0.5 * rankScore(rank) + 0.5 * goalScore(data.goalsScored || 0, data.goalsConceded || 0);
@@ -100,7 +88,6 @@
         const mot = motivationScore(data.motivation || 3);
         const val = valueScore(data.teamValue || 0);
 
-        // H2H 因子
         const h2hData = h2h || { homeWins: 0, draws: 0, awayWins: 0 };
         const h2hSc = isHome
             ? h2hScore(h2hData.homeWins, h2hData.draws, h2hData.awayWins)
@@ -116,7 +103,6 @@
              + (weights.h2h || 0) * h2hSc;
     }
 
-    // ---- 比赛预测 ----
     function predictMatch(homeData, awayData, h2h) {
         const hs = calculateTeamScore(homeData, true, h2h);
         const as = calculateTeamScore(awayData, false, h2h);
@@ -134,7 +120,6 @@
         };
     }
 
-    // ---- 自动推荐基本面判断 ----
     function autoSelectJudgment(hs, as) {
         const diff = hs - as;
         let val = 'equal';
@@ -151,7 +136,6 @@
         App.dom.basicJudge.value = val;
     }
 
-    // ---- 读取表单 ----
     function readTeamData(prefix) {
         const $ = App.$;
         const getVal = id => $(prefix + '-' + id).value;
@@ -166,7 +150,8 @@
             keyInjuries: getInt('injuries'),
             motivation: parseInt($(prefix + '-motivation').value, 10) || 3,
             teamValue: getFloat('value'),
-            unexpected: getVal('unexpected') || ''
+            unexpected: getVal('unexpected') || '',
+            injuryInfo: getVal('injury-info') || ''    // ★ 新增
         };
         if (prefix === 'home') {
             data.homeWins = getInt('hw');
@@ -189,7 +174,6 @@
         };
     }
 
-    // ---- 结果展示 ----
     function displayResult(homeStr, awayStr, homeData, awayData, result) {
         const d = App.dom;
         d.resultArea.style.display = 'block';
@@ -228,7 +212,6 @@
         autoSelectJudgment(result.homeScore, result.awayScore);
     }
 
-    // ---- 计算入口 ----
     function compute() {
         const d = App.dom;
         const hName = d.homeName.value.trim() || '主队';
@@ -240,7 +223,6 @@
         displayResult(hName, aName, homeData, awayData, result);
     }
 
-    // ---- 导出 ----
     App.scoring = {
         rankScore, goalScore, formScore, homeAwayScore,
         personnelScore, motivationScore, valueScore, h2hScore,

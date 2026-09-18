@@ -107,6 +107,31 @@
     margin-left: auto;
 }
 
+/* ★ 伤停详情 textarea */
+.form-group-textarea {
+    align-items: flex-start;
+}
+.form-group-textarea > label {
+    padding-top: 6px;
+}
+.injury-textarea {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #cdd8e6;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 48px;
+    line-height: 1.5;
+    box-sizing: border-box;
+}
+.injury-textarea:focus {
+    outline: none;
+    border-color: #3b7cff;
+    box-shadow: 0 0 0 3px rgba(59, 124, 255, 0.15);
+}
+
 /* 结果区微调 */
 .result-summary {
     display: flex;

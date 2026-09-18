@@ -40,6 +40,7 @@
             homeMotivation: $('home-motivation'),
             homeValue: $('home-value'),
             homeUnexpected: $('home-unexpected'),
+            homeInjuryInfo: $('home-injury-info'),   // ★ 新增
 
             // 客队
             awayRank: $('away-rank'),
@@ -53,6 +54,7 @@
             awayMotivation: $('away-motivation'),
             awayValue: $('away-value'),
             awayUnexpected: $('away-unexpected'),
+            awayInjuryInfo: $('away-injury-info'),   // ★ 新增
 
             // H2H
             h2hHomeWins: $('h2h-home-wins'),
