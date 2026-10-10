@@ -1,5 +1,5 @@
 /* ============================================================
- * index 页面数据加载 / 填充
+ * index 页面数据加载 / 填充（六维模型）
  * ============================================================ */
 (function () {
     "use strict";
@@ -9,53 +9,63 @@
     // ---- 表单回填 ----
     function fillMatchData(m) {
         const d = App.dom;
-        d.homeName.value = m.home_team;
-        d.awayName.value = m.away_team;
+
+        d.homeName.value = m.home_team || '';
+        d.awayName.value = m.away_team || '';
         d.leagueName.value = m.league || '';
         d.matchDate.value = m.date || '';
         d.matchTime.value = m.time || '';
 
-        d.homeRank.value = m.home_rank;
-        d.homeScored.value = m.home_scored;
-        d.homeConceded.value = m.home_conceded;
-        d.homeRecent.value = m.home_recent;
-        d.homeHW.value = m.home_wins;
-        d.homeHD.value = m.home_draws;
-        d.homeHL.value = m.home_losses;
-        d.homeInjuries.value = m.home_injuries;
-        d.homeMotivation.value = m.home_motivation;
-        d.homeValue.value = m.home_value;
-        d.homeUnexpected.value = m.home_unexpected || '';
-        d.homeInjuryInfo.value = m.home_injury_info || '';   // ★ 新增
+        // ===== 主队 =====
+        d.homeRank.value        = m.home_rank != null ? m.home_rank : '';
+        d.homePedigree.value    = m.home_pedigree != null ? m.home_pedigree : '';
+        d.homeValue.value       = m.home_value != null ? m.home_value : '';
+        d.homeRecent.value      = m.home_recent != null ? m.home_recent : '';
+        d.homeGd.value          = m.home_gd != null ? m.home_gd : '';
+        d.homeMorale.value      = m.home_morale != null ? String(m.home_morale) : '0';
+        d.homeHW.value          = m.home_wins != null ? m.home_wins : 0;
+        d.homeHD.value          = m.home_draws != null ? m.home_draws : 0;
+        d.homeHL.value          = m.home_losses != null ? m.home_losses : 0;
+        d.homeInjuries.value    = m.home_injuries != null ? m.home_injuries : '';
+        d.homeCoreOut.value     = m.home_core_out != null ? m.home_core_out : '';
+        d.homeReturn.value      = m.home_return != null ? m.home_return : '';
+        d.homeInjuryInfo.value  = m.home_injury_info || '';
+        d.homeMotivation.value  = m.home_motivation != null ? String(m.home_motivation) : '3';
+        d.homeUnexpected.value  = m.home_unexpected || '';
 
-        d.awayRank.value = m.away_rank;
-        d.awayScored.value = m.away_scored;
-        d.awayConceded.value = m.away_conceded;
-        d.awayRecent.value = m.away_recent;
-        d.awayAW.value = m.away_wins;
-        d.awayAD.value = m.away_draws;
-        d.awayAL.value = m.away_losses;
-        d.awayInjuries.value = m.away_injuries;
-        d.awayMotivation.value = m.away_motivation;
-        d.awayValue.value = m.away_value;
-        d.awayUnexpected.value = m.away_unexpected || '';
-        d.awayInjuryInfo.value = m.away_injury_info || '';   // ★ 新增
+        // ===== 客队 =====
+        d.awayRank.value        = m.away_rank != null ? m.away_rank : '';
+        d.awayPedigree.value    = m.away_pedigree != null ? m.away_pedigree : '';
+        d.awayValue.value       = m.away_value != null ? m.away_value : '';
+        d.awayRecent.value      = m.away_recent != null ? m.away_recent : '';
+        d.awayGd.value          = m.away_gd != null ? m.away_gd : '';
+        d.awayMorale.value      = m.away_morale != null ? String(m.away_morale) : '0';
+        d.awayAW.value          = m.away_wins != null ? m.away_wins : 0;
+        d.awayAD.value          = m.away_draws != null ? m.away_draws : 0;
+        d.awayAL.value          = m.away_losses != null ? m.away_losses : 0;
+        d.awayInjuries.value    = m.away_injuries != null ? m.away_injuries : '';
+        d.awayCoreOut.value     = m.away_core_out != null ? m.away_core_out : '';
+        d.awayReturn.value      = m.away_return != null ? m.away_return : '';
+        d.awayInjuryInfo.value  = m.away_injury_info || '';
+        d.awayMotivation.value  = m.away_motivation != null ? String(m.away_motivation) : '3';
+        d.awayUnexpected.value  = m.away_unexpected || '';
 
-        // H2H 回填
+        // ===== 交锋 =====
         d.h2hHomeWins.value = (m.h2h_home_wins != null) ? m.h2h_home_wins : 0;
-        d.h2hDraws.value = (m.h2h_draws != null) ? m.h2h_draws : 0;
+        d.h2hDraws.value    = (m.h2h_draws != null) ? m.h2h_draws : 0;
         d.h2hAwayWins.value = (m.h2h_away_wins != null) ? m.h2h_away_wins : 0;
+        if (d.h2hLast) d.h2hLast.value = m.h2h_last || '';
 
-        // 结果区
+        // ===== 结果区 =====
         d.resultArea.style.display = 'block';
-        d.resultHomeName.textContent = m.home_team;
-        d.resultAwayName.textContent = m.away_team;
-        d.resultHomeScore.textContent = Number(m.home_score).toFixed(2);
-        d.resultAwayScore.textContent = Number(m.away_score).toFixed(2);
+        d.resultHomeName.textContent = m.home_team || '主队';
+        d.resultAwayName.textContent = m.away_team || '客队';
+        d.resultHomeScore.textContent = Number(m.home_score || 0).toFixed(2);
+        d.resultAwayScore.textContent = Number(m.away_score || 0).toFixed(2);
 
-        const pH = m.home_prob * 100;
-        const pD = m.draw_prob * 100;
-        const pA = m.away_prob * 100;
+        const pH = (m.home_prob || 0) * 100;
+        const pD = (m.draw_prob || 0) * 100;
+        const pA = (m.away_prob || 0) * 100;
         d.probHome.textContent = pH.toFixed(1) + '%';
         d.probDraw.textContent = pD.toFixed(1) + '%';
         d.probAway.textContent = pA.toFixed(1) + '%';
@@ -68,6 +78,7 @@
 
         d.basicJudge.value = m.judgment || 'equal';
 
+        // 意外因素
         const hU = m.home_unexpected || '';
         const aU = m.away_unexpected || '';
         if (hU || aU) {
@@ -78,6 +89,17 @@
             d.unexpectedDisplay.innerHTML = html;
         } else {
             d.unexpectedDisplay.style.display = 'none';
+        }
+
+        // 重新计算一次以渲染六维明细（保证表格显示）
+        try {
+            const homeData = App.scoring.readTeamData('home');
+            const awayData = App.scoring.readTeamData('away');
+            const h2h = App.scoring.readH2H();
+            const res = App.scoring.predictMatch(homeData, awayData, h2h);
+            App.scoring.renderDims(res.homeDims, res.awayDims);
+        } catch (e) {
+            // 忽略
         }
     }
 
@@ -131,9 +153,7 @@
         const away = params.get('away');
         const d = App.dom;
 
-        if (id) {
-            return loadMatchById(id);
-        }
+        if (id) return loadMatchById(id);
 
         if (date && home && away) {
             return findMatch(date, home, away)

@@ -654,7 +654,191 @@ def api_ai_predictions():
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+# ---------- 权重学习接口 ----------
+@app.route('/weight_learning')
+def weight_learning():
+    return render_template('weight_learning.html')
 
+
+@app.route('/api/weight_analysis')
+def api_weight_analysis():
+    """基于历史数据，用因子差值与比赛结果的相关性，给出建议权重"""
+    try:
+        src = get_source()
+
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                '''SELECT home_rank, home_scored, home_conceded, home_recent,
+                          home_wins, home_draws, home_losses,
+                          home_injuries, home_motivation, home_value,
+                          away_rank, away_scored, away_conceded, away_recent,
+                          away_wins, away_draws, away_losses,
+                          away_injuries, away_motivation, away_value,
+                          h2h_home_wins, h2h_draws, h2h_away_wins,
+                          result
+                   FROM matches
+                   WHERE source = ? AND result IN ('红', '黑', '走盘')''',
+                (src,)
+            )
+            rows = cur.fetchall()
+
+        total = len(rows)
+        if total < 30:
+            return jsonify({
+                'success': False,
+                'total': total,
+                'error': f'样本量不足（当前 {total} 条，至少需要 30 条已出结果的记录）'
+            })
+
+        # ---- 因子计算（与前端 index-scoring.js 保持一致） ----
+        LEAGUE_AVG_S = 1.5
+        LEAGUE_AVG_C = 1.5
+        LEAGUE_AVG_V = 70.0
+
+        def rank_score(rank):
+            rank = int(rank or 0) or 10
+            if rank <= 1: return 100.0
+            if rank >= 20: return 0.0
+            return max(0.0, 100.0 - (rank - 1) * (100.0 / 19.0))
+
+        def goal_score(gs, gc):
+            gs = float(gs or 0); gc = float(gc or 0)
+            attack = min(100.0, (gs / LEAGUE_AVG_S) * 50.0)
+            defense = min(100.0, max(0.0, 1 - gc / LEAGUE_AVG_C) * 50.0)
+            return (attack + defense) / 2.0
+
+        def form_score(recent):
+            recent = float(recent or 0)
+            return min(100.0, (recent / 9.0) * 100.0)
+
+        def ha_score(w, d, l):
+            w = float(w or 0); d = float(d or 0); l = float(l or 0)
+            tot = w + d + l
+            return 50.0 if tot == 0 else (w / tot) * 100.0
+
+        def personnel_score(inj):
+            inj = float(inj or 0)
+            return max(0.0, 100.0 - min(100.0, inj * 10))
+
+        def motivation_score(level):
+            level = int(level or 3)
+            return min(100.0, level * 20.0)
+
+        def value_score(v):
+            v = float(v or 0)
+            return min(100.0, (v / LEAGUE_AVG_V) * 50.0)
+
+        def h2h_score(wins, draws, losses):
+            wins = float(wins or 0); draws = float(draws or 0); losses = float(losses or 0)
+            tot = wins + draws + losses
+            if tot == 0: return 50.0
+            return ((wins * 3 + draws * 1) / (tot * 3.0)) * 100.0
+
+        # ---- 收集每个因子的差值 + 结果 ----
+        factor_names = ['strength', 'form', 'home_away', 'personnel',
+                        'motivation', 'value', 'h2h']
+        factor_data = {k: [] for k in factor_names}   # [(diff, target), ...]
+        result_counts = {'红': 0, '黑': 0, '走盘': 0}
+
+        for r in rows:
+            result_counts[r['result']] = result_counts.get(r['result'], 0) + 1
+
+            # 目标值：红=1，走盘=0.5，黑=0
+            if r['result'] == '红':
+                target = 1.0
+            elif r['result'] == '走盘':
+                target = 0.5
+            else:
+                target = 0.0
+
+            # 实力差值
+            h_strength = 0.5 * rank_score(r['home_rank']) + 0.5 * goal_score(r['home_scored'], r['home_conceded'])
+            a_strength = 0.5 * rank_score(r['away_rank']) + 0.5 * goal_score(r['away_scored'], r['away_conceded'])
+            factor_data['strength'].append((h_strength - a_strength, target))
+
+            # 状态
+            h_form = form_score(r['home_recent'])
+            a_form = form_score(r['away_recent'])
+            factor_data['form'].append((h_form - a_form, target))
+
+            # 主客场
+            h_ha = ha_score(r['home_wins'], r['home_draws'], r['home_losses'])
+            a_ha = ha_score(r['away_wins'], r['away_draws'], r['away_losses'])
+            factor_data['home_away'].append((h_ha - a_ha, target))
+
+            # 人员
+            h_pers = personnel_score(r['home_injuries'])
+            a_pers = personnel_score(r['away_injuries'])
+            factor_data['personnel'].append((h_pers - a_pers, target))
+
+            # 战意
+            h_mot = motivation_score(r['home_motivation'])
+            a_mot = motivation_score(r['away_motivation'])
+            factor_data['motivation'].append((h_mot - a_mot, target))
+
+            # 身价
+            h_val = value_score(r['home_value'])
+            a_val = value_score(r['away_value'])
+            factor_data['value'].append((h_val - a_val, target))
+
+            # 交战（主队视角）
+            h2h_h = h2h_score(r['h2h_home_wins'], r['h2h_draws'], r['h2h_away_wins'])
+            h2h_a = h2h_score(r['h2h_away_wins'], r['h2h_draws'], r['h2h_home_wins'])
+            factor_data['h2h'].append((h2h_h - h2h_a, target))
+
+        # ---- 计算每个因子的预测力 = |Pearson 相关系数| ----
+        def pearson(xs, ys):
+            n = len(xs)
+            if n < 2: return 0.0
+            mx = sum(xs) / n
+            my = sum(ys) / n
+            num = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+            dx = sum((x - mx) ** 2 for x in xs) ** 0.5
+            dy = sum((y - my) ** 2 for y in ys) ** 0.5
+            if dx == 0 or dy == 0: return 0.0
+            return num / (dx * dy)
+
+        strengths = {}
+        for k in factor_names:
+            pairs = factor_data[k]
+            xs = [p[0] for p in pairs]
+            ys = [p[1] for p in pairs]
+            r_val = pearson(xs, ys)
+            strengths[k] = abs(r_val)   # 取绝对值，正相关/负相关都算预测力
+
+        total_strength = sum(strengths.values())
+        if total_strength == 0:
+            weights = {k: 1.0 / len(factor_names) for k in factor_names}
+        else:
+            weights = {k: strengths[k] / total_strength for k in factor_names}
+
+        # 归一化到整数（百分制，总和 = 100）
+        scaled = {k: v * 100 for k, v in weights.items()}
+        # 四舍五入
+        int_w = {k: int(round(v)) for k, v in scaled.items()}
+        # 修正总和到 100
+        diff = 100 - sum(int_w.values())
+        if diff != 0:
+            # 把差值加到最大值上
+            top = max(int_w, key=int_w.get)
+            int_w[top] += diff
+
+        # 按预测力排序输出
+        sorted_factors = sorted(strengths.items(), key=lambda x: -x[1])
+
+        return jsonify({
+            'success': True,
+            'total': total,
+            'result_counts': result_counts,
+            'strengths': {k: round(v, 4) for k, v in strengths.items()},
+            'weights': int_w,
+            'sorted': [{'key': k, 'strength': round(v, 4)} for k, v in sorted_factors]
+        })
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 # ---------- odds API ----------
 @app.route('/api/odds/save', methods=['POST'])
 def api_odds_save():
@@ -680,7 +864,57 @@ def api_odds_save():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+# ---------- CSV 导出接口 ----------
+@app.route('/api/export_matches_csv')
+def api_export_matches_csv():
+    """导出 matches 记录为 CSV 文件，支持按 date / league 筛选"""
+    import csv
+    import io
+    from flask import Response
 
+    try:
+        src = get_source()
+        date_filter = request.args.get('date')
+        league_filter = request.args.get('league')
+
+        conditions = ['source = ?']
+        params = [src]
+        if date_filter:
+            conditions.append('date = ?')
+            params.append(date_filter)
+        if league_filter:
+            conditions.append('league = ?')
+            params.append(league_filter)
+        where_sql = ' AND '.join(conditions)
+
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute(f'SELECT * FROM matches WHERE {where_sql} ORDER BY id DESC', params)
+            rows = cur.fetchall()
+
+        if not rows:
+            return jsonify({'error': '无数据可导出'}), 404
+
+        fieldnames = list(rows[0].keys())
+
+        output = io.StringIO()
+        output.write('\ufeff')  # BOM，让 Excel 正确识别 UTF-8
+        writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({k: row[k] for k in fieldnames})
+
+        csv_bytes = output.getvalue().encode('utf-8')
+        filename = f'matches_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+
+        return Response(
+            csv_bytes,
+            mimetype='text/csv; charset=utf-8',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 if __name__ == '__main__':
     print("🚀 启动 Flask 服务器...")
     app.run(debug=True, host='127.0.0.1', port=5000)

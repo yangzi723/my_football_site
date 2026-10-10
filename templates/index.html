@@ -13,7 +13,8 @@
 
     <h1>⚽ 球队基本面评分与预测</h1>
     <div class="subtitle">
-        七因子模型：实力 · 近3场状态 · 近3场主客场 · 人员 · 战意 · 身价 · 交战历史 &nbsp;|&nbsp; 英冠平均身价基准 70M €
+        六维量化模型：实力 30% · 状态 25% · 主客场 20% · 阵容 15% · 战意 5% · 交锋 5%
+        &nbsp;|&nbsp; 每维 0-10 分 → 加权总分 → 总分差查表 → 真实概率
     </div>
 
     <!-- 日期、时间、联赛 -->
@@ -34,85 +35,133 @@
 
     <!-- 权重调节 -->
     <div class="weight-panel">
-        <div class="weight-panel-title">⚙️ 权重调节 (总和自动归一化)</div>
-        <div class="flex-row" id="weight-sliders">
-            <div class="weight-group"><label>实力</label><input type="range" min="0" max="100" value="25" class="w-slider" data-key="strength"><span class="weight-val">25</span></div>
-            <div class="weight-group"><label>状态</label><input type="range" min="0" max="100" value="20" class="w-slider" data-key="form"><span class="weight-val">20</span></div>
-            <div class="weight-group"><label>主客场</label><input type="range" min="0" max="100" value="15" class="w-slider" data-key="home_away"><span class="weight-val">15</span></div>
-            <div class="weight-group"><label>人员</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="personnel"><span class="weight-val">10</span></div>
-            <div class="weight-group"><label>战意</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="motivation"><span class="weight-val">10</span></div>
-            <div class="weight-group"><label>身价</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="value"><span class="weight-val">10</span></div>
-            <div class="weight-group"><label>交战</label><input type="range" min="0" max="100" value="10" class="w-slider" data-key="h2h"><span class="weight-val">10</span></div>
+        <div class="weight-panel-header">
+            <div class="weight-panel-title">⚙️ 权重调节 (总和自动归一化)</div>
+            <div class="weight-preset-row">
+                <label class="preset-label">方案：</label>
+                <select id="weight-preset" class="preset-select">
+                    <option value="balanced" selected>稳健型（默认，赛季中后期）</option>
+                    <option value="early">赛季初型（1-10 轮）</option>
+                    <option value="keyMatch">关键战型（德比/保级/欧战）</option>
+                </select>
+            </div>
         </div>
-        <div class="weight-hint">拖动滑块调整权重，系统自动归一化</div>
+        <div class="flex-row" id="weight-sliders">
+            <div class="weight-group"><label>实力</label><input type="range" min="0" max="100" value="30" class="w-slider" data-key="strength"><span class="weight-val">30</span></div>
+            <div class="weight-group"><label>状态</label><input type="range" min="0" max="100" value="25" class="w-slider" data-key="form"><span class="weight-val">25</span></div>
+            <div class="weight-group"><label>主客场</label><input type="range" min="0" max="100" value="20" class="w-slider" data-key="home_away"><span class="weight-val">20</span></div>
+            <div class="weight-group"><label>阵容</label><input type="range" min="0" max="100" value="15" class="w-slider" data-key="personnel"><span class="weight-val">15</span></div>
+            <div class="weight-group"><label>战意</label><input type="range" min="0" max="100" value="5" class="w-slider" data-key="motivation"><span class="weight-val">5</span></div>
+            <div class="weight-group"><label>交锋</label><input type="range" min="0" max="100" value="5" class="w-slider" data-key="h2h"><span class="weight-val">5</span></div>
+        </div>
+        <div class="weight-hint">
+            拖动滑块调整权重，系统自动归一化 &nbsp;|&nbsp;
+            <a href="/weight_learning" target="_blank" class="weight-learn-link">📊 基于历史数据的权重建议 →</a>
+        </div>
     </div>
 
     <!-- 两队输入 -->
     <div class="two-col">
+        <!-- ================= 主队 ================= -->
         <div class="team-box">
-            <h2>🏠 主队 <span class="badge">近3场数据</span></h2>
+            <h2>🏠 主队 <span class="badge">六维数据</span></h2>
             <div class="form-group"><label>球队名称</label><input type="text" id="home-name"></div>
-            <div class="section-title">实力因子</div>
+
+            <div class="section-title">实力因子 (30%)</div>
             <div class="form-group"><label>联赛排名</label><input type="number" id="home-rank" min="1"></div>
-            <div class="form-group"><label>赛季总进球</label><input type="number" id="home-scored" min="0"></div>
-            <div class="form-group"><label>赛季总失球</label><input type="number" id="home-conceded" min="0"></div>
-            <div class="section-title">状态因子 (近3场)</div>
-            <div class="form-group"><label>近3场积分</label><input type="number" id="home-recent" min="0" max="9"> <span class="hint">胜3平1负0</span></div>
-            <div class="section-title">主客场因子 (近3场主场)</div>
+            <div class="form-group"><label>近3赛季平均排名</label><input type="number" id="home-pedigree" min="1" placeholder="选填，体现底蕴"><span class="hint">空则按当前排名</span></div>
+            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="home-value" min="0" step="10"><span class="hint">联赛基准 7000</span></div>
+
+            <div class="section-title">状态因子 (25%) · 近5场</div>
+            <div class="form-group"><label>近5场积分</label><input type="number" id="home-recent" min="0" max="15"> <span class="hint">胜3平1负0，满15</span></div>
+            <div class="form-group"><label>近5场净胜球</label><input type="number" id="home-gd" step="1"><span class="hint">≥+5=10分 / 0=5分 / ≤-5=1分</span></div>
+            <div class="form-group"><label>士气 / 势头</label>
+                <select id="home-morale">
+                    <option value="2">很好（连胜 / 爆冷强敌）</option>
+                    <option value="1">较好</option>
+                    <option value="0" selected>一般</option>
+                    <option value="-1">较差</option>
+                    <option value="-2">很差（连败 / 被逆转）</option>
+                </select>
+            </div>
+
+            <div class="section-title">主客场因子 (20%) · 近6场主场</div>
             <div class="form-group"><label>主场胜</label><input type="number" id="home-hw" min="0"></div>
             <div class="form-group"><label>主场平</label><input type="number" id="home-hd" min="0"></div>
             <div class="form-group"><label>主场负</label><input type="number" id="home-hl" min="0"></div>
-            <div class="section-title">人员 & 战意</div>
-            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="home-injuries" min="0"></div>
+
+            <div class="section-title">阵容因子 (15%)</div>
+            <div class="form-group"><label>主力伤停人数</label><input type="number" id="home-injuries" min="0"><span class="hint">每人 -1 分，最多 -5</span></div>
+            <div class="form-group"><label>核心位置缺阵</label><input type="number" id="home-core-out" min="0" max="3"><span class="hint">门将/中卫/组织核心，每人 -2 分</span></div>
+            <div class="form-group"><label>伤愈回归人数</label><input type="number" id="home-return" min="0" max="3"><span class="hint">每人 +2 分</span></div>
             <div class="form-group form-group-textarea">
                 <label>伤停详情</label>
                 <textarea id="home-injury-info" rows="2" class="injury-textarea" placeholder="如：张三（中场，红牌停赛）、李四（前锋，腿伤）"></textarea>
             </div>
+
+            <div class="section-title">战意因子 (5%)</div>
             <div class="form-group"><label>战意等级</label>
                 <select id="home-motivation">
-                    <option value="1">1 - 低</option>
+                    <option value="1">1 - 低（无欲无求）</option>
                     <option value="2">2 - 中低</option>
                     <option value="3" selected>3 - 中</option>
                     <option value="4">4 - 高</option>
-                    <option value="5">5 - 极高</option>
+                    <option value="5">5 - 极高（争冠/保级/德比）</option>
                 </select>
             </div>
-            <div class="section-title">身价因子</div>
-            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="home-value" min="0" step="10"></div>
+
             <div class="section-title">意外因素 (仅供参考)</div>
             <div class="form-group"><label>备注</label><input type="text" id="home-unexpected"></div>
         </div>
 
+        <!-- ================= 客队 ================= -->
         <div class="team-box">
-            <h2>✈️ 客队 <span class="badge">近3场数据</span></h2>
+            <h2>✈️ 客队 <span class="badge">六维数据</span></h2>
             <div class="form-group"><label>球队名称</label><input type="text" id="away-name"></div>
-            <div class="section-title">实力因子</div>
+
+            <div class="section-title">实力因子 (30%)</div>
             <div class="form-group"><label>联赛排名</label><input type="number" id="away-rank" min="1"></div>
-            <div class="form-group"><label>赛季总进球</label><input type="number" id="away-scored" min="0"></div>
-            <div class="form-group"><label>赛季总失球</label><input type="number" id="away-conceded" min="0"></div>
-            <div class="section-title">状态因子 (近3场)</div>
-            <div class="form-group"><label>近3场积分</label><input type="number" id="away-recent" min="0" max="9"> <span class="hint">胜3平1负0</span></div>
-            <div class="section-title">主客场因子 (近3场客场)</div>
+            <div class="form-group"><label>近3赛季平均排名</label><input type="number" id="away-pedigree" min="1" placeholder="选填，体现底蕴"><span class="hint">空则按当前排名</span></div>
+            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="away-value" min="0" step="10"><span class="hint">联赛基准 7000</span></div>
+
+            <div class="section-title">状态因子 (25%) · 近5场</div>
+            <div class="form-group"><label>近5场积分</label><input type="number" id="away-recent" min="0" max="15"> <span class="hint">胜3平1负0，满15</span></div>
+            <div class="form-group"><label>近5场净胜球</label><input type="number" id="away-gd" step="1"><span class="hint">≥+5=10分 / 0=5分 / ≤-5=1分</span></div>
+            <div class="form-group"><label>士气 / 势头</label>
+                <select id="away-morale">
+                    <option value="2">很好（连胜 / 爆冷强敌）</option>
+                    <option value="1">较好</option>
+                    <option value="0" selected>一般</option>
+                    <option value="-1">较差</option>
+                    <option value="-2">很差（连败 / 被逆转）</option>
+                </select>
+            </div>
+
+            <div class="section-title">主客场因子 (20%) · 近6场客场</div>
             <div class="form-group"><label>客场胜</label><input type="number" id="away-aw" min="0"></div>
             <div class="form-group"><label>客场平</label><input type="number" id="away-ad" min="0"></div>
             <div class="form-group"><label>客场负</label><input type="number" id="away-al" min="0"></div>
-            <div class="section-title">人员 & 战意</div>
-            <div class="form-group"><label>关键球员缺阵</label><input type="number" id="away-injuries" min="0"></div>
+
+            <div class="section-title">阵容因子 (15%)</div>
+            <div class="form-group"><label>主力伤停人数</label><input type="number" id="away-injuries" min="0"><span class="hint">每人 -1 分，最多 -5</span></div>
+            <div class="form-group"><label>核心位置缺阵</label><input type="number" id="away-core-out" min="0" max="3"><span class="hint">门将/中卫/组织核心，每人 -2 分</span></div>
+            <div class="form-group"><label>伤愈回归人数</label><input type="number" id="away-return" min="0" max="3"><span class="hint">每人 +2 分</span></div>
             <div class="form-group form-group-textarea">
                 <label>伤停详情</label>
                 <textarea id="away-injury-info" rows="2" class="injury-textarea" placeholder="如：王五（后卫，累积黄牌停赛）、赵六（门将，伤缺）"></textarea>
             </div>
+
+            <div class="section-title">战意因子 (5%)</div>
             <div class="form-group"><label>战意等级</label>
                 <select id="away-motivation">
-                    <option value="1">1 - 低</option>
+                    <option value="1">1 - 低（无欲无求）</option>
                     <option value="2">2 - 中低</option>
                     <option value="3" selected>3 - 中</option>
                     <option value="4">4 - 高</option>
-                    <option value="5">5 - 极高</option>
+                    <option value="5">5 - 极高（争冠/保级/德比）</option>
                 </select>
             </div>
-            <div class="section-title">身价因子</div>
-            <div class="form-group"><label>球队总身价 (万欧)</label><input type="number" id="away-value" min="0" step="10"></div>
+
             <div class="section-title">意外因素 (仅供参考)</div>
             <div class="form-group"><label>备注</label><input type="text" id="away-unexpected"></div>
         </div>
@@ -120,22 +169,22 @@
 
     <!-- 交战历史 -->
     <div class="h2h-panel">
-        <div class="h2h-title">⚔️ 两队交战历史（近 N 次交手，可选）</div>
+        <div class="h2h-title">⚔️ 两队交战历史（近 5 次交手 + 最近一次）</div>
         <div class="h2h-row">
+            <div class="h2h-item"><label>主队胜</label><input type="number" id="h2h-home-wins" min="0" value="0"></div>
+            <div class="h2h-item"><label>平局</label><input type="number" id="h2h-draws" min="0" value="0"></div>
+            <div class="h2h-item"><label>客队胜</label><input type="number" id="h2h-away-wins" min="0" value="0"></div>
             <div class="h2h-item">
-                <label>主队胜</label>
-                <input type="number" id="h2h-home-wins" min="0" value="0">
+                <label>最近一次交锋</label>
+                <select id="h2h-last">
+                    <option value="">未填</option>
+                    <option value="home">主队胜</option>
+                    <option value="draw">平局</option>
+                    <option value="away">客队胜</option>
+                </select>
             </div>
-            <div class="h2h-item">
-                <label>平局</label>
-                <input type="number" id="h2h-draws" min="0" value="0">
-            </div>
-            <div class="h2h-item">
-                <label>客队胜</label>
-                <input type="number" id="h2h-away-wins" min="0" value="0">
-            </div>
-            <span class="h2h-hint">（胜=3分，平=1分，负=0分，作为独立因子按权重计入）</span>
         </div>
+        <div class="h2h-hint">（近5次战绩占 80%，最近一次占 20%；胜=3分、平=1分）</div>
     </div>
 
     <!-- 按钮组 -->
@@ -149,8 +198,8 @@
     <div id="resultArea" style="display:none;">
         <div class="result-box">
             <div class="result-summary">
-                <div><strong id="result-home-name">主队</strong> 综合得分: <span id="result-home-score" class="result-score">0.00</span></div>
-                <div><strong id="result-away-name">客队</strong> 综合得分: <span id="result-away-score" class="result-score">0.00</span></div>
+                <div><strong id="result-home-name">主队</strong> 综合得分: <span id="result-home-score" class="result-score">0.00</span> <span class="hint">/ 10</span></div>
+                <div><strong id="result-away-name">客队</strong> 综合得分: <span id="result-away-score" class="result-score">0.00</span> <span class="hint">/ 10</span></div>
             </div>
             <div class="result-grid">
                 <div class="result-item"><div class="label">主胜概率</div><div class="value blue" id="prob-home">0.0%</div></div>
@@ -162,6 +211,10 @@
                 <div class="seg draw" id="bar-draw" style="width:33%;">平局</div>
                 <div class="seg away" id="bar-away" style="width:34%;">客胜</div>
             </div>
+
+            <!-- 六维明细 -->
+            <div id="result-detail" class="result-detail"></div>
+
             <div class="judgment-row">
                 <label for="basic-judge">📋 基本面判断：</label>
                 <select id="basic-judge">
@@ -185,14 +238,13 @@
     </div>
 
     <div class="footer-note">
-        所有数据均手动输入，评分模型基于七因子加权。身价基准：英冠平均 70M€。
+        六维量化模型：实力×30% + 状态×25% + 主客场×20% + 阵容×15% + 战意×5% + 交锋×5%。
+        总分差查表得真实概率，再叠加主场优势修正。身价基准：英冠平均 70M€。
     </div>
 </div>
 
-<!-- Toast -->
 <div id="toast" class="toast"></div>
 
-<!-- 抓取模态框 -->
 <div id="matchModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -219,7 +271,6 @@
     </div>
 </div>
 
-<!-- 顺序：常量 → 评分 → API → 主入口 -->
 <script src="/static/js/index-constants.js"></script>
 <script src="/static/js/index-scoring.js"></script>
 <script src="/static/js/index-api.js"></script>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>权重学习 - 基于历史数据</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        h1 { margin-bottom: 8px; }
+        .subtitle { color: #4b657a; font-size: 14px; margin-bottom: 20px; }
+
+        .panel {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 20px;
+        }
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 14px;
+            color: #1f3a5f;
+        }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+        }
+        .stat-card .num { font-size: 24px; font-weight: 700; color: #0a2540; }
+        .stat-card .lbl { font-size: 13px; color: #4b657a; margin-top: 4px; }
+
+        .table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .table th {
+            background: #1f3a5f;
+            color: #fff;
+            padding: 10px 8px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .table td { padding: 9px 8px; border-bottom: 1px solid #e2e8f0; }
+        .table tr:hover { background: #f8fafc; }
+        .table .bar-wrap {
+            background: #e2e8f0;
+            border-radius: 6px;
+            height: 16px;
+            overflow: hidden;
+            width: 100%;
+            max-width: 260px;
+        }
+        .table .bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #6366f1);
+            border-radius: 6px;
+            transition: width 0.4s;
+        }
+        .table .weight-strong { font-weight: 700; color: #0a2540; }
+        .table .weight-up { color: #059669; font-weight: 600; }
+        .table .weight-down { color: #dc2626; font-weight: 600; }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .btn {
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        .btn-primary { background: #1a3a6b; color: #fff; }
+        .btn-primary:hover { background: #0f2a4a; }
+        .btn-success { background: #059669; color: #fff; }
+        .btn-success:hover { background: #047857; }
+        .btn-secondary { background: #e2e8f0; color: #1a3a6b; }
+        .btn-secondary:hover { background: #cbd5e1; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .hint-box {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .hint-box b { color: #b45309; }
+
+        .loading {
+            padding: 30px;
+            text-align: center;
+            color: #4b657a;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    {% include '_navbar.html' %}
+    <h1>📊 权重学习 - 基于历史数据</h1>
+    <div class="subtitle">
+        用您已保存的历史比赛（已出结果的记录），通过因子差值与比赛结果的相关性分析，给出建议权重
+    </div>
+
+    <div class="hint-box">
+        <b>工作原理：</b>
+        每场比赛的「因子差值」= 主队因子得分 − 客队因子得分。<br>
+        把「因子差值」与「比赛结果（红=1，走盘=0.5，黑=0）」做 Pearson 相关性分析，
+        相关系数绝对值越大 → 该因子对预测结果贡献越大 → 建议权重越高。<br>
+        <b>样本量建议：</b>至少 30 条已出结果的记录，200 条以上更可靠。
+    </div>
+
+    <div id="loading" class="loading">加载中...</div>
+
+    <div id="content" style="display:none;">
+
+        <div class="panel">
+            <div class="panel-title">📈 数据概览</div>
+            <div class="stats-row" id="statsRow"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">🎯 建议权重（按预测力排序）</div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width:130px;">因子</th>
+                        <th style="width:110px;">预测力 |r|</th>
+                        <th style="width:100px;">建议权重</th>
+                        <th style="width:90px;">当前权重</th>
+                        <th>相对变化</th>
+                    </tr>
+                </thead>
+                <tbody id="weightBody"></tbody>
+            </table>
+            <div class="btn-row">
+                <button class="btn btn-success" id="applyBtn">✅ 一键应用到 index 页面</button>
+                <button class="btn btn-secondary" id="reloadBtn">🔄 重新分析</button>
+                <button class="btn btn-primary" id="exportBtn">📥 导出 CSV</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="/static/js/weight_learning.js"></script>
+</body>
+</html>

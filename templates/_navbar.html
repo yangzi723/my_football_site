@@ -1,13 +1,50 @@
 <div class="top-nav">
     <a href="/fixtures" {% if request.endpoint == 'fixtures' %}class="active"{% endif %}>📅 赛事列表</a>
-	<a href="/index" {% if request.endpoint == 'index' %}class="active"{% endif %}>📊 基本面评分</a>
-    <a href="/history" {% if request.endpoint == 'history' %}class="active"{% endif %}>📋基本面分析</a>
-	<a href="/odds" {% if request.endpoint == 'odds' %}class="active"{% endif %}>🎯 赔率预测</a>
-    <a href="/stats" {% if request.endpoint == 'stats' %}class="active"{% endif %}>📈人工统计</a>
-	<a href="/ai_prediction">🎯AI预测</a>
-	<a href="/ai_stats">📈AI统计</a>
-	<a href="/ai_value_stats">AI价值统计</a>
-	<a href="/ai_profit_stats">AI盈利统计</a>
-	
-	
+    <a href="/index" {% if request.endpoint == 'index' %}class="active"{% endif %}>📊 基本面评分</a>
+    <a href="/history" {% if request.endpoint == 'history' %}class="active"{% endif %}>📋 基本面分析</a>
+    <a href="/odds" {% if request.endpoint == 'odds' %}class="active"{% endif %}>🎯 赔率预测</a>
+    <a href="/ai_prediction" {% if request.endpoint == 'ai_prediction' %}class="active"{% endif %}>🤖 AI预测</a>
+
+    <!-- 统计分组 -->
+    <div class="nav-group {% if request.endpoint in ['stats','ai_stats','ai_value_stats','ai_profit_stats','red_list','black_list','draw_list','pending_list','all_list'] %}active{% endif %}">
+        <span class="nav-group-title">📈 统计 <span class="caret">▾</span></span>
+        <div class="nav-dropdown">
+            <a href="/stats" {% if request.endpoint == 'stats' %}class="active"{% endif %}>📈 人工统计</a>
+            <a href="/ai_stats" {% if request.endpoint == 'ai_stats' %}class="active"{% endif %}>📈 AI统计</a>
+            <a href="/ai_value_stats" {% if request.endpoint == 'ai_value_stats' %}class="active"{% endif %}>💰 AI价值统计</a>
+            <a href="/ai_profit_stats" {% if request.endpoint == 'ai_profit_stats' %}class="active"{% endif %}>💵 AI盈利统计</a>
+        </div>
+    </div>
+
+    <!-- 工具分组 -->
+    <div class="nav-group {% if request.endpoint in ['weight_learning'] %}active{% endif %}">
+        <span class="nav-group-title">⚙️ 工具 <span class="caret">▾</span></span>
+        <div class="nav-dropdown">
+            <a href="/weight_learning" {% if request.endpoint == 'weight_learning' %}class="active"{% endif %}>📚 权重学习</a>
+        </div>
+    </div>
 </div>
+
+<script>
+(function() {
+    "use strict";
+    // 点击分组标题 → 展开/收起（移动端/触屏友好）
+    document.addEventListener('click', function(e) {
+        const title = e.target.closest('.nav-group-title');
+        if (title) {
+            e.preventDefault();
+            e.stopPropagation();
+            const group = title.parentElement;
+            const isOpen = group.classList.contains('open');
+            // 关掉其他已展开的分组
+            document.querySelectorAll('.nav-group.open').forEach(g => g.classList.remove('open'));
+            if (!isOpen) group.classList.add('open');
+            return;
+        }
+        // 点击空白处 → 关闭所有展开的分组
+        if (!e.target.closest('.nav-group')) {
+            document.querySelectorAll('.nav-group.open').forEach(g => g.classList.remove('open'));
+        }
+    });
+})();
+</script>

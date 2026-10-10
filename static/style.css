@@ -389,3 +389,123 @@ h1 {
     color: #4b657a;
     margin-top: 6px;
 }
+/* ============================================================
+ * 导航栏分组下拉样式
+ * ============================================================ */
+
+/* 覆盖原有 .top-nav 里的部分属性，让分组更紧凑 */
+.top-nav {
+    gap: 6px;
+    align-items: center;
+}
+
+/* 一级菜单项（链接 + 分组标题）统一外观 */
+.top-nav > a,
+.top-nav .nav-group-title {
+    text-decoration: none;
+    color: #1f3a5f;
+    font-weight: 600;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    user-select: none;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+.top-nav > a:hover,
+.top-nav .nav-group-title:hover {
+    background: #d1d9e6;
+}
+
+.top-nav > a.active,
+.top-nav .nav-group.active > .nav-group-title {
+    background: #1a3a6b;
+    color: white;
+}
+
+/* 分组容器 */
+.top-nav .nav-group {
+    position: relative;
+    display: inline-block;
+}
+
+/* 下拉箭头 */
+.top-nav .nav-group .caret {
+    font-size: 10px;
+    opacity: 0.7;
+    transition: transform 0.2s;
+    display: inline-block;
+}
+.top-nav .nav-group.open .caret,
+.top-nav .nav-group:hover .caret {
+    transform: rotate(180deg);
+}
+
+/* 下拉菜单面板 */
+.top-nav .nav-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 180px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    padding: 6px 0;
+    margin-top: 8px;
+    z-index: 1100;
+    overflow: hidden;
+}
+
+/* 鼠标悬停 → 展开 */
+.top-nav .nav-group:hover .nav-dropdown {
+    display: block;
+}
+
+/* 点击展开（触屏/移动端） */
+.top-nav .nav-group.open .nav-dropdown {
+    display: block;
+}
+
+/* 下拉菜单里的每一条 */
+.top-nav .nav-dropdown a {
+    display: block;
+    padding: 9px 16px;
+    border-radius: 0;
+    font-weight: 500;
+    white-space: nowrap;
+    color: #1f3a5f;
+    font-size: 14px;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+
+.top-nav .nav-dropdown a:hover {
+    background: #eef4ff;
+}
+
+.top-nav .nav-dropdown a.active {
+    background: #1a3a6b;
+    color: #fff;
+}
+
+/* 小屏优化 */
+@media (max-width: 900px) {
+    .top-nav {
+        gap: 4px;
+        padding: 8px 12px;
+    }
+    .top-nav > a,
+    .top-nav .nav-group-title {
+        padding: 4px 10px;
+        font-size: 13px;
+    }
+    .top-nav .nav-dropdown {
+        min-width: 160px;
+    }
+}

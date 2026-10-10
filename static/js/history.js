@@ -614,7 +614,21 @@
             alert('批量导入功能已实现，请参考完整代码');
         });
 
+                // ========== 导出 CSV ==========
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function() {
+                // 带上当前筛选条件（日期 / 联赛），让导出的数据与页面显示一致
+                const params = new URLSearchParams();
+                params.set('source', 'odds');
+                if (currentDateFilter) params.set('date', currentDateFilter);
+                if (currentLeagueFilter) params.set('league', currentLeagueFilter);
+                window.location.href = '/api/export_matches_csv?' + params.toString();
+            });
+        }
+
         // ========== 初始化 ==========
         loadHistory();
+		
     });
 })();
